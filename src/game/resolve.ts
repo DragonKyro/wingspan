@@ -7,12 +7,14 @@ import {
   addEggs,
   addFood,
   birdAt,
+  columnEggCost,
   eggTargets,
   getPlayer,
   payFoodPlan,
   playedBirds,
   sameRef,
   spendFood,
+  totalEggs,
 } from './helpers';
 import {
   cacheOnBird,
@@ -20,6 +22,7 @@ import {
   faceCovers,
   hasPowerImpl,
   pushPending,
+  refillFeeder,
   runPower,
   setPlayer,
   takeDieFromFeeder,
@@ -97,7 +100,11 @@ function feasible(state: GameState, step: PendingStep): number {
       const habitat = step.habitat === 'same' ? step.sourceBird?.habitat : step.habitat;
       if (!habitat) return 0;
       if (p.board[habitat].length >= 5) return 0;
-      return p.hand.some((id) => bird(id).habitats.includes(habitat)) ? 1 : 0;
+      if (totalEggs(p) < columnEggCost(p.board[habitat].length)) return 0;
+      return p.hand.some((id) => {
+        const c = bird(id);
+        return c.habitats.includes(habitat) && payFoodPlan(p.food, c.cost) !== null;
+      }) ? 1 : 0;
     }
     case 'chooseCacheFood':
       return step.count > 0 ? 1 : 0;
@@ -144,6 +151,14 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
     case 'pickDie': {
       if (choice.kind !== 'dice') throw new Error('expected dice');
       if (choice.picks.length !== step.count) throw new Error(`pick ${step.count} dice`);
+      // "About to gain food for any reason" — the all-same-face reroll also
+      // applies to power-driven die picks.
+      if (choice.reroll) {
+        if (!(s.feederIn.length > 0 && s.feederIn.every((d) => d === s.feederIn[0]))) {
+          throw new Error('can only reroll when all dice show the same face');
+        }
+        s = refillFeeder(s);
+      }
       for (const pick of choice.picks) {
         const face = s.feederIn[pick.die];
         if (face == null) throw new Error('no such die');
@@ -217,7 +232,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       break;
     }
     case 'chooseHandTuck': {
-      if (choice.kind !== 'handCards' || choice.cardIds.length !== 1) throw new Error('pick 1 card');
+      if (choice.kind !== 'handCards' || choice.cardIds.length > 1) throw new Error('pick 1 card');
+      if (choice.cardIds.length === 0) {
+        if (!step.optional) throw new Error('pick 1 card');
+        return dropImpossiblePending(s); // declined — the "if you do" fails
+      }
       const p = getPlayer(s, playerId);
       const id = choice.cardIds[0]!;
       if (!p.hand.includes(id)) throw new Error('card not in hand');
@@ -307,7 +326,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       break;
     }
     case 'chooseAdditionalPlay': {
-      if (choice.kind !== 'handCards' || choice.cardIds.length !== 1) throw new Error('pick 1 card');
+      if (choice.kind !== 'handCards' || choice.cardIds.length > 1) throw new Error('pick 1 card');
+      if (choice.cardIds.length === 0) {
+        if (!step.optional) throw new Error('pick 1 card');
+        break; // declined
+      }
       const cardId = choice.cardIds[0]!;
       const habitat = step.habitat === 'same' ? step.sourceBird!.habitat : step.habitat;
       s = playAdditionalBird(s, playerId, cardId, habitat);
@@ -450,7 +473,7 @@ function playAdditionalBird(state: GameState, playerId: PlayerId, cardId: number
   };
   let s = setPlayer(state, pl);
   const ref: BirdRef = { habitat, index: pl.board[habitat].length - 1 };
-  if ((card.powerColor === 'white' || card.powerColor === 'yellow') && card.powerText) {
+  if (card.powerColor === 'white' && card.powerText) {
     s = runPower(s, playerId, ref);
   }
   return s;

@@ -2,7 +2,7 @@
 // to push through sub-choices without caring about quality.
 
 import { bird } from '@/game/cards';
-import { eggTargets, getPlayer } from '@/game/helpers';
+import { columnEggCost, eggTargets, getPlayer, payFoodPlan, totalEggs } from '@/game/helpers';
 import { faceCovers } from '@/game/powers';
 import type { Choice, GameState, PendingStep, PlayerId } from '@/game/types';
 import { FOOD_TYPES, HABITATS } from '@/game/types';
@@ -91,7 +91,10 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     case 'chooseAdditionalPlay': {
       const habitat = step.habitat === 'same' ? step.sourceBird?.habitat : step.habitat;
       if (!habitat) return null;
-      const cardId = p.hand.find((id) => bird(id).habitats.includes(habitat));
+      if (totalEggs(p) < columnEggCost(p.board[habitat].length)) return null;
+      const cardId = p.hand.find(
+        (id) => bird(id).habitats.includes(habitat) && payFoodPlan(p.food, bird(id).cost) != null,
+      );
       if (cardId == null) return null;
       return { kind: 'handCards', cardIds: [cardId] };
     }

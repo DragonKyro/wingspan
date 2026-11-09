@@ -29,13 +29,13 @@ export const SETUP_BIRDS = 5;
 export const SETUP_BONUS = 2;
 export const SETUP_FOOD: FoodType[] = ['invertebrate', 'seed', 'fish', 'fruit', 'rodent'];
 
-/** Blue-side goal board points by [playerCount][rank]. */
-export const GOAL_POINTS: Record<number, number[]> = {
-  2: [4, 1],
-  3: [5, 3, 0],
-  4: [6, 4, 2, 1],
-  5: [6, 5, 4, 3, 2],
-};
+/** Green-side (ranked) goal board points by [round][rank]; 4th+ = 0. */
+export const GOAL_POINTS: number[][] = [
+  [4, 1],
+  [5, 2, 1],
+  [6, 3, 2],
+  [7, 4, 3],
+];
 
 /** Feeder size. */
 export const FEEDER_SIZE = 5;

@@ -35,3 +35,6 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Rulebook PDFs (licensed, ~380MB, local-only)
+docs/

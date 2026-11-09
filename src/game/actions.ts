@@ -374,29 +374,39 @@ export function finishEndOfTurnDiscards(state: GameState, playerId: PlayerId): G
 // === round / game end ===
 
 function endRound(state: GameState): GameState {
-  // Score this round's goal tile (blue side: ranked).
+  // Score this round's goal tile (green side: ranked).
   const tile = state.goalTiles[state.round];
   let s = state;
   if (tile != null) {
-    const points = GOAL_POINTS[s.players.length] ?? GOAL_POINTS[5]!;
+    const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
     const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
-    // Ranks with tie-split (floor of summed rank points).
-    const order = s.playerOrder.map((pid, i) => ({ pid, units: units[i]! }));
-    const sortedIdx = [...order].sort((a, b) => b.units - a.units);
+    // Ranks with tie-split (floor of summed rank points). Players with 0
+    // units place their cube on the 0 space — they don't rank.
+    const order = s.playerOrder
+      .map((pid, i) => ({ pid, units: units[i]! }))
+      .filter((x) => x.units > 0)
+      .sort((a, b) => b.units - a.units);
     const scores = new Array<number>(s.playerOrder.length).fill(0);
     let i = 0;
-    while (i < sortedIdx.length) {
+    while (i < order.length) {
       let j = i;
-      while (j + 1 < sortedIdx.length && sortedIdx[j + 1]!.units === sortedIdx[i]!.units) j++;
+      while (j + 1 < order.length && order[j + 1]!.units === order[i]!.units) j++;
       const rankPoints = points.slice(i, j + 1).reduce((a, b) => a + b, 0);
       const share = Math.floor(rankPoints / (j - i + 1));
-      for (let k = i; k <= j; k++) scores[s.playerOrder.indexOf(sortedIdx[k]!.pid)] = share;
+      for (let k = i; k <= j; k++) scores[s.playerOrder.indexOf(order[k]!.pid)] = share;
       i = j + 1;
     }
     const goalScores = [...s.goalScores];
     goalScores[s.round] = scores;
     s = { ...s, goalScores };
   }
+  // Discard the face-up tray cards and restock from the deck.
+  s = {
+    ...s,
+    discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
+    tray: [null, null, null],
+  };
+  s = refillTray(s);
   // Queue every teal-powered bird (in player order then board order); they
   // drain during the 'roundEnd' phase, which settle() runs automatically.
   const tealQueue: { playerId: PlayerId; bird: BirdRef }[] = [];

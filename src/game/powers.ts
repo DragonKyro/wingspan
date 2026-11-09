@@ -33,7 +33,7 @@ export function pushPending(state: GameState, ...steps: PendingStep[]): GameStat
 }
 
 /** Draw `n` cards from the deck into the player's hand, reshuffling the
- *  discard pile (with rng) when the deck runs out. */
+ *  discard pile (with rng) into a new deck when the deck runs out. */
 export function drawFromDeck(state: GameState, playerId: PlayerId, n: number): GameState {
   let p = getPlayer(state, playerId);
   let deck = state.deck;
@@ -211,7 +211,7 @@ function discardEggsFor(count: number, gainWild: number): PowerFn {
 /** Tuck from hand behind own bird; on success run the follow-up step. */
 function tuckHandThen(then: PendingStep['then']): PowerFn {
   return (state, playerId, ref) =>
-    pushPending(state, { kind: 'chooseHandTuck', playerId, bird: ref, then });
+    pushPending(state, { kind: 'chooseHandTuck', playerId, bird: ref, optional: true, then });
 }
 
 /** Pay `food` to tuck `count` deck cards behind own bird. */
@@ -410,6 +410,7 @@ function playAdditional(habitat: 'forest' | 'grassland' | 'wetland' | 'same'): P
       playerId,
       habitat: habitat === 'same' ? ref.habitat : habitat,
       sourceBird: ref,
+      optional: true,
     });
 }
 
@@ -583,7 +584,8 @@ export const PINK_IMPLS: Record<string, PinkDef> = {
   },
   'When another player plays a bird in their [grassland], tuck 1 [card] from your hand behind this bird.': {
     trigger: { kind: 'playBird', habitat: 'grassland' },
-    fn: (s, owner, ref) => pushPending(s, { kind: 'chooseHandTuck', playerId: owner, bird: ref }),
+    fn: (s, owner, ref) =>
+      pushPending(s, { kind: 'chooseHandTuck', playerId: owner, bird: ref, optional: true }),
   },
   "When another player's [predator] succeeds, gain 1 [die] from the birdfeeder.": {
     trigger: { kind: 'predatorSuccess' },

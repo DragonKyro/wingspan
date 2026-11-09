@@ -17,7 +17,7 @@ export function createGame(opts: CreateGameOptions): GameState {
   const sets = opts.settings?.sets ?? ['core'];
   const settings = {
     sets,
-    goalSide: 'blue' as const,
+    goalSide: 'green' as const,
     aiLevel: opts.settings?.aiLevel,
   };
 

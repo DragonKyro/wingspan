@@ -69,13 +69,31 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   white = when played, teal = end of round, yellow = game end.
   Teal powers drain via `roundEndQueue` during the 'roundEnd' phase
   (after goal scoring, before next round / game end); yellow powers drain
-  via `gameEndQueue` during 'gameEnd'.
+  via `gameEndQueue` during 'gameEnd'. The base set has no teal/yellow birds.
 - `settle()` in engine.ts drains the roundEnd/gameEnd queues and computes
   finalScores/winner after every action.
+- Goal board: 'green' side = ranked majority scoring, points escalate per
+  round (4/1, 5/2/1, 6/3/2, 7/4/3 — see GOAL_POINTS); players with 0 units
+  score 0. 'blue' side (1 pt/item, max 5) is unimplemented.
+- Round end: goal scored → face-up tray cards discarded + restocked →
+  cubes reset → first player rotates → teal queue drains.
+- Setup: players keep up to 5 birds and discard 1 food PER BIRD KEPT
+  (official: "for each bird card you keep, discard 1 food").
+- The deck DOES reshuffle discards when emptied (official rule) — see
+  drawFromDeck/refillTray/lookTuck in powers.ts.
+- Feeder: empty tray auto-refills all 5; all-same-face (even 1 die) allows
+  a reroll before ANY food gain — `reroll` on GainFoodAction and on the
+  'dice' Choice (pickDie pending steps).
+- Powers are officially "always optional": when-played/pink powers
+  auto-fire (all beneficial); optional sub-choices honor `optional`
+  (chooseHandTuck decline skips `then`, chooseAdditionalPlay can pass).
 
 ## Known gaps (future work)
 
 - Expansion powers: `POWER_IMPLS` covers all distinct core-set texts;
   expansion-only texts warn once and no-op (`hasPowerImpl` is the check).
-- Nectar/Oceania scoring stubbed (0), green goal side unimplemented.
+- Nectar/Oceania scoring stubbed (0), blue (per-item) goal side unimplemented.
+- When-played and pink powers auto-fire instead of prompting (all base
+  powers are beneficial, so this is a safe simplification).
+- Rulebooks for all games live in `docs/` (PDFs — extract with `pdftotext`).
 - UI is functional, not pretty: no bird art, no animations.

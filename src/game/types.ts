@@ -131,8 +131,8 @@ export type PendingStep =
   | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; then?: PendingTag }
   /** Discard a card from hand (e.g. end-of-turn discard powers). */
   | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; then?: PendingTag }
-  /** Tuck a card from hand behind `bird`. */
-  | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; then?: PendingTag }
+  /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`. */
+  | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; optional?: boolean; then?: PendingTag }
   /** Drew cards face-down to distribute: this player picks one of `cardIds`. */
   | { kind: 'chooseDrawnCard'; playerId: PlayerId; cardIds: number[]; then?: PendingTag }
   /** Keep `keep` of `cardIds` bonus cards, discard the rest. */
@@ -145,8 +145,8 @@ export type PendingStep =
   | { kind: 'chooseFirstPlayer'; playerId: PlayerId; effect: 'gainDie'; then?: PendingTag }
   /** Pick another bird in `habitat` whose brown/predator power to repeat. */
   | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; then?: PendingTag }
-  /** Play an additional bird (normal cost) in `habitat`. */
-  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same'; sourceBird?: BirdRef; then?: PendingTag }
+  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. */
+  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same'; sourceBird?: BirdRef; optional?: boolean; then?: PendingTag }
   /** Cache up to `count` food from the supply onto `bird` (choose which types). */
   | { kind: 'chooseCacheFood'; playerId: PlayerId; bird: BirdRef; count: number; optional?: boolean; then?: PendingTag }
   /** Spend a wild food for any other type from the supply. */
@@ -219,8 +219,8 @@ export interface ScoreBreakdown {
 export interface GameSettings {
   /** Expansion set ids included in the deck, e.g. ['core'] or ['core','oceania']. */
   sets: string[];
-  /** Goal board side: 'blue' = ranked competitive scoring. */
-  goalSide: 'blue';
+  /** Goal board side: 'green' = ranked competitive scoring, 'blue' = 1 pt per item (max 5). */
+  goalSide: 'green' | 'blue';
   aiLevel?: number;
 }
 
@@ -335,7 +335,7 @@ export interface ResolveChoiceAction extends BaseAction {
 }
 
 export type Choice =
-  | { kind: 'dice'; picks: { die: number; take?: FoodType }[] }
+  | { kind: 'dice'; picks: { die: number; take?: FoodType }[]; reroll?: boolean }
   | { kind: 'supplyFood'; foods: FoodType[] }
   | { kind: 'birds'; birds: BirdRef[] }
   | { kind: 'handCards'; cardIds: number[] }
