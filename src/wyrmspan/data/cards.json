@@ -2517,7 +2517,7 @@
    "number": 119,
    "name": "Chameleon Coatl",
    "expansion": "base",
-   "ability": "Gain + [VP-3] for each *medium* dragon on your player mat (max [VP-12]).",
+   "ability": "Gain [VP-2] for each *medium* dragon on your player mat (max [VP-8]).",
    "abilityType": "EndGame",
    "vp": 6,
    "size": "Medium",
@@ -2627,7 +2627,7 @@
    "number": 124,
    "name": "Mosaic Guardian",
    "expansion": "base",
-   "ability": "Gain [VP-3] for each *large* dragon on your player mat (max [VP-12]).",
+   "ability": "Gain [VP-2] for each *large* dragon on your player mat (max [VP-8]).",
    "abilityType": "EndGame",
    "vp": 6,
    "size": "Large",
@@ -2802,7 +2802,7 @@
    "number": 132,
    "name": "Lilliputian Fae",
    "expansion": "base",
-   "ability": "Gain +[VP-3] for each small dragon on your player mat (max [VP-12]).",
+   "ability": "Gain [VP-2] for each small dragon on your player mat (max [VP-8]).",
    "abilityType": "EndGame",
    "vp": 6,
    "size": "Small",
@@ -2849,7 +2849,7 @@
    "number": 134,
    "name": "Customary Grazer",
    "expansion": "base",
-   "ability": "Gain +[VP-4] for each *hatchling* on your player mat (max [VP-12]).",
+   "ability": "Gain [VP-3] for each *hatchling* on your player mat (max [VP-9]).",
    "abilityType": "EndGame",
    "vp": 6,
    "size": "Large",
@@ -5585,6 +5585,131 @@
    ],
    "trainingTrack": null,
    "ignoreCost": false
+  },
+  {
+   "id": 363,
+   "number": 119,
+   "name": "Chameleon Coatyl",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each *medium* dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 364,
+   "number": 124,
+   "name": "Mosaic Guardian",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each *large* dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 365,
+   "number": 131,
+   "name": "Titanic Coatyl",
+   "expansion": "academy",
+   "ability": "Gain + [VP-6] for each *set* of dragons on your player mat (1 *set* = 1 of each: *hatchling*, *fledgling*, *small*, *medium*, *large*).",
+   "abilityType": "EndGame",
+   "vp": 7,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 366,
+   "number": 132,
+   "name": "Lilliputian Fae",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each small dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 367,
+   "number": 134,
+   "name": "Customary Grazer",
+   "expansion": "academy",
+   "ability": "Gain + [VP-4] for each *hatchling* on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
   }
  ],
  "caves": [
@@ -6386,6 +6511,22 @@
    "name": null,
    "expansion": "academy",
    "ability": "Pay [Coin][AnyResource], then play [DragonCard] from your hand for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 368,
+   "number": 50,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. All opponents gain 1 benefit of their choice.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 369,
+   "number": 51,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. All opponents gain 1 benefit of their choice.",
    "abilityType": "WhenPlayed"
   }
  ]

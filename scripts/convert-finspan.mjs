@@ -106,7 +106,7 @@ const achievements = {
   sideBTiles: [
     // --- base game tiles (week-number slots are fixed on the board) ---
     { id: 'b1', week: 1, name: 'Eggs', kind: 'eggs', per: 1 },
-    { id: 'b2', week: 1, name: 'Young', kind: 'young', per: 1 },
+    { id: 'b2', week: 1, name: 'Young', kind: 'young', per: 3 },
     { id: 'b3', week: 1, name: 'Eggs and/or Young', kind: 'eggsAndYoung', per: 1 },
     { id: 'b4', week: 2, name: 'Rows of Fish', kind: 'fullRows', per: 2 },
     { id: 'b5', week: 2, name: 'Fish', kind: 'fish', per: 1 },
@@ -114,13 +114,14 @@ const achievements = {
     { id: 'b7', week: 3, name: 'Schools', kind: 'schools', per: 2 },
     { id: 'b8', week: 3, name: 'Fish with Tokens', kind: 'fishWithTokens', per: 1 },
     { id: 'b9', week: 3, name: 'Consumed Fish', kind: 'consumedFish', per: 1 },
-    // --- Sharks & Reefs tiles (week-number lines per the S&R rulebook ---
-    // components page: <4 fish and sunlight-zone are week-1 lines; unique
-    // tags and coral are week-2 lines).
-    { id: 's1', week: 1, name: 'Fish Between 1-3 Points', kind: 'fishPoints1to3', per: 1, set: 'sr' },
-    { id: 's2', week: 2, name: 'Unique Tags Among Fish', kind: 'uniqueTags', per: 1, set: 'sr' },
+    // --- Sharks & Reefs tiles (verified against sharks_p01.png, p02.png, p07.png: ---
+    // <4 fish between 1-3 pts has 3 week-lines (week 3, 1 pt); unique tags has
+    // 2 week-lines (week 2, 2 pts); sunlight-zone fish has 1 week-line (week 1,
+    // 1 pt); coral has 2 week-lines (week 2, 2 pts)).
+    { id: 's1', week: 3, name: 'Fish Between 1-3 Points', kind: 'fishPoints1to3', per: 1, set: 'sr' },
+    { id: 's2', week: 2, name: 'Unique Tags Among Fish', kind: 'uniqueTags', per: 2, set: 'sr' },
     { id: 's3', week: 1, name: 'Fish in the Sunlight Zone', kind: 'fishSunlight', per: 1, set: 'sr' },
-    { id: 's4', week: 2, name: 'Coral', kind: 'coral', per: 1, set: 'sr' },
+    { id: 's4', week: 2, name: 'Coral', kind: 'coral', per: 2, set: 'sr' },
   ],
   /** Side-B bonus: player(s) with the most points from the tile that week. */
   sideBLeaderBonus: 3,

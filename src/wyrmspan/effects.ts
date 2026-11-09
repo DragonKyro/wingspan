@@ -18,6 +18,7 @@ import {
   dragonTargetPositions,
   drawCards,
   eggTargetSpots,
+  eggsOnMatCount,
   evalCond,
   hasAnyEggSpot,
   log,
@@ -38,6 +39,7 @@ import type {
   GameState,
   GainItem,
   PendingStep,
+  PlayedDragon,
   PlayerId,
   PlayerState,
   Resource,
@@ -50,6 +52,41 @@ import { RESOURCES } from './types';
 // Small state helpers
 
 export const pushPending: (state: GameState, ...steps: PendingStep[]) => GameState = shared.pushPending;
+
+/** Combine an inner continuation with an outer continuation that should run after it. */
+function mergeResume(inner: Resume | undefined, outer: Resume | undefined): Resume | undefined {
+  if (!outer || outer.steps.length === 0) return inner;
+  if (!inner || inner.steps.length === 0) return outer;
+  return {
+    ctx: inner.ctx,
+    steps: [...inner.steps, { op: 'withCtx', ctx: outer.ctx, steps: outer.steps }],
+  };
+}
+
+/**
+ * If `state.pending` grew past `beforePendingLen`, attach `rest` (under `ctx`)
+ * to the last newly-queued pending step's resume; otherwise execute `rest` now.
+ */
+function chainWithPending(
+  beforePendingLen: number,
+  state: GameState,
+  rest: Step[],
+  ctx: EffectCtx,
+): GameState {
+  if (!rest.length) return state;
+  if (state.pending.length > beforePendingLen) {
+    const pend = [...state.pending];
+    const lastIdx = pend.length - 1;
+    const last = pend[lastIdx]!;
+    const prevResume = 'resume' in last ? last.resume : undefined;
+    pend[lastIdx] = {
+      ...last,
+      resume: mergeResume(prevResume, { steps: rest, ctx }),
+    } as PendingStep;
+    return { ...state, pending: pend };
+  }
+  return runSteps(state, rest, ctx);
+}
 
 /** Apply non-interactive parts of a gain item; returns [itemsDeferred, state]. */
 function applyGainItems(state: GameState, p: PlayerState, items: GainItem[]): [GainItem[], GameState] {
@@ -90,29 +127,13 @@ function applyGainItems(state: GameState, p: PlayerState, items: GainItem[]): [G
   return [deferred, s];
 }
 
-/** Advance `steps` on the guild track; queues marker placement on brown spaces. */
+/** Advance `n` spaces on the guild track sequentially; pauses on brown/choice spaces. */
 function advanceGuild(state: GameState, playerId: PlayerId, n: number, resume?: Resume): GameState {
-  let s = state;
-  let trackPos = s.guild.track[playerId] ?? 0;
-  for (let i = 0; i < n; i++) {
-    trackPos = (trackPos + 1) % GUILD_TRACK.length;
-    const space = GUILD_TRACK[trackPos]!;
-    if (space.brown) {
-      if ((player(s, playerId).guildMarkersPlaced ?? 0) < 4) {
-        s = { ...s, guild: { ...s.guild, track: { ...s.guild.track, [playerId]: trackPos } } };
-        s = pushPending(s, { kind: 'chooseGuildSquare', playerId, resume });
-        resume = undefined;
-      }
-    } else if (space.steps.length) {
-      s = { ...s, guild: { ...s.guild, track: { ...s.guild.track, [playerId]: trackPos } } };
-      s = runSteps(s, space.steps, { playerId });
-    } else {
-      s = { ...s, guild: { ...s.guild, track: { ...s.guild.track, [playerId]: trackPos } } };
-    }
+  const steps: Step[] = [{ op: 'advanceGuild', count: n }];
+  if (resume && resume.steps.length) {
+    steps.push({ op: 'withCtx', ctx: resume.ctx, steps: resume.steps });
   }
-  s = { ...s, guild: { ...s.guild, track: { ...s.guild.track, [playerId]: trackPos } } };
-  s = log(s, `${player(s, playerId).name} advanced ${n} on the Dragon Guild`);
-  return s;
+  return runSteps(state, steps, { playerId });
 }
 
 // ---------------------------------------------------------------------------
@@ -127,9 +148,10 @@ function gainWithChoices(
 ): GameState {
   let s = state;
   const p = player(s, ctx.playerId);
-  const resume: Resume = { steps: rest, ctx };
   const [deferred, s2] = applyGainItems(s, p, items);
   s = s2;
+  const before = s.pending.length;
+  const guildSteps: Step[] = [];
   for (const it of deferred) {
     if (it.kind === 'resource' && it.res === 'any') {
       s = pushPending(s, {
@@ -155,27 +177,36 @@ function gainWithChoices(
         resume: { steps: [], ctx },
       });
     } else if (it.kind === 'guild') {
-      s = advanceGuild(s, ctx.playerId, it.count);
+      guildSteps.push({ op: 'advanceGuild', count: it.count });
     }
   }
-  // Attach remaining steps to the LAST queued pending's resume so ordering is
-  // preserved; if nothing was deferred, run rest immediately.
-  if (s.pending.length > state.pending.length) {
-    const pend = [...s.pending];
-    const last = pend[pend.length - 1]!;
-    if ('resume' in last && last.resume) {
-      pend[pend.length - 1] = { ...last, resume: { steps: rest, ctx } };
-      s = { ...s, pending: pend };
-    } else {
-      s = { ...s, pending: [...pend, { kind: 'chooseOption', playerId: ctx.playerId, options: [{ label: 'continue', steps: [] }], resume }] };
-    }
-    return s;
-  }
-  return runSteps(s, rest, ctx);
+  return chainWithPending(before, s, [...guildSteps, ...rest], ctx);
 }
 
 // ---------------------------------------------------------------------------
 // Recurring hooks ("Any time you cache/tuck X here ...")
+
+export function ensureDragonHooks(d: PlayedDragon, initialCountFromExisting = false): void {
+  if (d.hooks !== undefined) return;
+  const card = dragonCard(d.cardId);
+  const def = parseAbility(card);
+  const recSteps = def.steps.filter((st): st is Extract<Step, { op: 'recurring' }> => st.op === 'recurring');
+  d.hooks = recSteps.map((st) => {
+    const existing = initialCountFromExisting
+      ? st.trigger === 'tuck'
+        ? d.tucked.length
+        : d.cached.filter((r) => r === st.key).length
+      : 0;
+    return {
+      trigger: st.trigger,
+      key: st.key,
+      eachSteps: st.eachSteps,
+      thirdGain: st.thirdGain,
+      count: existing,
+      thirdFired: false,
+    };
+  });
+}
 
 export function fireRecurring(
   state: GameState,
@@ -187,22 +218,28 @@ export function fireRecurring(
   let s = state;
   const p = player(s, playerId);
   const d = p.caves[pos.cave]!.spaces[pos.space]!.dragon;
-  if (!d?.hooks) return s;
+  if (!d) return s;
   const q = clone(p);
   const dq = q.caves[pos.cave]!.spaces[pos.space]!.dragon!;
-  let ran = false;
-  for (const hook of dq.hooks!) {
+  ensureDragonHooks(dq, false);
+  if (!dq.hooks?.length) return s;
+  const triggeredSteps: Step[] = [];
+  for (const hook of dq.hooks) {
     if (hook.trigger === trigger && hook.key === key) {
-      ran = true;
       hook.count = (hook.count ?? 0) + 1;
-      s = setPlayer(s, q);
-      s = runSteps(s, hook.eachSteps, { playerId, dragon: [pos.cave, pos.space], sourceCardId: dq.cardId });
-      if (hook.count % 3 === 0 && hook.thirdGain.length) {
-        s = runSteps(s, hook.thirdGain, { playerId, dragon: [pos.cave, pos.space], sourceCardId: dq.cardId });
+      triggeredSteps.push(...hook.eachSteps);
+      if (hook.count >= 3 && !hook.thirdFired && hook.thirdGain.length) {
+        hook.thirdFired = true;
+        triggeredSteps.push(...hook.thirdGain);
       }
     }
   }
-  void ran;
+  s = setPlayer(s, q);
+  if (triggeredSteps.length) {
+    const before = s.pending.length;
+    s = runSteps(s, triggeredSteps, { playerId, dragon: [pos.cave, pos.space], sourceCardId: dq.cardId });
+    void before;
+  }
   return s;
 }
 
@@ -367,6 +404,10 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
       }
 
       case 'pay': {
+        if (!canPay(p, step.cost)) {
+          const ctx2: EffectCtx = { ...ctx, data: { ...ctx.data, didPrecede: false } };
+          return runSteps(s, rest, ctx2);
+        }
         s = pushPending(s, {
           kind: 'choosePay',
           playerId: ctx.playerId,
@@ -387,6 +428,8 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           what: step.what,
           purpose: 'discard',
           upTo: true,
+          perCard: step.perCard,
+          activateDiscarded: step.activateDiscarded,
           then: step.then,
           resume: { steps: rest, ctx },
         });
@@ -405,6 +448,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           tuck: step.tuck,
           discard: step.discard,
           playFree: step.playFree,
+          orKeep: step.orKeep,
           tuckTarget: step.tuckTarget,
           resume: { steps: rest, ctx },
         });
@@ -442,8 +486,8 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
         const card = dragonCard(revealed);
         const ok = step.cond === null || dragonMatchesCond(card, step.cond);
         const ctx2: EffectCtx = { ...ctx, data: { ...ctx.data, revealed } };
-        s = runSteps(s, ok ? step.yes : step.no, ctx2);
-        return runSteps(s, rest, ctx);
+        const branch = ok ? step.yes : step.no;
+        return runSteps(s, [...branch, ...rest], ctx2);
       }
 
       case 'keepRevealed': {
@@ -468,13 +512,17 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           const q = clone(p);
           q.caves[ctxPos[0]]!.spaces[ctxPos[1]]!.dragon!.tucked.push(id);
           s = setPlayer(s, q);
+          const before = s.pending.length;
           s = fireRecurring(s, ctx.playerId, { cave: ctxPos[0], space: ctxPos[1] }, 'tuck', 'dragonCard');
+          return chainWithPending(before, s, rest, ctx);
         } else if (positions.length === 1) {
           const pos = positions[0]!;
           const q = clone(p);
           q.caves[pos.cave]!.spaces[pos.space]!.dragon!.tucked.push(id);
           s = setPlayer(s, q);
+          const before = s.pending.length;
           s = fireRecurring(s, ctx.playerId, pos, 'tuck', 'dragonCard');
+          return chainWithPending(before, s, rest, ctx);
         } else {
           const q = clone(p);
           q.hand.push(id);
@@ -489,6 +537,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           playerId: ctx.playerId,
           source: step.source,
           count: step.count,
+          activateTimes: step.activateTimes,
           resume: { steps: rest, ctx },
         });
         return s;
@@ -501,6 +550,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           source: step.source,
           discount: step.discount,
           onTop: step.onTop,
+          cond: step.cond,
           resume: { steps: rest, ctx },
         });
         return s;
@@ -550,6 +600,180 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
       case 'swapDragons': {
         s = pushPending(s, { kind: 'chooseSwap', playerId: ctx.playerId, resume: { steps: rest, ctx } });
         return s;
+      }
+
+      case 'swapHandDragon': {
+        const hasMatDragon = allDragons(p).length > 0;
+        const hasHandDragon = p.hand.some(isDragonCard);
+        if (!hasMatDragon || !hasHandDragon) break;
+        s = pushPending(s, { kind: 'chooseHandDragonSwap', playerId: ctx.playerId, resume: { steps: rest, ctx } });
+        return s;
+      }
+
+      case 'swapCaveCard': {
+        const hasUncoveredCave = p.caves.some((row) =>
+          row.spaces.some((sp) => sp.excavated && sp.caveCardId !== null && !sp.dragon),
+        );
+        const hasHandCave = p.hand.some((id) => !isDragonCard(id));
+        if (!hasUncoveredCave || !hasHandCave) break;
+        s = pushPending(s, { kind: 'chooseCaveCardSwap', playerId: ctx.playerId, resume: { steps: rest, ctx } });
+        return s;
+      }
+
+      case 'gamblerDraw': {
+        const [drawn, s2] = drawCards(s, 'dragon', 1);
+        s = s2;
+        if (!drawn.length) break;
+        const cardId = drawn[0]!;
+        s = { ...s, dragonDiscard: [...s.dragonDiscard, cardId] };
+        const printed = dragonPrintedCost(cardId);
+        s = pushPending(s, {
+          kind: 'chooseOption',
+          playerId: ctx.playerId,
+          options: [
+            { label: `gain printed cost of ${cardName(cardId)}`, steps: printed.length ? [{ op: 'gain', items: printed }] : [] },
+            { label: `discard ${cardName(cardId)} to gain 1 coin`, steps: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] },
+          ],
+          resume: { steps: rest, ctx },
+        });
+        return s;
+      }
+
+      case 'gamblerEndGameDraw': {
+        const [drawn, s2] = drawCards(s, 'dragon', 4);
+        s = s2;
+        if (!drawn.length) break;
+        s = { ...s, dragonDiscard: [...s.dragonDiscard, ...drawn] };
+        const fledglings = allDragons(p).filter((d) => dragonCard(d.dragon.cardId).size === 'Fledgling').length;
+        const vps = drawn
+          .map((id) => {
+            const c = dragonCard(id);
+            return c.size === 'Fledgling' ? fledglings : c.vp;
+          })
+          .sort((a, b) => b - a);
+        const scored = vps.slice(0, 2).reduce((a, b) => a + b, 0);
+        const prev = s.guild.gamblerVp?.[ctx.playerId] ?? 0;
+        s = {
+          ...s,
+          guild: {
+            ...s.guild,
+            gamblerVp: { ...(s.guild.gamblerVp ?? {}), [ctx.playerId]: prev + scored },
+          },
+        };
+        break;
+      }
+
+      case 'gainTuckedPrintedResource': {
+        const tuckedId = Number(ctx.data?.lastTuckedCardId);
+        if (!Number.isFinite(tuckedId) || !isDragonCard(tuckedId)) break;
+        const card = dragonCard(tuckedId);
+        const allowed = RESOURCES.filter((r) => (card.cost[r] ?? 0) > 0);
+        if (allowed.length === 0) break;
+        if (allowed.length === 1) {
+          const q = clone(p);
+          q.resources[allowed[0]!] += step.count;
+          s = setPlayer(s, q);
+          break;
+        }
+        s = pushPending(s, {
+          kind: 'chooseResource',
+          playerId: ctx.playerId,
+          count: step.count,
+          mode: 'gain',
+          allowed,
+          resume: { steps: rest, ctx },
+        });
+        return s;
+      }
+
+      case 'exploreStep': {
+        const iconSteps = MAT_ICONS[step.cave]?.[step.index] ?? [];
+        const nextSteps: Step[] = step.index < 4 ? [{ op: 'exploreSpace', cave: step.cave, space: step.index }] : [];
+        return runSteps(s, [...iconSteps, ...nextSteps, ...rest], ctx);
+      }
+
+      case 'exploreSpace': {
+        const sp = p.caves[step.cave]?.spaces[step.space];
+        if (!sp || !sp.excavated || !sp.dragon) break;
+        const card = dragonCard(sp.dragon.cardId);
+        const types = cardAbilityTypes(card);
+        let canActivate = types.includes('Adventurer') && !!card.ability;
+        if (canActivate && card.size === 'Fledgling') {
+          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          if ((sp.dragon.training ?? 0) < track) canActivate = false;
+        }
+        const abilitySteps: Step[] = [];
+        if (canActivate) {
+          const def = parseAbility(card);
+          if (def.steps.length) {
+            abilitySteps.push({
+              op: 'withCtx',
+              ctx: { playerId: ctx.playerId, dragon: [step.cave, step.space], sourceCardId: card.id },
+              steps: def.steps,
+            });
+          }
+        }
+        return runSteps(
+          s,
+          [
+            ...abilitySteps,
+            { op: 'offerFledglingTrain', cave: step.cave, space: step.space },
+            { op: 'exploreStep', cave: step.cave, index: step.space + 1 },
+            ...rest,
+          ],
+          ctx,
+        );
+      }
+
+      case 'offerFledglingTrain': {
+        const walked = p.caves[step.cave]?.spaces[step.space]?.dragon;
+        if (walked && walked.cardId >= 0) {
+          const card = dragonCard(walked.cardId);
+          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          if (card.size === 'Fledgling' && track > 0 && (walked.training ?? 0) < track) {
+            s = pushPending(s, {
+              kind: 'chooseTrain',
+              playerId: ctx.playerId,
+              times: 1,
+              free: false,
+              target: 'any',
+              pos: [step.cave, step.space],
+              resume: { steps: rest, ctx },
+            });
+            return s;
+          }
+        }
+        break;
+      }
+
+      case 'advanceGuild': {
+        if (step.count <= 0) break;
+        const trackPos = ((s.guild.track[ctx.playerId] ?? 0) + 1) % GUILD_TRACK.length;
+        const space = GUILD_TRACK[trackPos]!;
+        s = { ...s, guild: { ...s.guild, track: { ...s.guild.track, [ctx.playerId]: trackPos } } };
+        s = log(s, `${p.name} advanced 1 on the Dragon Guild`);
+        const rem: Step[] = step.count > 1 ? [{ op: 'advanceGuild', count: step.count - 1 }, ...rest] : rest;
+        if (space.brown) {
+          if ((player(s, ctx.playerId).guildMarkersPlaced ?? 0) < 4) {
+            s = pushPending(s, {
+              kind: 'chooseGuildSquare',
+              playerId: ctx.playerId,
+              resume: { steps: rem, ctx },
+            });
+            return s;
+          }
+          return runSteps(s, rem, ctx);
+        }
+        if (space.steps.length) {
+          return runSteps(s, [{ op: 'withCtx', ctx: { playerId: ctx.playerId }, steps: space.steps }, ...rem], ctx);
+        }
+        return runSteps(s, rem, ctx);
+      }
+
+      case 'withCtx': {
+        const before = s.pending.length;
+        s = runSteps(s, step.steps, step.ctx);
+        return chainWithPending(before, s, rest, ctx);
       }
 
       case 'chooseBenefits': {
@@ -608,7 +832,10 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
         if (step.cond.kind === 'didPrecede') ok = ctx.data?.didPrecede === true;
         else if (step.cond.kind === 'tuckedHere') ok = ctx.data?.tuckedHere === true;
         else ok = evalCond(s, p, step.cond, ctxPos);
-        s = runSteps(s, ok ? step.then : (step.else ?? []), ctx);
+        const branch = ok ? step.then : (step.else ?? []);
+        if (branch.length) {
+          return runSteps(s, [...branch, ...rest], ctx);
+        }
         break;
       }
 
@@ -617,8 +844,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
           const q = clone(p);
           const d = q.caves[ctxPos[0]]!.spaces[ctxPos[1]]!.dragon;
           if (d) {
-            d.hooks = d.hooks ?? [];
-            d.hooks.push({ trigger: step.trigger, key: step.key, eachSteps: step.eachSteps, thirdGain: step.thirdGain, count: 0 });
+            ensureDragonHooks(d, false);
             s = setPlayer(s, q);
           }
         }
@@ -669,41 +895,67 @@ function abilityCandidates(
 }
 
 // ---------------------------------------------------------------------------
-// Player-mat path icons (approximation): the icons printed on the cave paths
-// that the adventurer activates while walking. [cave][spaceIndex].
-// NOTE: exact printed icons could not be reconstructed from the rulebook PDF;
-// these are reasonable estimates.
+// Player-mat path icons matching the printed player mat (dragon_p03.png / p10.png).
+// Each cave has 5 path segments: [0..3] before spaces 0..3, and [4] after space 3.
 
 export const MAT_ICONS: Step[][][] = [
   // Crimson Cavern
   [
-    [],
     [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }],
-    [{ op: 'gain', items: [{ kind: 'card', deck: 'dragon', count: 1 }] }],
-    [
-      { op: 'gain', items: [{ kind: 'coin', count: 1 }] },
-      { op: 'gain', items: [{ kind: 'guild', count: 1 }] },
-    ],
+    [{ op: 'gain', items: [{ kind: 'guild', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }],
+    [{ op: 'layEggs', count: 1, target: { kind: 'any' } }],
+    [{ op: 'cache', count: 2, res: 'any', from: 'supply', target: { kind: 'any' }, upTo: true }],
   ],
   // Golden Grotto
   [
-    [],
-    [{ op: 'gain', items: [{ kind: 'card', deck: 'cave', count: 1 }] }],
-    [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }],
-    [
-      { op: 'layEggs', count: 1, target: { kind: 'any' } },
-      { op: 'gain', items: [{ kind: 'guild', count: 1 }] },
-    ],
+    [{ op: 'gain', items: [{ kind: 'card', deck: 'dragon', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'guild', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'card', deck: 'dragon', count: 1 }] }],
+    [{ op: 'layEggs', count: 1, target: { kind: 'any' } }],
+    [{ op: 'tuck', count: 2, from: 'hand', target: { kind: 'any' }, upTo: true }],
   ],
   // Amethyst Abyss
   [
-    [],
-    [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }],
-    [{ op: 'gain', items: [{ kind: 'card', deck: 'dragon', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'card', deck: 'cave', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'guild', count: 1 }] }],
+    [{ op: 'gain', items: [{ kind: 'card', deck: 'cave', count: 1 }] }],
+    [{ op: 'layEggs', count: 1, target: { kind: 'any' } }],
     [
-      { op: 'layEggs', count: 1, target: { kind: 'any' } },
-      { op: 'gain', items: [{ kind: 'guild', count: 1 }] },
+      {
+        op: 'discardFromHand',
+        what: 'cave',
+        count: 2,
+        perCard: true,
+        then: [{ op: 'layEggs', count: 1, target: { kind: 'any' } }],
+      },
     ],
+  ],
+];
+
+/**
+ * Printed "when covered" (when excavated) benefits on the player mat:
+ * Column 4 (index 3) of every cave allows spending 3 items (resources, dragon
+ * cards, or cave cards in any combination) to gain 1 coin.
+ */
+export const MAT_COVERED_ICONS: Step[][][] = [
+  [
+    [],
+    [],
+    [],
+    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
+  ],
+  [
+    [],
+    [],
+    [],
+    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
+  ],
+  [
+    [],
+    [],
+    [],
+    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
   ],
 ];
 
@@ -714,8 +966,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
   const head = state.pending[0];
   if (!head || head.playerId !== playerId) return state;
   let s = { ...state, pending: state.pending.slice(1) };
-  const resumeSteps = (resume: Resume | undefined): GameState =>
-    resume ? runSteps(s, resume.steps, resume.ctx) : s;
+  const basePendingLen = s.pending.length;
+  const resumeSteps = (resume: Resume | undefined, overrideCtx?: EffectCtx): GameState => {
+    if (!resume || resume.steps.length === 0) return s;
+    return chainWithPending(basePendingLen, s, resume.steps, overrideCtx ?? resume.ctx);
+  };
 
   switch (head.kind) {
     case 'setupCards': {
@@ -749,14 +1004,17 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       if (answer.kind === 'decline' && head.upTo) return resumeSteps(head.resume);
       if (answer.kind !== 'resources') return state;
       const q = clone(player(s, playerId));
-      for (const r of answer.resources.slice(0, head.count)) {
+      const pickedList: Resource[] = [];
+      for (const rawR of answer.resources.slice(0, head.count)) {
+        const r = head.allowed && !head.allowed.includes(rawR) ? head.allowed[0]! : rawR;
+        pickedList.push(r);
         if (head.mode === 'gain') q.resources[r] += 1;
         else if (q.resources[r] > 0) q.resources[r] -= 1;
       }
       s = setPlayer(s, q);
       // chooseResourceGain continuation: opponents gain the same resource.
-      if (ctx?.data?.chooseGainSelf !== undefined && answer.resources[0]) {
-        const res = answer.resources[0];
+      if (ctx?.data?.chooseGainSelf !== undefined && pickedList[0]) {
+        const res = pickedList[0];
         const selfN = Number(ctx.data.chooseGainSelf);
         const oppN = Number(ctx.data.chooseGainOpp);
         const q2 = clone(player(s, playerId));
@@ -774,8 +1032,9 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
     }
 
     case 'chooseEggSpot': {
-      if (answer.kind === 'decline' && head.optional) {
-        return resumeSteps(head.resume);
+      if (answer.kind === 'decline') {
+        const ctx = { ...(head.resume?.ctx ?? { playerId }), data: { ...(head.resume?.ctx.data ?? {}), didPrecede: false } };
+        return resumeSteps(head.resume, ctx);
       }
       if (answer.kind !== 'eggSpots') return state;
       const q = clone(player(s, playerId));
@@ -794,7 +1053,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       }
       s = setPlayer(s, q);
       const ctx = { ...(head.resume?.ctx ?? { playerId }), data: { ...(head.resume?.ctx.data ?? {}), didPrecede: placed > 0 } };
-      return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+      return resumeSteps(head.resume, ctx);
     }
 
     case 'chooseEggPayment': {
@@ -812,9 +1071,9 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
     }
 
     case 'chooseCache': {
-      if (answer.kind === 'decline' && head.upTo) {
+      if (answer.kind === 'decline') {
         const ctx = { ...(head.resume?.ctx ?? { playerId }), data: { ...(head.resume?.ctx.data ?? {}), didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
       // answer.resources = resource types picked; answer.dragon = target pos
       if (answer.kind !== 'resources' && answer.kind !== 'dragons') return state;
@@ -824,50 +1083,46 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         : dragonTargetPositions(player(s, playerId), head.target, head.resume?.ctx.dragon);
       const q = clone(player(s, playerId));
       let used = 0;
-      const pickedRes: string[] = [];
-      const resPool = resList.length
-        ? resList
-        : Array(head.count).fill(head.res === 'any' ? 'meat' : head.res);
-      outer: for (const pos of positions.slice(0, Math.max(1, positions.length))) {
-        for (const _res of resPool) {
-          void _res;
-          if (used >= head.count) break outer;
+      const cachedEvents: { pos: Pos; res: Resource }[] = [];
+      if (positions.length > 0) {
+        for (let k = 0; k < head.count; k++) {
+          const pos = positions[k % positions.length]!;
+          const d = q.caves[pos.cave]?.spaces[pos.space]?.dragon;
+          if (!d) continue;
           const r: Resource =
             head.res === 'any'
-              ? (resList[used] ?? RESOURCES.find((rr) => q.resources[rr] > 0) ?? 'meat')
+              ? (resList[k] ?? RESOURCES.find((rr) => q.resources[rr] > 0) ?? 'meat')
               : head.res;
-          // 'supply' = the player's own supply: the cached resource is spent.
           if (head.from === 'supply') {
             if (q.resources[r] <= 0) continue;
             q.resources[r] -= 1;
           }
-          q.caves[pos.cave]!.spaces[pos.space]!.dragon!.cached.push(r);
-          pickedRes.push(r);
+          d.cached.push(r);
+          cachedEvents.push({ pos, res: r });
           used++;
         }
       }
       s = setPlayer(s, q);
-      for (let k = 0; k < used; k++) {
-        const pos = positions[0]!;
-        s = fireRecurring(s, playerId, pos, 'cache', pickedRes[k]!);
+      for (const ev of cachedEvents) {
+        s = fireRecurring(s, playerId, ev.pos, 'cache', ev.res);
       }
       const ctx = { ...(head.resume?.ctx ?? { playerId }), data: { ...(head.resume?.ctx.data ?? {}), didPrecede: used > 0 } };
-      return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+      return resumeSteps(head.resume, ctx);
     }
 
     case 'chooseTuck': {
       const ctx0 = head.resume?.ctx ?? { playerId };
-      if (answer.kind === 'decline' && head.upTo) {
+      if (answer.kind === 'decline') {
         const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
-      const tuckedHereCtx = { ...ctx0, data: { ...ctx0.data, didPrecede: true, tuckedHere: false } };
+      const tuckedHereCtx: EffectCtx = { ...ctx0, data: { ...ctx0.data, didPrecede: true, tuckedHere: false } };
       if (head.from === 'deck') {
         // Auto-tuck top-of-deck under chosen target(s).
         const positions = answer.kind === 'dragons'
           ? answer.positions.map((t) => ({ cave: t[0], space: t[1] }))
           : dragonTargetPositions(player(s, playerId), head.target, ctx0.dragon);
-        const count = Math.min(head.count, positions.length || head.count);
+        const count = Math.min(head.count, positions.length ? head.count : 0);
         let tucked = 0;
         for (let k = 0; k < count; k++) {
           const pos = positions[k % positions.length] ?? positions[0];
@@ -880,33 +1135,37 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
           s = setPlayer(s, q);
           s = fireRecurring(s, playerId, pos, 'tuck', 'dragonCard');
           tucked++;
+          tuckedHereCtx.data!.lastTuckedCardId = drawn[0]!;
           if (ctx0.dragon && pos.cave === ctx0.dragon[0] && pos.space === ctx0.dragon[1]) {
             tuckedHereCtx.data!.tuckedHere = true;
           }
         }
         tuckedHereCtx.data!.didPrecede = tucked > 0;
-        return head.resume ? runSteps(s, head.resume.steps, tuckedHereCtx) : s;
+        return resumeSteps(head.resume, tuckedHereCtx);
       }
       // from hand: assignments cardId -> pos
       if (answer.kind === 'assignTucks') {
         const q = clone(player(s, playerId));
         let tucked = 0;
+        const tuckedPositions: Pos[] = [];
         for (const a of answer.assignments.slice(0, head.count)) {
           const i = q.hand.indexOf(a.cardId);
           if (i < 0) continue;
           q.hand.splice(i, 1);
           q.caves[a.pos[0]]!.spaces[a.pos[1]]!.dragon!.tucked.push(a.cardId);
           tucked++;
+          tuckedPositions.push({ cave: a.pos[0], space: a.pos[1] });
+          tuckedHereCtx.data!.lastTuckedCardId = a.cardId;
           if (ctx0.dragon && a.pos[0] === ctx0.dragon[0] && a.pos[1] === ctx0.dragon[1]) {
             tuckedHereCtx.data!.tuckedHere = true;
           }
         }
         tuckedHereCtx.data!.didPrecede = tucked > 0;
         s = setPlayer(s, q);
-        for (const a of answer.assignments) {
-          s = fireRecurring(s, playerId, { cave: a.pos[0], space: a.pos[1] }, 'tuck', 'dragonCard');
+        for (const pos of tuckedPositions) {
+          s = fireRecurring(s, playerId, pos, 'tuck', 'dragonCard');
         }
-        return head.resume ? runSteps(s, head.resume.steps, tuckedHereCtx) : s;
+        return resumeSteps(head.resume, tuckedHereCtx);
       }
       if (answer.kind === 'dragons') {
         // Tuck any hand cards (auto-pick first N).
@@ -915,6 +1174,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         const n = Math.min(head.count, q.hand.filter(isDragonCard).length, positions.length * head.count);
         let k = 0;
         let tucked = 0;
+        const tuckedPositions: Pos[] = [];
         outer2: for (const pos of positions) {
           for (let c = 0; c < q.hand.length; c++) {
             if (k >= n) break outer2;
@@ -922,8 +1182,9 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
             if (!isDragonCard(id)) continue;
             q.hand.splice(c, 1);
             q.caves[pos.cave]!.spaces[pos.space]!.dragon!.tucked.push(id);
+            tuckedHereCtx.data!.lastTuckedCardId = id;
             if (ctx0.dragon && pos.cave === ctx0.dragon[0] && pos.space === ctx0.dragon[1]) tuckedHereCtx.data!.tuckedHere = true;
-            s = fireRecurring(setPlayer(s, q), playerId, pos, 'tuck', 'dragonCard');
+            tuckedPositions.push(pos);
             k++;
             tucked++;
             break;
@@ -931,7 +1192,10 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         }
         tuckedHereCtx.data!.didPrecede = tucked > 0;
         s = setPlayer(s, q);
-        return head.resume ? runSteps(s, head.resume.steps, tuckedHereCtx) : s;
+        for (const pos of tuckedPositions) {
+          s = fireRecurring(s, playerId, pos, 'tuck', 'dragonCard');
+        }
+        return resumeSteps(head.resume, tuckedHereCtx);
       }
       return state;
     }
@@ -940,49 +1204,30 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       const ctx0 = head.resume?.ctx ?? { playerId };
       if (answer.kind === 'decline') {
         const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
       const tierIdx = answer.kind === 'option' ? answer.index : 0;
       const tier = head.tiers[tierIdx] ?? head.tiers[0]!;
       const p = player(s, playerId);
       if (!canPay(p, tier.cost)) {
         const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
-      const q = payItems(p, tier.cost, undefined);
-      // cards/eggs in cost: cards auto from hand
-      for (const it of tier.cost) {
-        if (it.kind === 'card') {
-          let left = it.count;
-          for (let c = q.hand.length - 1; c >= 0 && left > 0; c--) {
-            const id = q.hand[c]!;
-            const match = it.deck === 'dragon' ? isDragonCard(id) : !isDragonCard(id);
-            if (match) {
-              q.hand.splice(c, 1);
-              if (it.deck === 'dragon') s = { ...s, dragonDiscard: [...s.dragonDiscard, id] };
-              else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
-              left--;
-            }
-          }
-        } else if (it.kind === 'egg') {
-          removeEggs(q, it.count);
-        }
-      }
-      s = setPlayer(s, q);
+      s = chargeItems(s, playerId, tier.cost);
       const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: true } };
       s = runSteps(s, tier.then, ctx);
-      // repeat: offer the same pay again via re-queued choosePay
+      // repeat: offer the same pay again via re-queued choosePay (if still affordable)
       if (head.repeat && head.repeat > 1) {
-        s = pushPending(s, {
-          kind: 'choosePay',
-          playerId,
-          tiers: head.tiers,
+        const repeatStep: Step = {
+          op: 'pay',
+          cost: tier.cost,
+          then: tier.then,
           repeat: head.repeat - 1,
-          resume: head.resume,
-        });
-        return s;
+        };
+        const nextSteps = [repeatStep, ...(head.resume?.steps ?? [])];
+        return chainWithPending(basePendingLen, s, nextSteps, ctx);
       }
-      return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+      return resumeSteps(head.resume, ctx);
     }
 
     case 'chooseHandCards': {
@@ -990,30 +1235,58 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       if (answer.kind === 'decline' && head.upTo) {
         // Declined trades skip their `then` but continue the ability.
         const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
       if (answer.kind !== 'cards') return state;
       const q = clone(player(s, playerId));
       let discarded = 0;
+      const discardedIds: number[] = [];
       for (const id of answer.cardIds.slice(0, head.count)) {
         const i = q.hand.indexOf(id);
         if (i < 0) continue;
+        if (head.what !== 'any' && (head.what === 'dragon') !== isDragonCard(id)) continue;
         q.hand.splice(i, 1);
         discarded++;
+        discardedIds.push(id);
         if (isDragonCard(id)) s = { ...s, dragonDiscard: [...s.dragonDiscard, id] };
         else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
       }
       s = setPlayer(s, q);
       const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: discarded > 0 } };
-      const steps = [...(head.then ?? []), ...(head.resume?.steps ?? [])];
+      if (discarded === 0) {
+        return resumeSteps(head.resume, ctx);
+      }
+      let thenSteps: Step[] = [];
+      if (head.activateDiscarded && discardedIds[0] !== undefined) {
+        const dId = discardedIds[0];
+        const card = isDragonCard(dId) ? dragonCard(dId) : caveCard(dId);
+        if (card?.ability) {
+          thenSteps = parseAbility(card).steps;
+        }
+      } else if (head.perCard && head.then) {
+        for (let k = 0; k < discarded; k++) thenSteps.push(...head.then);
+      } else if (discarded >= head.count && head.then) {
+        thenSteps = head.then;
+      }
+      const steps = [...thenSteps, ...(head.resume?.steps ?? [])];
       return steps.length ? runSteps(s, steps, ctx) : s;
     }
 
     case 'chooseDisplay': {
-      if (answer.kind !== 'index') return state;
+      if (answer.kind !== 'index' && answer.kind !== 'decline') return state;
       const key = head.deck === 'dragon' ? 'dragonDisplay' : 'caveDisplay';
-      const id = s[key][answer.index];
-      if (id == null) return state;
+      const id = answer.kind === 'index' ? s[key][answer.index] : null;
+      if (id == null) {
+        // Rulebook: if there are no face-up cards in the display, draw from the top of the deck.
+        const [drawn, s2] = drawCards(s, head.deck, 1);
+        s = s2;
+        if (drawn.length) {
+          const q = clone(player(s, playerId));
+          q.hand.push(...drawn);
+          s = setPlayer(s, q);
+        }
+        return resumeSteps(head.resume);
+      }
       s = takeFromDisplay(s, head.deck, id);
       const q = clone(player(s, playerId));
       q.hand.push(id);
@@ -1044,7 +1317,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
               : { ...s, caveDiscard: [...s.caveDiscard, id] };
           }
         }
-        s = tryPlayFree(s, playerId, playId, head.resume?.ctx);
+        s = tryPlayFree(s, playerId, playId, head.resume?.ctx, head.orKeep);
         return resumeSteps(head.resume);
       }
       const keepIdx = answer.kind === 'indexes' ? new Set(answer.indexes) : new Set(ids.map((_, i) => i));
@@ -1087,17 +1360,32 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       const idxs = answer.kind === 'indexes' ? answer.indexes : answer.kind === 'index' ? [answer.index] : [];
       if (!idxs.length) return state;
       const taken = new Set<string>();
+      const abilitySteps: Step[] = [];
       for (const i of idxs.slice(0, head.count)) {
         const cand = head.candidates[i];
         if (!cand) continue;
         if (head.distinct && cand.dragon && taken.has(cand.dragon.join(','))) continue;
         if (cand.dragon) taken.add(cand.dragon.join(','));
         if (cand.matIcon) {
-          s = runSteps(s, MAT_ICONS[cand.matIcon.cave]![cand.matIcon.icon] ?? [], { playerId });
+          const icons = MAT_ICONS[cand.matIcon.cave]?.[cand.matIcon.icon] ?? [];
+          if (icons.length) abilitySteps.push({ op: 'withCtx', ctx: { playerId }, steps: icons });
         } else if (cand.dragon) {
           const d = player(s, playerId).caves[cand.dragon[0]]!.spaces[cand.dragon[1]]!.dragon;
-          if (d) s = runAbility(s, playerId, { cave: cand.dragon[0], space: cand.dragon[1] }, cand.kinds);
+          if (d) {
+            const card = dragonCard(d.cardId);
+            if (card.ability) {
+              const def = parseAbility(card);
+              abilitySteps.push({
+                op: 'withCtx',
+                ctx: { playerId, dragon: [cand.dragon[0], cand.dragon[1]], sourceCardId: card.id },
+                steps: def.steps,
+              });
+            }
+          }
         }
+      }
+      if (abilitySteps.length) {
+        s = runSteps(s, abilitySteps, { playerId });
       }
       return resumeSteps(head.resume);
     }
@@ -1119,32 +1407,36 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
             ? p.hand.filter((c) => !isDragonCard(c))
             : head.source === 'display'
               ? s.caveDisplay.filter((c): c is number => c !== null)
-              : [];
+              : head.source === 'handOrDisplay'
+                ? p.hand.filter((c) => !isDragonCard(c)).concat(s.caveDisplay.filter((c): c is number => c !== null))
+                : [];
         cardId = pool[poolIdx] ?? null;
         if (head.source === 'deck') {
           const [drawn, s2] = drawCards(s, 'cave', 1);
           s = s2;
           cardId = drawn[0] ?? null;
-        } else if (cardId != null && head.source === 'display') {
-          s = takeFromDisplay(s, 'cave', cardId);
         } else if (cardId != null) {
           const q = clone(p);
-          q.hand.splice(q.hand.indexOf(cardId), 1);
-          s = setPlayer(s, q);
+          if (q.hand.includes(cardId)) {
+            q.hand.splice(q.hand.indexOf(cardId), 1);
+            s = setPlayer(s, q);
+          } else {
+            s = takeFromDisplay(s, 'cave', cardId);
+          }
         }
       }
       if (cardId == null) return resumeSteps(head.resume);
-      s = excavateAt(s, playerId, cave, cardId);
+      s = excavateAt(s, playerId, cave, cardId, head.activateTimes ?? 1);
       if (head.count > 1) {
-        // Re-queue the remaining excavations before resuming.
-        s = {
-          ...s,
-          pending: [
-            { kind: 'chooseExcavate', playerId, source: head.source, count: head.count - 1, resume: head.resume },
-            ...s.pending,
-          ],
+        // Re-queue the remaining excavations after any pending effects of the 1st excavation.
+        const nextExcavate: Step = {
+          op: 'excavateFree',
+          source: head.source,
+          count: head.count - 1,
+          activateTimes: head.activateTimes,
         };
-        return s;
+        const nextSteps = [nextExcavate, ...(head.resume?.steps ?? [])];
+        return chainWithPending(basePendingLen, s, nextSteps, head.resume?.ctx ?? { playerId });
       }
       return resumeSteps(head.resume);
     }
@@ -1153,33 +1445,31 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       if (answer.kind === 'decline') return resumeSteps(head.resume);
       if (answer.kind !== 'index' && answer.kind !== 'dragon') return state;
       const p = player(s, playerId);
-      const pool =
-        head.source === 'hand'
-          ? p.hand.filter(isDragonCard)
-          : head.source === 'display'
-            ? s.dragonDisplay.filter((c): c is number => c !== null)
-            : p.hand.filter(isDragonCard).concat(s.dragonDisplay.filter((c): c is number => c !== null));
-      const cardId = answer.kind === 'index' ? pool[answer.index] : pool[0];
-      if (cardId == null) return state;
+      let cardId: number | undefined;
+      if (head.source === 'deck') {
+        const [drawn, s2] = drawCards(s, 'dragon', 1);
+        s = s2;
+        cardId = drawn[0];
+        if (cardId != null && head.cond && !dragonMatchesCond(dragonCard(cardId), head.cond)) {
+          s = { ...s, dragonDiscard: [...s.dragonDiscard, cardId] };
+          return resumeSteps(head.resume);
+        }
+      } else {
+        const rawPool =
+          head.source === 'hand'
+            ? p.hand.filter(isDragonCard)
+            : head.source === 'display'
+              ? s.dragonDisplay.filter((c): c is number => c !== null)
+              : p.hand.filter(isDragonCard).concat(s.dragonDisplay.filter((c): c is number => c !== null));
+        const pool = head.cond ? rawPool.filter((id) => dragonMatchesCond(dragonCard(id), head.cond!)) : rawPool;
+        cardId = answer.kind === 'index' ? pool[answer.index] : pool[0];
+      }
+      if (cardId == null) return resumeSteps(head.resume);
       const pos = answer.kind === 'dragon' ? { cave: answer.pos[0], space: answer.pos[1] } : undefined;
-      const before = s.pending.length;
       const placed = tryPlayDragonAt(s, playerId, cardId, head, pos);
       s = placed.state;
-      if (s.pending.length > before) {
-        // The play queued follow-up choices (cost payment, the dragon's own
-        // when-played ability): this pending's resume runs after them.
-        const pend = [...s.pending];
-        const last = pend[pend.length - 1]!;
-        const rest = head.resume;
-        const lastResume = 'resume' in last ? last.resume : undefined;
-        if (rest) {
-          pend[pend.length - 1] = {
-            ...last,
-            resume: lastResume ? { steps: [...lastResume.steps, ...rest.steps], ctx: rest.ctx } : rest,
-          } as PendingStep;
-          s = { ...s, pending: pend };
-        }
-        return s;
+      if (!placed.ok && head.source === 'deck') {
+        s = { ...s, dragonDiscard: [...s.dragonDiscard, cardId] };
       }
       return resumeSteps(head.resume);
     }
@@ -1218,21 +1508,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         const left = Number(ctx0.data.repeatLeft ?? 0);
         if (idx === 0 && left > 0) {
           s = runSteps(s, repSteps, { ...ctx0, data: { ...ctx0.data, didPrecede: true } });
-          if (left - 1 > 0) {
-            s = pushPending(s, {
-              kind: 'chooseOption',
-              playerId,
-              options: [
-                { label: 'do it', steps: [] },
-                { label: 'stop', steps: [] },
-              ],
-              resume: {
-                steps: [],
-                ctx: { ...ctx0, data: { ...ctx0.data, repeatLeft: left - 1 } },
-              },
-            });
-            return s;
-          }
+          const nextSteps: Step[] =
+            left - 1 > 0
+              ? [{ op: 'repeat', times: left - 1, steps: repSteps }, ...repRest]
+              : repRest;
+          return chainWithPending(basePendingLen, s, nextSteps, ctx0);
         }
         return runSteps(s, repRest, ctx0);
       }
@@ -1246,7 +1526,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       if (answer.kind === 'decline') {
         const ctx0 = head.resume?.ctx ?? { playerId };
         const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: false } };
-        return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+        return resumeSteps(head.resume, ctx);
       }
       if (answer.kind !== 'dragon' && answer.kind !== 'index') return state;
       const pos = head.pos
@@ -1258,7 +1538,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       s = trainAt(s, playerId, pos, head);
       const ctx0 = head.resume?.ctx ?? { playerId };
       const ctx = { ...ctx0, data: { ...ctx0.data, didPrecede: true } };
-      return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
+      return resumeSteps(head.resume, ctx);
     }
 
     case 'chooseSwap': {
@@ -1270,6 +1550,95 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         q.caves[a[0]]!.spaces[a[1]]!.dragon = dB;
         q.caves[b[0]]!.spaces[b[1]]!.dragon = dA;
         s = setPlayer(s, q);
+      }
+      return resumeSteps(head.resume);
+    }
+
+    case 'chooseHandDragonSwap': {
+      if (answer.kind === 'decline') return resumeSteps(head.resume);
+      const p = player(s, playerId);
+      const matDragons = allDragons(p);
+      const handDragons = p.hand.filter(isDragonCard);
+      if (!matDragons.length || !handDragons.length) return resumeSteps(head.resume);
+      let targetPos: Pos = { cave: matDragons[0]!.cave, space: matDragons[0]!.space };
+      let newCardId: number = handDragons[0]!;
+      if (answer.kind === 'assignTucks' && answer.assignments[0]) {
+        const a = answer.assignments[0];
+        if (p.hand.includes(a.cardId) && isDragonCard(a.cardId)) newCardId = a.cardId;
+        if (p.caves[a.pos[0]]?.spaces[a.pos[1]]?.dragon) targetPos = { cave: a.pos[0], space: a.pos[1] };
+      } else if (answer.kind === 'dragon') {
+        if (p.caves[answer.pos[0]]?.spaces[answer.pos[1]]?.dragon) {
+          targetPos = { cave: answer.pos[0], space: answer.pos[1] };
+        }
+      } else if (answer.kind === 'index') {
+        const handIdx = Math.floor(answer.index / matDragons.length);
+        const matIdx = answer.index % matDragons.length;
+        if (handDragons[handIdx] != null) newCardId = handDragons[handIdx]!;
+        if (matDragons[matIdx]) targetPos = { cave: matDragons[matIdx]!.cave, space: matDragons[matIdx]!.space };
+      }
+      const q = clone(p);
+      const sp = q.caves[targetPos.cave]!.spaces[targetPos.space]!;
+      const old = sp.dragon!;
+      const handPos = q.hand.indexOf(newCardId);
+      if (handPos >= 0) q.hand.splice(handPos, 1);
+      q.hand.push(old.cardId);
+      const newCard = dragonCard(newCardId);
+      const newTrackLen = newCard.trainingTrack ? parseIcons(newCard.trainingTrack).length : 0;
+      const nd: PlayedDragon = {
+        cardId: newCardId,
+        eggs: Math.min(old.eggs, newCard.capacity),
+        tucked: [...old.tucked],
+        cached: [...old.cached],
+        training: newCard.size === 'Fledgling' ? Math.min(old.training ?? 0, newTrackLen) : undefined,
+      };
+      ensureDragonHooks(nd, true);
+      sp.dragon = nd;
+      s = setPlayer(s, q);
+      s = log(s, `${q.name} swapped ${cardName(old.cardId)} with ${newCard.name}`);
+      if (cardAbilityTypes(newCard).includes('WhenPlayed') && newCard.ability) {
+        const def = parseAbility(newCard);
+        s = runSteps(s, def.steps, { playerId, dragon: [targetPos.cave, targetPos.space], sourceCardId: newCardId });
+      }
+      return resumeSteps(head.resume);
+    }
+
+    case 'chooseCaveCardSwap': {
+      if (answer.kind === 'decline') return resumeSteps(head.resume);
+      const p = player(s, playerId);
+      const uncovered: Pos[] = [];
+      p.caves.forEach((row, cave) =>
+        row.spaces.forEach((sp, space) => {
+          if (sp.excavated && sp.caveCardId !== null && !sp.dragon) uncovered.push({ cave, space });
+        }),
+      );
+      const handCaves = p.hand.filter((id) => !isDragonCard(id));
+      if (!uncovered.length || !handCaves.length) return resumeSteps(head.resume);
+      let targetPos: Pos = uncovered[0]!;
+      let newCaveId: number = handCaves[0]!;
+      if (answer.kind === 'cards' && answer.cardIds[0] != null) {
+        if (handCaves.includes(answer.cardIds[0])) newCaveId = answer.cardIds[0];
+      } else if (answer.kind === 'dragon') {
+        const found = uncovered.find((u) => u.cave === answer.pos[0] && u.space === answer.pos[1]);
+        if (found) targetPos = found;
+      } else if (answer.kind === 'index') {
+        const handIdx = Math.floor(answer.index / uncovered.length);
+        const spaceIdx = answer.index % uncovered.length;
+        if (handCaves[handIdx] != null) newCaveId = handCaves[handIdx]!;
+        if (uncovered[spaceIdx]) targetPos = uncovered[spaceIdx]!;
+      }
+      const q = clone(p);
+      const sp = q.caves[targetPos.cave]!.spaces[targetPos.space]!;
+      const oldCaveId = sp.caveCardId!;
+      const handPos = q.hand.indexOf(newCaveId);
+      if (handPos >= 0) q.hand.splice(handPos, 1);
+      q.hand.push(oldCaveId);
+      sp.caveCardId = newCaveId;
+      s = setPlayer(s, q);
+      s = log(s, `${q.name} swapped cave card ${cardName(oldCaveId)} with ${cardName(newCaveId)}`);
+      const card = caveCard(newCaveId);
+      if (card?.ability) {
+        const def = parseAbility(card);
+        s = runSteps(s, def.steps, { playerId, dragon: [targetPos.cave, targetPos.space], sourceCardId: newCaveId });
       }
       return resumeSteps(head.resume);
     }
@@ -1293,8 +1662,18 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
               else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
             }
           }
+          while (q.hand.length > 9) {
+            const id = q.hand.pop()!;
+            if (isDragonCard(id)) s = { ...s, dragonDiscard: [...s.dragonDiscard, id] };
+            else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
+          }
         } else {
           for (const r of answer.resources) if (q.resources[r] > 0) q.resources[r] -= 1;
+          while (RESOURCES.reduce((a, r) => a + q.resources[r], 0) > 9) {
+            const best = [...RESOURCES].sort((a, b) => q.resources[b] - q.resources[a])[0]!;
+            if (q.resources[best] <= 0) break;
+            q.resources[best] -= 1;
+          }
         }
         // trim coins to 9 automatically
         q.coins = Math.min(q.coins, 9);
@@ -1340,10 +1719,12 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
     case 'chooseBenefits': {
       if (answer.kind === 'indexes' || answer.kind === 'index') {
         const idxs = answer.kind === 'indexes' ? answer.indexes : [answer.index];
+        const items: GainItem[] = [];
         for (const i of idxs.slice(0, head.count)) {
           const opt = head.options[i];
-          if (opt) s = runSteps(s, [{ op: 'gain', items: opt }], { playerId });
+          if (opt) items.push(...opt);
         }
+        if (items.length) s = runSteps(s, [{ op: 'gain', items }], { playerId });
       }
       return resumeSteps(head.resume);
     }
@@ -1377,7 +1758,13 @@ export function collectIncome(state: GameState, playerId: PlayerId): GameState {
 // ---------------------------------------------------------------------------
 // Excavation / entice support used by both actions and free-play effects.
 
-export function excavateAt(state: GameState, playerId: PlayerId, cave: number, caveCardId: number): GameState {
+export function excavateAt(
+  state: GameState,
+  playerId: PlayerId,
+  cave: number,
+  caveCardId: number,
+  activateTimes = 1,
+): GameState {
   let s = state;
   const p = clone(player(s, playerId));
   const row = p.caves[cave]!;
@@ -1388,9 +1775,17 @@ export function excavateAt(state: GameState, playerId: PlayerId, cave: number, c
   s = setPlayer(s, p);
   s = log(s, `${p.name} excavated space ${idx + 1} of cave ${cave + 1} with ${cardName(caveCardId)}`);
   const card = caveCard(caveCardId);
+  const steps: Step[] = [];
   if (card?.ability) {
     const def = parseAbility(card);
-    s = runSteps(s, def.steps, { playerId, dragon: [cave, idx], sourceCardId: caveCardId });
+    for (let t = 0; t < activateTimes; t++) {
+      steps.push(...def.steps);
+    }
+  }
+  const coveredSteps = MAT_COVERED_ICONS[cave]?.[idx] ?? [];
+  steps.push(...coveredSteps);
+  if (steps.length) {
+    s = runSteps(s, steps, { playerId, dragon: [cave, idx], sourceCardId: caveCardId });
   }
   return s;
 }
@@ -1400,12 +1795,44 @@ interface PlayResult {
   ok: boolean;
 }
 
-/** Charge a concrete cost (resources/coins/eggs) to a player. */
+/** Charge a concrete cost (resources/coins/eggs/cards/items/tithes) to a player. */
 function chargeItems(state: GameState, playerId: PlayerId, items: GainItem[]): GameState {
-  const q = payItems(clone(player(state, playerId)), items, undefined);
-  const eggs = items.reduce((a, i) => a + (i.kind === 'egg' ? i.count : 0), 0);
-  if (eggs) removeEggs(q, eggs);
-  return setPlayer(state, q);
+  let s = state;
+  const q = payItems(clone(player(s, playerId)), items, undefined);
+  for (const it of items) {
+    if (it.kind === 'card') {
+      let left = it.count;
+      for (let c = q.hand.length - 1; c >= 0 && left > 0; c--) {
+        const id = q.hand[c]!;
+        const match = it.deck === 'dragon' ? isDragonCard(id) : !isDragonCard(id);
+        if (match) {
+          q.hand.splice(c, 1);
+          if (it.deck === 'dragon') s = { ...s, dragonDiscard: [...s.dragonDiscard, id] };
+          else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
+          left--;
+        }
+      }
+    } else if (it.kind === 'egg') {
+      removeEggs(q, it.count);
+    }
+  }
+  // Pay generic 'item' (resource or card) and 'tithe' (resource, card, or egg).
+  for (const it of items) {
+    if (it.kind !== 'item' && it.kind !== 'tithe') continue;
+    for (let k = 0; k < it.count; k++) {
+      const bestRes = [...RESOURCES].sort((a, b) => q.resources[b] - q.resources[a])[0]!;
+      if (q.resources[bestRes] > 0) {
+        q.resources[bestRes] -= 1;
+      } else if (q.hand.length > 0) {
+        const id = q.hand.pop()!;
+        if (isDragonCard(id)) s = { ...s, dragonDiscard: [...s.dragonDiscard, id] };
+        else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
+      } else if (it.kind === 'tithe' && eggsOnMatCount(q) > 0) {
+        removeEggs(q, 1);
+      }
+    }
+  }
+  return setPlayer(s, q);
 }
 
 function itemKey(it: GainItem): string {
@@ -1462,18 +1889,20 @@ function placeDragonAt(state: GameState, playerId: PlayerId, cardId: number, pos
   if (space.dragon && onTop) {
     // transfer contents to the new dragon; old dragon becomes tucked
     const old = space.dragon;
-    const nd: import('./types').PlayedDragon = {
+    const nd: PlayedDragon = {
       cardId,
       eggs: Math.min(old.eggs, card.capacity),
       tucked: [...old.tucked, old.cardId],
       cached: old.cached,
       training: Math.min(old.training ?? 0, card.trainingTrack ? parseIcons(card.trainingTrack).length : 0),
-      hooks: old.hooks,
       recurCount: old.recurCount,
     };
+    ensureDragonHooks(nd, true);
     space.dragon = nd;
   } else {
-    space.dragon = { cardId, eggs: 0, tucked: [], cached: [] };
+    const nd: PlayedDragon = { cardId, eggs: 0, tucked: [], cached: [] };
+    ensureDragonHooks(nd, false);
+    space.dragon = nd;
   }
   s = setPlayer(s, q);
   s = log(s, `${q.name} enticed ${card.name}`);
@@ -1557,17 +1986,31 @@ export function tryPlayDragonAt(
   return { state: s, ok: true };
 }
 
-function tryPlayFree(state: GameState, playerId: PlayerId, cardId: number, ctx?: EffectCtx): GameState {
+function tryPlayFree(state: GameState, playerId: PlayerId, cardId: number, ctx?: EffectCtx, orKeep?: boolean): GameState {
   void ctx;
   if (!isDragonCard(cardId)) {
     // Playing a cave card = excavating with it, into the first cave that
-    // still has an unexcavated space (no space anywhere: it is discarded).
+    // still has an unexcavated space (no space anywhere: keep if orKeep, else discard).
     const cave = player(state, playerId).caves.findIndex((row) => row.spaces.some((sp) => !sp.excavated));
-    if (cave < 0) return { ...state, caveDiscard: [...state.caveDiscard, cardId] };
+    if (cave < 0) {
+      if (orKeep) {
+        const q = clone(player(state, playerId));
+        q.hand.push(cardId);
+        return setPlayer(state, q);
+      }
+      return { ...state, caveDiscard: [...state.caveDiscard, cardId] };
+    }
     return excavateAt(state, playerId, cave, cardId);
   }
   const r = tryPlayDragonAt(state, playerId, cardId, {}, undefined);
-  if (!r.ok && isDragonCard(cardId)) return { ...state, dragonDiscard: [...state.dragonDiscard, cardId] };
+  if (!r.ok && isDragonCard(cardId)) {
+    if (orKeep) {
+      const q = clone(player(state, playerId));
+      q.hand.push(cardId);
+      return setPlayer(state, q);
+    }
+    return { ...state, dragonDiscard: [...state.dragonDiscard, cardId] };
+  }
   return r.state;
 }
 

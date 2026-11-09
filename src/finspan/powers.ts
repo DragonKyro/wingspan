@@ -73,6 +73,15 @@ function hasAnyYoung(state: GameState, playerId: PlayerId): boolean {
   return false;
 }
 
+function canRecoverOrDraw(state: GameState, playerId: PlayerId): boolean {
+  const p = getPlayer(state, playerId);
+  return (
+    p.discard.length > 0 ||
+    state.deck.length > 0 ||
+    state.players.some((pl) => pl.discard.length > 0)
+  );
+}
+
 function applyEffect(
   state: GameState,
   playerId: PlayerId,
@@ -80,34 +89,38 @@ function applyEffect(
   e: Effect,
   optional: boolean,
 ): GameState {
+  const hasPending = state.pending.length > 0;
   switch (e.kind) {
     case 'draw':
       return drawFromDeck(state, playerId, 1);
     case 'discard':
-      if (getPlayer(state, playerId).hand.length === 0) return state;
-      return push(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional });
+      // [Discard] in FinSearch is the sideways fish-skeleton card icon:
+      // "Gain any card from your discard pile to your hand. If you have none
+      //  remaining, draw the top card of the deck instead." (fish_p12.png)
+      if (!canRecoverOrDraw(state, playerId) && !hasPending) return state;
+      return push(state, { kind: 'chooseRecover', playerId, count: 1, optional });
     case 'egg': {
       if (e.onEach) return eggsOnEach(state, playerId, e.filter);
-      if (!eggTargetExists(state, playerId, e.filter)) return state;
+      if (!eggTargetExists(state, playerId, e.filter) && !hasPending) return state;
       return push(state, { kind: 'chooseEggTargets', playerId, count: 1, filter: e.filter, optional });
     }
     case 'hatch':
-      if (!hasAnyEgg(state, playerId)) return state;
+      if (!hasAnyEgg(state, playerId) && !hasPending) return state;
       return push(state, { kind: 'chooseHatch', playerId, count: 1, optional });
     case 'young':
       return push(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
     case 'move':
-      if (!hasAnyYoung(state, playerId)) return state;
+      if (!hasAnyYoung(state, playerId) && !hasPending) return state;
       return push(state, { kind: 'chooseMove', playerId, count: 1, optional });
     case 'consume': {
-      // Skip when nothing in hand could be tucked.
+      // Skip when nothing in hand could be tucked and no prior step is pending.
       const p = getPlayer(state, playerId);
-      if (p.hand.length === 0) return state;
+      if (p.hand.length === 0 && !hasPending) return state;
       const onto = e.onto === 'self' ? source : undefined;
       return push(state, { kind: 'chooseConsume', playerId, count: e.n, onto, optional });
     }
     case 'playFromHand':
-      if (getPlayer(state, playerId).hand.length === 0) return state;
+      if (getPlayer(state, playerId).hand.length === 0 && !hasPending) return state;
       return push(state, {
         kind: 'choosePlayFromHand',
         playerId,
@@ -116,7 +129,7 @@ function applyEffect(
         optional,
       });
     case 'freePlayFromHand':
-      if (getPlayer(state, playerId).hand.length === 0) return state;
+      if (getPlayer(state, playerId).hand.length === 0 && !hasPending) return state;
       return push(state, {
         kind: 'choosePlayFromHand',
         playerId,
@@ -126,7 +139,7 @@ function applyEffect(
         optional,
       });
     case 'unSchool':
-      if (hasAnySchool(state, playerId)) {
+      if (hasAnySchool(state, playerId) || hasPending) {
         return push(state, { kind: 'chooseUnSchool', playerId, count: 1, optional });
       }
       // "or place 1 young instead if you don't have a school token to discard"

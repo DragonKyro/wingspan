@@ -72,6 +72,10 @@ export type GainItem =
   | { kind: 'guild'; count: number }
   /** Egg unit: as a cost = pay an egg from your mat; as a gain = lay an egg. */
   | { kind: 'egg'; count: number }
+  /** King's Guild tithe: any 1 resource, dragon card, cave card, or egg. */
+  | { kind: 'tithe'; count: number }
+  /** Player-mat 4th-column exchange item: any 1 resource, dragon card, or cave card. */
+  | { kind: 'item'; count: number }
   | { kind: 'vp'; count: number };
 
 /** Where an egg may be laid. */
@@ -124,7 +128,8 @@ export type Counter =
   | { kind: 'fullyTrainedFledglings' }
   | { kind: 'filledColumns' }
   | { kind: 'printedResourceCost'; where: 'cave' }
-  | { kind: 'fledglingCount' };
+  | { kind: 'fledglingCount' }
+  | { kind: 'caveCards' };
 
 export type Cond =
   | { kind: 'atLeast'; counter: Counter; n: number }
@@ -163,7 +168,7 @@ export type Step =
   /** "Each opponent may <steps> once" (queued for each opponent). */
   | { op: 'opponentsMay'; steps: Step[] }
   /** Discard `count` cards of `what` from hand, then run `then`. */
-  | { op: 'discardFromHand'; what: 'dragon' | 'cave' | 'any'; count: number; then: Step[] }
+  | { op: 'discardFromHand'; what: 'dragon' | 'cave' | 'any'; count: number; then: Step[]; perCard?: boolean; activateDiscarded?: boolean }
   /** Draw `count` cards face-down, then distribute per `dist`. */
   | {
       op: 'drawDistribute';
@@ -173,18 +178,35 @@ export type Step =
       tuck?: number | 'rest';
       discard?: number | 'rest';
       playFree?: number;
+      orKeep?: boolean;
       tuckTarget?: DragonTarget;
       keepMessage?: string;
     }
   /** Reveal top dragon card: if it matches cond, run yes, else run no. */
   | { op: 'reveal'; cond: DragonCond | null; yes: Step[]; no: Step[] }
-  | { op: 'excavateFree'; source: 'hand' | 'display' | 'deck'; count: number }
+  | { op: 'excavateFree'; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; count: number; activateTimes?: number }
   /** Play a dragon. No discount field = free; discount = alternatives, one of
    *  which may be waived from the printed cost; `full` = pay printed cost. */
-  | { op: 'playDragonFree'; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; discount?: GainItem[][] | 'full'; onTop?: boolean }
+  | { op: 'playDragonFree'; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; discount?: GainItem[][] | 'full'; onTop?: boolean; cond?: DragonCond }
   | { op: 'activateAbility'; kinds: AbilityType[]; count: number; distinct?: boolean; printedOnMat?: boolean }
   | { op: 'trainFledgling'; times: number | 'full'; free: boolean; gainItem?: boolean; target: 'any' | 'orthAdjacent' | 'mat' }
   | { op: 'swapDragons' }
+  /** Guild of Magicians: swap a dragon on your mat with a dragon in your hand (ignoring normal cave requirements). */
+  | { op: 'swapHandDragon' }
+  /** Guild of Magicians: swap an uncovered cave card on your mat with a cave card in your hand (activating its WhenPlayed ability). */
+  | { op: 'swapCaveCard' }
+  /** Gambler's Guild: draw 1 dragon card; either gain its printed cost or discard it to gain 1 coin. */
+  | { op: 'gamblerDraw' }
+  /** Gambler's Guild end-game square: draw 4 dragon cards, score printed VP on 2 of them, discard all 4. */
+  | { op: 'gamblerEndGameDraw' }
+  /** Gain `count` resource(s) chosen from the resource types in the last-tucked dragon's printed cost. */
+  | { op: 'gainTuckedPrintedResource'; count: number }
+  /** Sequential explore-walk steps so mid-walk pending choices pause the walk. */
+  | { op: 'exploreStep'; cave: number; index: number }
+  | { op: 'exploreSpace'; cave: number; space: number }
+  | { op: 'offerFledglingTrain'; cave: number; space: number }
+  | { op: 'advanceGuild'; count: number }
+  | { op: 'withCtx'; ctx: EffectCtx; steps: Step[] }
   /** Lay `per` egg(s) once per unit of `counter` ("lay 1 egg for each fledgling"). */
   | { op: 'layPer'; counter: Counter; per: number; target: EggTarget }
   /** Tuck `per` card(s) once per unit of `counter` ("tuck 1 card for each marker"). */
@@ -243,6 +265,7 @@ export interface RecurringHook {
   eachSteps: Step[];
   thirdGain: Step[];
   count?: number;
+  thirdFired?: boolean;
 }
 
 export interface PlayedDragon {
@@ -292,13 +315,22 @@ export interface PlayerState {
 // ---------------------------------------------------------------------------
 // Guild
 
-export type GuildTileId = 'seafarers' | 'highlands' | 'plains' | 'rainforest';
+export type GuildTileId =
+  | 'seafarers'
+  | 'highlands'
+  | 'plains'
+  | 'rainforest'
+  | 'merchants'
+  | 'gamblers'
+  | 'kings'
+  | 'veterinary'
+  | 'magicians';
 
 export interface GuildTileSquare {
   /** Immediate effect run when a marker is placed, and/or end-game scoring. */
   label: string;
   immediate?: Step[];
-  endGame?: { vpPer: number; counter?: Counter; flat?: number };
+  endGame?: { vpPer: number; counter?: Counter; flat?: number; max?: number; divisor?: number; gamblerDraw4?: boolean };
   unlimited?: boolean; // the long-rectangle square (any number of markers)
 }
 
@@ -359,7 +391,7 @@ export type PendingStep =
   | { kind: 'setupCards'; playerId: PlayerId; offer: number[]; keep: number }
   | { kind: 'setupResources'; playerId: PlayerId; count: number }
   /** Pick `count` resource types to gain (or discard). */
-  | { kind: 'chooseResource'; playerId: PlayerId; count: number; mode: 'gain' | 'discard' | 'pay'; resume?: Resume; upTo?: boolean }
+  | { kind: 'chooseResource'; playerId: PlayerId; count: number; mode: 'gain' | 'discard' | 'pay'; allowed?: Resource[]; resume?: Resume; upTo?: boolean }
   /** Pick where to lay egg(s). target constrains legal spots. */
   | { kind: 'chooseEggSpot'; playerId: PlayerId; count: number; target: EggTarget; resume?: Resume; optional?: boolean }
   /** Pick which resource(s) to cache + onto which dragon. */
@@ -367,17 +399,17 @@ export type PendingStep =
   | { kind: 'chooseTuck'; playerId: PlayerId; count: number; from: 'hand' | 'deck'; target: DragonTarget; upTo?: boolean; resume?: Resume }
   /** Pick `count` hand cards of `what` to discard/pay. `then` runs only when
    * the discard is actually performed (declined `upTo` skips it). */
-  | { kind: 'chooseHandCards'; playerId: PlayerId; count: number; what: 'dragon' | 'cave' | 'any'; purpose: 'discard' | 'pay' | 'tuck' | 'cavesForEggs'; upTo?: boolean; then?: Step[]; resume?: Resume }
+  | { kind: 'chooseHandCards'; playerId: PlayerId; count: number; what: 'dragon' | 'cave' | 'any'; purpose: 'discard' | 'pay' | 'tuck' | 'cavesForEggs'; upTo?: boolean; perCard?: boolean; activateDiscarded?: boolean; then?: Step[]; resume?: Resume }
   /** Pick a face-up display card. */
   | { kind: 'chooseDisplay'; playerId: PlayerId; deck: 'dragon' | 'cave'; resume?: Resume }
   /** Distribute just-drawn cards: choose which to keep/tuck/discard/play. */
-  | { kind: 'distributeCards'; playerId: PlayerId; cardIds: number[]; keep?: number; tuck?: number | 'rest'; discard?: number | 'rest'; playFree?: number; tuckTarget?: DragonTarget; resume?: Resume }
+  | { kind: 'distributeCards'; playerId: PlayerId; cardIds: number[]; keep?: number; tuck?: number | 'rest'; discard?: number | 'rest'; playFree?: number; orKeep?: boolean; tuckTarget?: DragonTarget; resume?: Resume }
   /** Pick an ability to activate (dragon ref + optional mat icon). */
   | { kind: 'chooseAbility'; playerId: PlayerId; candidates: AbilityCandidate[]; count: number; distinct?: boolean; resume?: Resume }
   /** Pick which cave/space to excavate for free. */
-  | { kind: 'chooseExcavate'; playerId: PlayerId; source: 'hand' | 'display' | 'deck'; count: number; resume?: Resume }
+  | { kind: 'chooseExcavate'; playerId: PlayerId; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; count: number; activateTimes?: number; resume?: Resume }
   /** Pick a dragon card to play for free/discounted. */
-  | { kind: 'choosePlayDragon'; playerId: PlayerId; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; discount?: GainItem[][] | 'full'; onTop?: boolean; resume?: Resume }
+  | { kind: 'choosePlayDragon'; playerId: PlayerId; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; discount?: GainItem[][] | 'full'; onTop?: boolean; cond?: DragonCond; resume?: Resume }
   /** Pay for a dragon chosen via choosePlayDragon: `options` are the single
    * items that may be waived from the printed cost (pick one). */
   | { kind: 'payDragonCost'; playerId: PlayerId; cardId: number; pos: [number, number]; onTop?: boolean; options: { label: string; waive: GainItem[] }[]; resume?: Resume }
@@ -390,6 +422,10 @@ export type PendingStep =
   | { kind: 'chooseTrain'; playerId: PlayerId; times: number | 'full'; free: boolean; gainItem?: boolean; target: 'any' | 'orthAdjacent' | 'mat'; pos?: [number, number]; resume?: Resume }
   /** Pick two dragons to swap. */
   | { kind: 'chooseSwap'; playerId: PlayerId; resume?: Resume }
+  /** Guild of Magicians: swap a dragon on your mat with a dragon in your hand. */
+  | { kind: 'chooseHandDragonSwap'; playerId: PlayerId; resume?: Resume }
+  /** Guild of Magicians: swap an uncovered cave card on your mat with a cave card in your hand. */
+  | { kind: 'chooseCaveCardSwap'; playerId: PlayerId; resume?: Resume }
   /** Pay-or-decline for an optional "pay X to ..." step (or choose payment tier). */
   | { kind: 'choosePay'; playerId: PlayerId; tiers: { cost: GainItem[]; then: Step[] }[]; repeat?: number; resume?: Resume }
   /** "Each opponent may ..." step — the named (non-active) player decides. */
@@ -453,6 +489,8 @@ export interface GuildState {
   /** Per-square marker occupants (parallel to GUILD_TILES[tile].squares). */
   squares: (PlayerId | null)[][];
   track: Record<PlayerId, number>; // position index on GUILD_TRACK
+  /** Gambler's Guild end-game VP banked from drawing 4 dragon cards. */
+  gamblerVp?: Partial<Record<PlayerId, number>>;
 }
 
 export interface GameState {

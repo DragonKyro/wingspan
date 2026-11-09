@@ -304,6 +304,10 @@ export function canPay(p: PlayerState, cost: GainItem[]): boolean {
   let anyRes = 0;
   let eggs = 0;
   let coins = 0;
+  let dragonCards = 0;
+  let caveCards = 0;
+  let items = 0;
+  let tithes = 0;
   for (const it of cost) {
     if (it.kind === 'resource') {
       if (it.res === 'any') anyRes += it.count;
@@ -311,15 +315,26 @@ export function canPay(p: PlayerState, cost: GainItem[]): boolean {
     } else if (it.kind === 'egg') eggs += it.count;
     else if (it.kind === 'coin') coins += it.count;
     else if (it.kind === 'card') {
-      if (p.hand.filter((c) => (it.deck === 'dragon' ? isDragonCard(c) : !isDragonCard(c))).length < it.count)
-        return false;
+      if (it.deck === 'dragon') dragonCards += it.count;
+      else caveCards += it.count;
+    } else if (it.kind === 'item') {
+      items += it.count;
+    } else if (it.kind === 'tithe') {
+      tithes += it.count;
     }
   }
   if (p.coins < coins) return false;
   for (const r of RESOURCES) if (p.resources[r] < need[r]) return false;
-  const totalRes = RESOURCES.reduce((a, r) => a + p.resources[r] - need[r], 0);
-  if (totalRes < anyRes) return false;
-  if (eggs > 0 && eggsOnMatCount(p) < eggs) return false;
+  const remRes = RESOURCES.reduce((a, r) => a + p.resources[r] - need[r], 0);
+  if (remRes < anyRes) return false;
+  const remDragons = p.hand.filter(isDragonCard).length - dragonCards;
+  const remCaves = p.hand.filter((c) => !isDragonCard(c)).length - caveCards;
+  if (remDragons < 0 || remCaves < 0) return false;
+  const remEggs = eggsOnMatCount(p) - eggs;
+  if (remEggs < 0) return false;
+  const remResAndCards = remRes - anyRes + remDragons + remCaves;
+  if (remResAndCards < items) return false;
+  if (remResAndCards - items + remEggs < tithes) return false;
   return true;
 }
 
@@ -450,7 +465,10 @@ export function countCounter(_state: GameState, p: PlayerState, counter: Counter
       return Math.min(...counts);
     }
     case 'sizeSets': {
-      const counts = (['Small', 'Medium', 'Large'] as const).map(
+      const sizes = _state.expansions.includes('academy')
+        ? (['Hatchling', 'Fledgling', 'Small', 'Medium', 'Large'] as const)
+        : (['Hatchling', 'Small', 'Medium', 'Large'] as const);
+      const counts = sizes.map(
         (sz) => all.filter((d) => dragonCard(d.dragon.cardId).size === sz).length,
       );
       return Math.min(...counts);
@@ -481,6 +499,11 @@ export function countCounter(_state: GameState, p: PlayerState, counter: Counter
     }
     case 'fledglingCount':
       return all.filter((d) => dragonCard(d.dragon.cardId).size === 'Fledgling').length;
+    case 'caveCards':
+      return p.caves.reduce(
+        (a, row) => a + row.spaces.filter((sp) => sp.excavated && sp.caveCardId !== null).length,
+        0,
+      );
   }
   return 0;
 }
@@ -556,6 +579,10 @@ export function describeItems(items: GainItem[]): string {
           return `${it.count} guild advance${it.count > 1 ? 's' : ''}`;
         case 'egg':
           return `${it.count} egg${it.count > 1 ? 's' : ''}`;
+        case 'tithe':
+          return `${it.count} tithe${it.count > 1 ? 's' : ''}`;
+        case 'item':
+          return `${it.count} item${it.count > 1 ? 's' : ''}`;
         case 'vp':
           return `${it.count} VP`;
       }

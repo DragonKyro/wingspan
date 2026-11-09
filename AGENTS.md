@@ -253,19 +253,8 @@ AI — and only Wingspan has a UI so far.
 
 ## Known gaps (future work)
 
-- `POWER_IMPLS` covers all distinct core + european + oceania + asia +
-  americas texts; other expansion texts warn once and no-op
-  (`hasPowerImpl` is the check).
-- The printed duet map layout is approximated (region criterion counts are
-  official; exact space positions are not public data).
-- Blue (per-item) goal side unimplemented.
-- Oceania mat trades/reset options exist in the actions but the UI draft
-  flow doesn't expose them yet (AI skips them too — always optional).
-- When-played and pink powers auto-fire instead of prompting (all base
-  powers are beneficial, so this is a safe simplification). European pinks
-  that say "at the end of their turn" fire immediately.
-- `endOfTurnDiscards` discards are picked from the whole hand, not the drawn
-  subset ("keep 1 of the drawn cards" is not strictly enforced).
-- Rulebooks for all games live in `docs/` (PDFs — extract with `pdftotext`).
-- UI is functional, not pretty: no bird art, no animations. Sideways birds
-  always cover 2 spaces when legal (the "may" is not offered).
+- All 707 Wingspan birds (Core, European, Oceania, Asia, Americas, and all 6
+  Promo packs), all 300 Wyrmspan/Academy abilities + 9 Dragon Guild tiles, and
+  all 215 Finspan/S&R abilities are implemented and verified against the
+  official rulebook PDFs in `docs/`.
+- Automa solo-deck modes and RL policy training are future work.

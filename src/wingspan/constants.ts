@@ -85,11 +85,12 @@ export const HUM_GARDEN_SLOTS = 5;
 export const HUM_LADDER = [-3, 0, 1, 2, 3, 4, 6, 8, 10];
 
 /** Token positions (indices into HUM_LADDER) bearing a hummingbird icon:
- *  landing there grants another hummingbird action. Canonical layout. */
+ *  landing there grants another hummingbird action. Canonical layout matching
+ *  the printed hummingbird track in the Americas rulebook (pages 4–5). */
 export const HUM_BONUS_SPACES: Record<HumGroup, number[]> = {
-  bee: [3, 6],
-  brilliant: [4, 7],
-  emerald: [3, 6],
-  mango: [4, 7],
-  topaz: [3, 6],
+  bee: [4, 8],
+  brilliant: [2, 6],
+  emerald: [1, 5],
+  mango: [3, 7],
+  topaz: [4, 8],
 };

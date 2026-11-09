@@ -156,6 +156,10 @@ function sameItemKey(it: GainItem): string {
       return 'guild';
     case 'egg':
       return 'egg';
+    case 'tithe':
+      return 'tithe';
+    case 'item':
+      return 'item';
     case 'vp':
       return 'vp';
   }

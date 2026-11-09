@@ -141,9 +141,8 @@ export function eggStepTargets(
     refs = refs.filter((r) => r.habitat === step.habitat);
   }
   if (step.adjacentTo) {
-    refs = refs.filter(
-      (r) => r.habitat === step.adjacentTo!.habitat && Math.abs(r.index - step.adjacentTo!.index) === 1,
-    );
+    const adj = adjacentRefs(p, step.adjacentTo);
+    refs = refs.filter((r) => adj.some((a) => sameRef(a, r)));
   }
   if (step.wingspanLt != null) {
     refs = refs.filter((r) => {

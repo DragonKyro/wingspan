@@ -1,5 +1,10 @@
-import type { Action, PlayerColor } from '@/wingspan/types';
-import type { CreateGameOptions } from '@/wingspan/types';
+import type { Action as WingspanAction, CreateGameOptions as WingspanOptions, PlayerColor } from '@/wingspan/types';
+import type { Action as WyrmspanAction } from '@/wyrmspan/types';
+import type { CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
+import type { Action as FinspanAction, CreateGameOptions as FinspanOptions } from '@/finspan/types';
+
+export type GameId = 'wingspan' | 'wyrmspan' | 'finspan';
+export type AnyAction = WingspanAction | WyrmspanAction | FinspanAction;
 
 export type ConnectionState =
   | 'disconnected'
@@ -17,9 +22,14 @@ export interface LobbySeat {
   color: PlayerColor;
 }
 
-/** Which card sets the game shuffles into the deck. */
+/** Which game and expansions/options the room is configured to play. */
 export interface LobbyGame {
+  gameId?: GameId;
   sets: string[];
+  mode?: 'standard' | 'duet' | 'flock';
+  goalSide?: 'green' | 'blue';
+  achievementSide?: 'A' | 'B';
+  expansions?: ('base' | 'academy')[];
 }
 
 export interface LobbyState {
@@ -58,7 +68,10 @@ export interface RoomMeta {
  * applies the action log.
  */
 export interface StartRecord {
-  options: CreateGameOptions;
+  gameId?: GameId;
+  options: WingspanOptions;
+  wyrmspanOptions?: WyrmspanOptions;
+  finspanOptions?: FinspanOptions;
   // Seat → UUID, so each device can tell which seat is theirs (or that
   // they're a spectator when their UUID isn't on any seat).
   seatUuids: (string | null)[];
@@ -71,7 +84,7 @@ export interface StartRecord {
 
 /** One move in the room's action log. */
 export interface LoggedAction {
-  action: Action;
+  action: AnyAction;
   /** Short random id, so the author recognises its own move in the log. */
   nonce: string;
   /** When the move was made (ms since epoch, the author's clock): the game clock and per-player time stats. */

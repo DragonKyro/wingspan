@@ -13,8 +13,7 @@
 // Invariant: with moves pending, the confirmed state (the log applied in
 // order) is `pending[0].before`; with none pending, it's the live state.
 
-import type { Action } from '@/wingspan/types';
-import type { LoggedAction } from '@/net/types';
+import type { AnyAction as Action, LoggedAction } from '@/net/types';
 
 export interface ActionSyncDeps<S> {
   /** Apply a confirmed move from the log (logged at `entry.at`). */

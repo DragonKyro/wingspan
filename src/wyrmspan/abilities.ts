@@ -314,12 +314,10 @@ const matchTuckGainCost: Matcher = (s) => {
     `^Tuck (${ICONS})from your hand here to gain (${ICONS})of the cost printed on the tucked dragon\\.$`,
   ).exec(s);
   if (!m) return null;
-  // The tuck is a trade (optional); the gain only happens if a card was
-  // actually tucked. KNOWN PARTIAL: the gain is a generic any-resource rather
-  // than a choice among the resource types printed in the tucked card's cost.
+  const count = iconsOf(m[2]!).reduce((a, i) => a + i.count, 0) || 1;
   return [
     { op: 'tuck', count: 1, from: 'hand', target: { kind: 'here' }, upTo: true },
-    { op: 'if', cond: { kind: 'didPrecede' }, then: [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }] },
+    { op: 'if', cond: { kind: 'didPrecede' }, then: [{ op: 'gainTuckedPrintedResource', count }] },
   ];
 };
 
@@ -748,7 +746,8 @@ const matchDiscardForBenefit: Matcher = (s) => {
         op: 'discardFromHand',
         what: m[1] === 'CaveCard' ? 'cave' : 'dragon',
         count: 1,
-        then: [{ op: 'activateAbility', kinds: ['WhenPlayed'], count: 1 }],
+        activateDiscarded: true,
+        then: [],
       },
     ];
   }
@@ -1238,7 +1237,7 @@ export function counterOf(text: string): Counter | null {
   if (/^\*?set\*? of dragon traits on your player mat/.test(t)) {
     return { kind: 'traitSets' };
   }
-  if (/^\*?set\*? of dragon sizes on your player mat/.test(t)) {
+  if (/^\*?set\*? of dragons?(?: sizes)? on your player mat/.test(t)) {
     return { kind: 'sizeSets' };
   }
   if (/^\[Egg\] in this dragon's column$/.test(t)) {

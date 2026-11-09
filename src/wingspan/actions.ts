@@ -73,7 +73,7 @@ import type {
   PlayBirdAction,
   PlayerId,
 } from './types';
-import { HABITATS } from './types';
+import { HABITATS, HUM_GROUPS } from './types';
 
 function requireTurn(state: GameState, playerId: PlayerId): void {
   if (state.phase !== 'main') throw new Error('not the main phase');
@@ -396,6 +396,7 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
       ...setPlayer(s, { ...pl, hand: pl.hand.filter((id) => id !== action.bonusTradeCardId) }),
       discard: [...s.discard, action.bonusTradeCardId],
     };
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', cardId: action.bonusTradeCardId });
   }
   if (action.reroll) {
     // Free reroll: checked against the feeder as the player saw it — before
@@ -406,6 +407,7 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
   if (action.rerollCost != null) {
     const pl = getPlayer(s, action.playerId);
     s = setPlayer(s, spendNectarAware(pl, action.rerollCost, 'forest'));
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: action.rerollCost });
     s = feederReset(s, action.playerId);
   }
   if (action.picks.length !== diceToTake) throw new Error(`take ${diceToTake} dice`);
@@ -486,6 +488,7 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
   let s = spendCube(state, action.playerId, 'grassland');
   if (action.tradeFood != null) {
     s = setPlayer(s, spendFood(getPlayer(s, action.playerId), [action.tradeFood]));
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: action.tradeFood });
   }
   for (const t of extraTrades) {
     let pl = getPlayer(s, action.playerId);
@@ -494,8 +497,10 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
         ...setPlayer(s, { ...pl, hand: pl.hand.filter((id) => id !== t.card) }),
         discard: [...s.discard, t.card],
       };
+      s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', cardId: t.card });
     } else {
       s = setPlayer(s, spendNectarAware(pl, t.food, 'grassland'));
+      s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: t.food });
     }
   }
   for (const ref of action.placements) {
@@ -545,6 +550,7 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
   if (action.resetTrayCost != null) {
     const pl = getPlayer(s, action.playerId);
     s = setPlayer(s, spendNectarAware(pl, action.resetTrayCost, 'wetland'));
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: action.resetTrayCost });
     // Reset: discard all face-up cards, then refill from the deck.
     s = {
       ...s,
@@ -562,10 +568,12 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
     const row = [...pl.board[action.tradeEgg.habitat]];
     row[action.tradeEgg.index] = { ...row[action.tradeEgg.index]!, eggs: row[action.tradeEgg.index]!.eggs - 1 };
     s = setPlayer(s, { ...pl, board: { ...pl.board, [action.tradeEgg.habitat]: row } });
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', egg: true });
   }
   if (action.tradeNectar) {
     const pl = getPlayer(s, action.playerId);
     s = setPlayer(s, spendNectarAware(pl, 'nectar', 'wetland'));
+    s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: 'nectar' });
   }
   for (const pick of action.picks) {
     if (pick === 'deck') {
@@ -730,10 +738,20 @@ export function finishRound(state: GameState): GameState {
       players: s.players.map((pl) => ({ ...pl, food: { ...pl.food, nectar: 0 } })),
     };
   }
-  // Score this round's goal tile (green side: ranked).
+  // Score this round's goal tile.
   const tile = s.goalTiles[s.round];
   if (tile != null) {
-    if (isDuet(s)) {
+    if (goalTile(tile)?.goal.kind === 'noGoal') {
+      // Oceania "no goal" (or Daurian Jackdaw): no goal is scored this round,
+      // and players keep their cube (following rounds have +1 turn).
+      const goalScores = [...s.goalScores];
+      goalScores[s.round] = new Array<number>(s.playerOrder.length).fill(0);
+      s = {
+        ...s,
+        goalScores,
+        firstPlayerIndex: isDuet(s) ? 1 - s.firstPlayerIndex : s.firstPlayerIndex,
+      };
+    } else if (isDuet(s)) {
       // Duet board: the winner takes the round's points, ties are friendly
       // (both score). The loser takes the first-player token; on a tie it
       // passes to the player who did not hold it this round.
@@ -763,8 +781,23 @@ export function finishRound(state: GameState): GameState {
       // share the full rank value and the next rank is still awarded.
       const table = FLOCK_GOAL_POINTS[s.round] ?? FLOCK_GOAL_POINTS[3]!;
       const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
-      const values = [...new Set(units.filter((u) => u > 0))].sort((a, b) => b - a);
-      const scores = units.map((u) => (u > 0 ? (table[values.indexOf(u)] ?? 0) : 0));
+      const humPointsGoal = goalTile(tile)?.goal.kind === 'humPoints';
+      const qualifies = (pid: PlayerId, u: number) =>
+        humPointsGoal ? HUM_GROUPS.some((g) => getPlayer(s, pid).humTrack[g] > 0) : u > 0;
+      const values = [
+        ...new Set(s.playerOrder.map((_, i) => units[i]!).filter((u, i) => qualifies(s.playerOrder[i]!, u))),
+      ].sort((a, b) => b - a);
+      const scores = units.map((u, i) =>
+        qualifies(s.playerOrder[i]!, u) ? (table[values.indexOf(u)] ?? 0) : 0,
+      );
+      const goalScores = [...s.goalScores];
+      goalScores[s.round] = scores;
+      s = { ...s, goalScores };
+    } else if (s.settings.goalSide === 'blue') {
+      // Blue side: 1 point per targeted item, up to a maximum of 5 points.
+      const scores = s.playerOrder.map((pid) =>
+        Math.max(0, Math.min(5, goalScore(s, pid, tile))),
+      );
       const goalScores = [...s.goalScores];
       goalScores[s.round] = scores;
       s = { ...s, goalScores };
@@ -772,13 +805,17 @@ export function finishRound(state: GameState): GameState {
       const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
       const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
       // Ranks with tie-split (floor of summed rank points). Players with 0
-      // units place their cube on the 0 space — they don't rank. The americas
-      // hummingbird-points goal can be negative, and a negative total is a
-      // real count (everyone has a track total), so it still ranks.
+      // units place their cube on the 0 space — they don't rank. Per Americas
+      // p.8, players with negative or zero Hummingbird Points are still
+      // eligible to score as long as they've moved up the track at least once.
       const humPointsGoal = goalTile(tile)?.goal.kind === 'humPoints';
       const order = s.playerOrder
         .map((pid, i) => ({ pid, units: units[i]! }))
-        .filter((x) => (humPointsGoal ? x.units !== 0 : x.units > 0))
+        .filter((x) =>
+          humPointsGoal
+            ? HUM_GROUPS.some((g) => getPlayer(s, x.pid).humTrack[g] > 0)
+            : x.units > 0,
+        )
         .sort((a, b) => b.units - a.units);
       const scores = new Array<number>(s.playerOrder.length).fill(0);
       let i = 0;
@@ -819,6 +856,11 @@ export function finishRound(state: GameState): GameState {
     const nextFirst = isDuet(s)
       ? s.firstPlayerIndex
       : (s.firstPlayerIndex + 1) % s.playerOrder.length;
+    // Oceania "no goal": each completed round with "no goal" lets players
+    // keep their action cube, granting +1 turn in all following rounds.
+    const keptCubes = s.goalTiles
+      .slice(0, nextRound)
+      .filter((id) => id != null && goalTile(id)?.goal.kind === 'noGoal').length;
     s = {
       ...s,
       round: nextRound,
@@ -828,8 +870,9 @@ export function finishRound(state: GameState): GameState {
       phase: 'main',
       players: s.players.map((pl) => ({
         ...pl,
-        actionCubes: CUBES_PER_ROUND[nextRound]!,
+        actionCubes: CUBES_PER_ROUND[nextRound]! + keptCubes,
         roundCubes: { forest: 0, grassland: 0, wetland: 0, playBird: 0 },
+        cubesOnPlayBird: 0,
         gainedThisTurn: [],
       })),
     };

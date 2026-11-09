@@ -79,7 +79,7 @@ export function buildInitialOcean(): OceanState {
     Array.from({ length: 3 }, () => ({ stack: [], eggs: 0, young: 0, school: false })),
   );
   for (const [id, row, col, eggs, young] of INITIAL_OCEAN) {
-    slots[row]![col] = { stack: [id], eggs, young, school: false };
+    slots[row]![col] = { stack: id != null ? [id] : [], eggs, young, school: false };
   }
   return { slots, corals: [0, 0, 0] };
 }

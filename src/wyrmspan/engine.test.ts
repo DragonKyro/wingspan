@@ -244,6 +244,9 @@ describe('dragon academy round tracker', () => {
     p1.caves[0]!.spaces[0]!.dragon = { cardId: 258, eggs: 0, tucked: [], cached: [], training: 0 };
     p1.resources.milk = 1;
     s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    // First path segment MAT_ICONS[0][0] ("gain 1 any resource") runs before space 0.
+    expect(s.pending[0]?.kind).toBe('chooseResource');
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['gold'] } });
     const head = s.pending[0];
     expect(head?.kind).toBe('chooseTrain');
     if (head?.kind !== 'chooseTrain') throw new Error('unreachable');
@@ -260,6 +263,8 @@ describe('dragon academy round tracker', () => {
     const p1 = st.players.find((p) => p.id === 'p1')!;
     p1.caves[0]!.spaces[0]!.dragon = { cardId: 258, eggs: 0, tucked: [], cached: [], training: 0 };
     s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    expect(s.pending[0]?.kind).toBe('chooseResource');
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['gold'] } });
     expect(s.pending[0]?.kind).toBe('chooseTrain');
     s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'decline' } });
     expect(s.players.find((p) => p.id === 'p1')!.caves[0]!.spaces[0]!.dragon!.training ?? 0).toBe(0);
@@ -566,5 +571,267 @@ describe('audit regressions', () => {
     st.pending = [{ kind: 'chooseTrain', playerId: 'p1', times: 1, free: false, target: 'any' }];
     // A fully-trained fledgling is not a trainable target.
     expect(answerFor(st, 'p1')).toEqual({ kind: 'decline' });
+  });
+
+  it('pauses explore walk on mid-walk pending choices before resolving subsequent spaces', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Space 0: dragon 0 (White-Bellied Grazer, hatchling: cache 1 milk from supply -> gain 1 cave card).
+    // Space 1: dragon 55 (Hoarding Flyer: Adventurer "Gain [Gold].").
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 0, eggs: 0, tucked: [], cached: [] };
+    p1.caves[0]!.spaces[1]!.excavated = true;
+    p1.caves[0]!.spaces[1]!.dragon = { cardId: 55, eggs: 0, tucked: [], cached: [] };
+    p1.resources = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+
+    // Start exploring Crimson Cavern: MAT_ICONS[0][0] ("Gain [AnyResource]") queues chooseResource.
+    let s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    expect(s.pending[0]?.kind).toBe('chooseResource');
+    // Neither space 0's hatchling nor MAT_ICONS[0][1] (guild advance) nor space 1's Hoarding Flyer
+    // should have executed yet!
+    expect(s.guild.track.p1).toBe(0);
+    expect(playerOf(s, 'p1').resources.gold).toBe(0);
+
+    // Gain 1 milk from MAT_ICONS[0][0]; now space 0's hatchling queues chooseCache.
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['milk'] } });
+    expect(s.pending[0]?.kind).toBe('chooseCache');
+    expect(s.guild.track.p1).toBe(0);
+    expect(playerOf(s, 'p1').resources.gold).toBe(0);
+
+    // Cache the milk just gained on space 0 -> triggers hatchling recurring gain (1 cave card),
+    // then walks over MAT_ICONS[0][1] (guild advance to space 1 = lay 1 egg -> chooseEggSpot).
+    const cavesBefore = playerOf(s, 'p1').hand.filter((id) => !isDragonCard(id)).length;
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['milk'] } });
+    expect(playerOf(s, 'p1').caves[0]!.spaces[0]!.dragon!.cached).toEqual(['milk']);
+    expect(playerOf(s, 'p1').hand.filter((id) => !isDragonCard(id)).length).toBe(cavesBefore + 1);
+    expect(s.guild.track.p1).toBe(1);
+    expect(s.pending[0]?.kind).toBe('chooseEggSpot');
+    // Space 1's Hoarding Flyer STILL hasn't granted its gold yet!
+    expect(playerOf(s, 'p1').resources.gold).toBe(0);
+
+    // Resolve the egg from guild track space 1 -> adventurer reaches space 1 (Hoarding Flyer: +1 gold)
+    // and then MAT_ICONS[0][2] ("Gain [AnyResource]") before stopping at empty space 2.
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'eggSpots', spots: [{ kind: 'nest' }] } });
+    expect(playerOf(s, 'p1').resources.gold).toBe(1);
+    expect(s.pending[0]?.kind).toBe('chooseResource');
+  });
+
+  it('grants a resource from the tucked dragon\'s printed cost (matchTuckGainCost)', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Card 79 "Hawkish Firevern": "Tuck [DragonCard] from your hand here to gain
+    // [AnyResource] of the cost printed on the tucked dragon."
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 79, eggs: 0, tucked: [], cached: [] };
+    // Card 119 "Knowing Guardian" has cost { meat: 1, gold: 1 }.
+    p1.hand = [119];
+    p1.resources = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+
+    // Explore cave 0: resolve MAT_ICONS[0][0] first (pick crystal).
+    let s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['crystal'] } });
+
+    // Now Hawkish Firevern prompts to tuck a dragon card from hand.
+    expect(s.pending[0]?.kind).toBe('chooseTuck');
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      answer: { kind: 'assignTucks', assignments: [{ cardId: 119, pos: [0, 0] }] },
+    });
+
+    // Tucked card 119 costs meat + gold -> chooseResource is restricted to ['meat', 'gold'].
+    const head = s.pending[0];
+    expect(head?.kind).toBe('chooseResource');
+    if (head?.kind !== 'chooseResource') throw new Error('unreachable');
+    expect(head.allowed).toEqual(['meat', 'gold']);
+
+    // Picking gold grants 1 gold; trying to pick milk (not in allowed) clamps to allowed[0] ('meat').
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['gold'] } });
+    expect(playerOf(s, 'p1').resources.gold).toBe(1);
+  });
+
+  it('deduplicates Dragon Academy replacement cards (5 dragons and cave cards 50 & 51)', () => {
+    const baseGame = createGame({ seed: 10, expansions: ['base'] });
+    const allBaseDragons = [
+      ...baseGame.dragonDeck,
+      ...baseGame.dragonDisplay.filter((c): c is number => c !== null),
+      ...Object.values(baseGame.setupOffers).flat().filter(isDragonCard),
+    ];
+    const allBaseCaves = [
+      ...baseGame.caveDeck,
+      ...baseGame.caveDisplay.filter((c): c is number => c !== null),
+      ...Object.values(baseGame.setupOffers).flat().filter((c) => !isDragonCard(c)),
+    ];
+    expect(allBaseDragons).toHaveLength(183);
+    expect(allBaseCaves).toHaveLength(75);
+    // Base game contains base Chameleon Coatl (id 118), not Academy Chameleon Coatyl (id 363).
+    expect(allBaseDragons).toContain(118);
+    expect(allBaseDragons).not.toContain(363);
+
+    const acadGame = createGame({ seed: 10, expansions: ['base', 'academy'] });
+    const allAcadDragons = [
+      ...acadGame.dragonDeck,
+      ...acadGame.dragonDisplay.filter((c): c is number => c !== null),
+      ...Object.values(acadGame.setupOffers).flat().filter(isDragonCard),
+    ];
+    const allAcadCaves = [
+      ...acadGame.caveDeck,
+      ...acadGame.caveDisplay.filter((c): c is number => c !== null),
+      ...Object.values(acadGame.setupOffers).flat().filter((c) => !isDragonCard(c)),
+    ];
+    // 183 base + 80 academy = 263 dragons; 75 base + 25 academy = 100 caves (no duplicate replacement copies).
+    expect(allAcadDragons).toHaveLength(263);
+    expect(allAcadCaves).toHaveLength(100);
+    // Academy replacement ids (363..367 for dragons, 368..369 for caves) replace base ids (118, 123, 130, 131, 133, 232, 233).
+    for (const repId of [363, 364, 365, 366, 367]) expect(allAcadDragons).toContain(repId);
+    for (const oldId of [118, 123, 130, 131, 133]) expect(allAcadDragons).not.toContain(oldId);
+    for (const repCaveId of [368, 369]) expect(allAcadCaves).toContain(repCaveId);
+    for (const oldCaveId of [232, 233]) expect(allAcadCaves).not.toContain(oldCaveId);
+  });
+
+  it('implements all 5 Dragon Academy guild tiles (merchants, gamblers, kings, veterinary, magicians)', () => {
+    // 1. Guild of Merchants: pay 1 coin, excavate 1 space free from hand and activate its ability 2x.
+    {
+      const st = structuredClone(inMain());
+      st.guild.tile = 'merchants';
+      st.guild.squares = GUILD_TILES.merchants.squares.map(() => []);
+      const p1 = playerOf(st, 'p1');
+      // Cave card 228 (number 46): "Gain [Meat][Milk]."
+      p1.hand = [228];
+      p1.coins = 2;
+      p1.resources = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+      st.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+      expect(s.pending[0]?.kind).toBe('choosePay');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+      expect(s.pending[0]?.kind).toBe('chooseExcavate');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+      const after = playerOf(s, 'p1');
+      expect(after.coins).toBe(1);
+      expect(after.caves[0]!.spaces[1]!.excavated).toBe(true);
+      // Activated 2x -> +2 meat and +2 milk!
+      expect(after.resources.meat).toBe(2);
+      expect(after.resources.milk).toBe(2);
+    }
+
+    // 2. King's Guild: pay 2 tithes (mixing 1 resource + 1 egg) for +8 end-game VP on square 3.
+    {
+      const st = structuredClone(inMain());
+      st.guild.tile = 'kings';
+      st.guild.squares = GUILD_TILES.kings.squares.map(() => []);
+      const p1 = playerOf(st, 'p1');
+      p1.resources = { meat: 1, gold: 0, crystal: 0, milk: 0 };
+      p1.hand = [];
+      p1.nestEggs = 1;
+      st.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 3 } });
+      expect(s.pending[0]?.kind).toBe('choosePay');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+      const after = playerOf(s, 'p1');
+      expect(after.resources.meat).toBe(0);
+      expect(after.nestEggs).toBe(0);
+      expect(s.guild.squares[3]).toEqual(['p1']);
+    }
+
+    // 3. Veterinary Guild: square 1 caches 2 from general supply across 2 dragons (1 each).
+    {
+      const st = structuredClone(inMain());
+      st.guild.tile = 'veterinary';
+      st.guild.squares = GUILD_TILES.veterinary.squares.map(() => []);
+      const p1 = playerOf(st, 'p1');
+      p1.caves[0]!.spaces[0]!.dragon = { cardId: 138, eggs: 0, tucked: [], cached: [] };
+      p1.caves[1]!.spaces[0]!.dragon = { cardId: 55, eggs: 0, tucked: [], cached: [] };
+      st.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 1 } });
+      expect(s.pending[0]?.kind).toBe('chooseOption');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+      expect(s.pending[0]?.kind).toBe('chooseCache');
+      s = applyAction(s, {
+        type: 'resolveChoice',
+        playerId: 'p1',
+        answer: { kind: 'dragons', positions: [[0, 0], [1, 0]] },
+      });
+      const after = playerOf(s, 'p1');
+      expect(after.caves[0]!.spaces[0]!.dragon!.cached).toHaveLength(1);
+      expect(after.caves[1]!.spaces[0]!.dragon!.cached).toHaveLength(1);
+    }
+
+    // 4. Guild of Magicians: square 0 swaps a dragon on the mat with a dragon in hand, transferring contents,
+    // and square 1 swaps an uncovered cave card on the mat with a cave card in hand.
+    {
+      const st = structuredClone(inMain());
+      st.guild.tile = 'magicians';
+      st.guild.squares = GUILD_TILES.magicians.squares.map(() => []);
+      const p1 = playerOf(st, 'p1');
+      p1.caves[0]!.spaces[0]!.dragon = { cardId: 138, eggs: 1, tucked: [9], cached: ['meat'] };
+      p1.caves[0]!.spaces[1]!.excavated = true;
+      p1.caves[0]!.spaces[1]!.caveCardId = 183;
+      // Hand has dragon 55 (Hoarding Flyer, capacity 2) and cave 228 (Gain [Meat][Milk]).
+      p1.hand = [55, 228];
+      p1.coins = 2;
+      p1.resources = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+
+      // Square 0: swap dragon 138 with dragon 55 from hand.
+      st.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+      expect(s.pending[0]?.kind).toBe('choosePay');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+      expect(s.pending[0]?.kind).toBe('chooseHandDragonSwap');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+      let after = playerOf(s, 'p1');
+      expect(after.caves[0]!.spaces[0]!.dragon?.cardId).toBe(55);
+      expect(after.caves[0]!.spaces[0]!.dragon?.eggs).toBe(1);
+      expect(after.caves[0]!.spaces[0]!.dragon?.tucked).toEqual([9]);
+      expect(after.caves[0]!.spaces[0]!.dragon?.cached).toEqual(['meat']);
+      expect(after.hand).toContain(138);
+
+      // Square 1: swap uncovered cave card 183 at [0, 1] with cave card 228 from hand.
+      s.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 1 } });
+      expect(s.pending[0]?.kind).toBe('chooseCaveCardSwap');
+      s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+      after = playerOf(s, 'p1');
+      expect(after.caves[0]!.spaces[1]!.caveCardId).toBe(228);
+      expect(after.hand).toContain(183);
+      expect(after.resources.meat).toBe(1);
+      expect(after.resources.milk).toBe(1);
+    }
+
+    // 5. Gambler's Guild: square 3 draws 4 dragon cards, scores printed VP on top 2, and discards all 4.
+    {
+      const st = structuredClone(inMain());
+      st.guild.tile = 'gamblers';
+      st.guild.squares = GUILD_TILES.gamblers.squares.map(() => []);
+      const top4 = st.dragonDeck.slice(0, 4);
+      const discardBefore = st.dragonDiscard.length;
+      st.pending = [{ kind: 'chooseGuildSquare', playerId: 'p1' }];
+      const s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 3 } });
+      expect(s.dragonDiscard.length).toBe(discardBefore + 4);
+      for (const id of top4) expect(s.dragonDiscard).toContain(id);
+      expect(s.guild.gamblerVp?.p1).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('offers the 4th-column player-mat when-covered exchange (3 items -> 1 coin) on excavation', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Pre-excavate columns 1, 2, 3 so column 4 (index 3) is the next empty space.
+    p1.caves[0]!.spaces[1]!.excavated = true;
+    p1.caves[0]!.spaces[1]!.caveCardId = 183;
+    p1.caves[0]!.spaces[2]!.excavated = true;
+    p1.caves[0]!.spaces[2]!.caveCardId = 184;
+    // Cave card 231 (number 49): "Gain [Milk][Milk]." (synchronous).
+    p1.hand = [231, 9];
+    p1.coins = 2;
+    p1.nestEggs = 2; // column 4 excavation costs 1 coin + 2 eggs
+    p1.resources = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+
+    let s = applyAction(st, { type: 'excavate', playerId: 'p1', cave: 0, cardId: 231 });
+    // Cave card 231 gave 2 milk, plus 1 dragon card (9) in hand = 3 items -> 4th-column choosePay offered!
+    expect(s.pending[0]?.kind).toBe('choosePay');
+    expect(playerOf(s, 'p1').coins).toBe(1);
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+    const after = playerOf(s, 'p1');
+    expect(after.coins).toBe(2); // gained 1 coin from spending the 2 milk + 1 hand card
+    expect(after.resources.milk).toBe(0);
+    expect(after.hand).toHaveLength(0);
   });
 });

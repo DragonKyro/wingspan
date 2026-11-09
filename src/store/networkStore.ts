@@ -1,10 +1,14 @@
 import { create } from 'zustand';
-import type { GameState, PlayerColor, PlayerId } from '@/wingspan/types';
-import { createGame } from '@/wingspan/createGame';
-import type { CreateGameOptions } from '@/wingspan/types';
+import type { CreateGameOptions as WingspanOptions, PlayerColor, PlayerId } from '@/wingspan/types';
+import { createGame as createWingspan } from '@/wingspan/createGame';
+import { createGame as createWyrmspan, type CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
+import { createGame as createFinspan } from '@/finspan/createGame';
+import type { CreateGameOptions as FinspanOptions } from '@/finspan/types';
 import {
+  type AnyAction,
   type ChatMessage,
   type ConnectionState,
+  type GameId,
   type LobbyGame,
   type LobbySeat,
   type LobbyState,
@@ -38,21 +42,18 @@ import {
   normalizeLobbyGame,
 } from './lobbyGame';
 
-const DEFAULT_COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple'];
+const DEFAULT_COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'];
 const SYSTEM_NAME = 'System';
-/** The build this page runs (rooms record the build that made them). */
 export const APP_BUILD = typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'dev';
 
-/** Why a join gave up, for the error screen. */
 export interface JoinFailure {
   code: string;
-  /** notFound: the server has no room with this code. unreachable: this device couldn't reach the server. */
   reason: 'notFound' | 'unreachable';
   detail?: string;
 }
 
 /** FNV-1a over the state's JSON: devices compare it to know they built the same starting game. */
-export function gameChecksum(state: GameState): string {
+export function gameChecksum(state: unknown): string {
   const json = JSON.stringify(state);
   let h = 0x811c9dc5;
   for (let i = 0; i < json.length; i++) {
@@ -74,16 +75,14 @@ interface NetStore {
   roomCode: string | null;
   hostUuid: string | null;
   joinFailure: JoinFailure | null;
-  /** This device's link to the server; false while it reconnects (moves wait, then go through). */
   serverConnected: boolean;
   lobby: LobbyState;
   onlineUuids: Set<string>;
   chat: ChatMessage[];
 
   setDisplayName: (name: string) => void;
-  createRoom: (name: string) => Promise<void>;
+  createRoom: (name: string, initialGame?: LobbyGame) => Promise<void>;
   joinRoom: (code: string, name: string) => Promise<void>;
-  /** Join the room of the last failed join again. */
   retryJoin: () => void;
   leaveRoom: () => void;
   clearError: () => void;
@@ -93,7 +92,6 @@ interface NetStore {
   hostSetAiLevel: (level: number) => void;
   hostSetGame: (game: LobbyGame) => void;
   hostStartGame: () => Promise<void>;
-  /** Recolor a seat: your own, or (host) an AI seat. A seat already wearing the color swaps to the old one. */
   setSeatColor: (slot: number, color: PlayerColor) => void;
 
   sendChat: (text: string) => void;
@@ -101,8 +99,6 @@ interface NetStore {
   isOnlinePlayer: (playerId: PlayerId) => boolean;
 }
 
-// Loaded on first use so the Firebase SDK isn't in the main bundle.
-// (Tests swap the module for src/net/fakeTransport.ts.)
 type LoadedTransport = RoomTransport & { warmUp: () => void };
 let transportPromise: Promise<LoadedTransport> | null = null;
 function loadTransport(): Promise<LoadedTransport> {
@@ -115,18 +111,16 @@ function loadTransport(): Promise<LoadedTransport> {
   return transportPromise;
 }
 
-/** Load the online code and sign in ahead of time (call when the online menu opens). */
 export function warmUpNetwork(): void {
   loadTransport().then((t) => t.warmUp(), () => {});
 }
 
-// Internal (non-reactive) session state.
 let conn: RoomConnection | null = null;
-let session = 0; // bumped on every create / join / leave; stale callbacks compare against it
+let session = 0;
 let sync: ActionSync<GameSnapshot> | null = null;
-let seatToUuid: (string | null)[] = []; // index = playerId 'pN' slot minus 1
+let seatToUuid: (string | null)[] = [];
 let gameStarted = false;
-let lastPresence: Map<string, string> | null = null; // uuid → name
+let lastPresence: Map<string, string> | null = null;
 
 function emptyLobby(): LobbyState {
   return { hostUuid: '', seats: [], seed: 0, game: defaultLobbyGame() };
@@ -155,7 +149,6 @@ function userMessage(text: string, uuid: string, name: string): ChatMessage {
   return { id: messageId(), senderUuid: uuid, senderName: name, text, timestamp: Date.now(), kind: 'user' };
 }
 
-/** Take (or keep) a seat for `uuid` while the lobby is open. */
 function seatEdit(lobby: LobbyState, uuid: string, name: string): LobbyState | null {
   if (lobby.started) return null;
   const i = lobby.seats.findIndex((s) => s.uuid === uuid);
@@ -180,20 +173,17 @@ export const useNetworkStore = create<NetStore>((set, get) => {
     return c === 'lobby' || c === 'in-game';
   });
   registerBroadcastHandler((action, before, at) => sync?.local(action, before, at));
-  // Act only for your own seat (the host also for AI seats), so nothing is
-  // ever written for a seat this device doesn't own.
-  registerDispatchGuard((action) => {
+  registerDispatchGuard((action: AnyAction) => {
     const s = get();
     if (s.connection !== 'in-game') return null;
     if (s.role === 'spectator') return "You're watching this game, not playing in it.";
-    const owner = s.uuidForPlayer(action.playerId);
+    const owner = s.uuidForPlayer(action.playerId as PlayerId);
     if (owner === s.myUuid || (owner === null && s.role === 'host')) return null;
     return "That's another player's seat.";
   });
 
   const myUuid = getOrCreateUuid();
 
-  /** End the current session (if any) and start a new one; returns its id. */
   function beginSession(): number {
     session++;
     sync?.close();
@@ -212,21 +202,21 @@ export const useNetworkStore = create<NetStore>((set, get) => {
 
   function makeSync(): ActionSync<GameSnapshot> {
     return new ActionSync<GameSnapshot>({
-        apply: (entry) => {
-          useGameStore.getState().applyLocal(entry.action, entry.at);
-        },
-        reapply: (entry) => useGameStore.getState().applyLocal(entry.action, entry.at),
-        snapshot: () => useGameStore.getState().takeSnapshot()!,
-        restore: (snap) => useGameStore.getState().restoreSnapshot(snap),
-        write: (seq, entry) => (conn ? conn.appendAction(seq, entry) : Promise.resolve(false)),
-        dropped: (_action, why) => {
-          useGameStore.setState({
-            error:
-              why === 'overtaken'
-                ? "Another player's move went through first, so yours was taken back."
-                : 'The server refused that move.',
-          });
-        },
+      apply: (entry) => {
+        useGameStore.getState().applyLocal(entry.action, entry.at);
+      },
+      reapply: (entry) => useGameStore.getState().applyLocal(entry.action, entry.at),
+      snapshot: () => useGameStore.getState().takeSnapshot()!,
+      restore: (snap) => useGameStore.getState().restoreSnapshot(snap),
+      write: (seq, entry) => (conn ? conn.appendAction(seq, entry) : Promise.resolve(false)),
+      dropped: (_action, why) => {
+        useGameStore.setState({
+          error:
+            why === 'overtaken'
+              ? "Another player's move went through first, so yours was taken back."
+              : 'The server refused that move.',
+        });
+      },
     });
   }
 
@@ -234,8 +224,6 @@ export const useNetworkStore = create<NetStore>((set, get) => {
     const lobby: LobbyState = { ...raw, game: normalizeLobbyGame(raw.game ?? defaultLobbyGame()) };
     const s = get();
     const me = s.myUuid;
-    // A started lobby means the game record is on its way: stay on the
-    // "joining" card rather than flash the lobby.
     const toLobby = s.connection === 'connecting' && !gameStarted && !lobby.started;
     set({
       lobby,
@@ -246,7 +234,7 @@ export const useNetworkStore = create<NetStore>((set, get) => {
   }
 
   function onStart(rec: StartRecord): void {
-    if (gameStarted) return; // written once; ignore repeats
+    if (gameStarted) return;
     gameStarted = true;
     seatToUuid = rec.seatUuids.slice();
     const me = get().myUuid;
@@ -261,22 +249,31 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       joinFailure: null,
     });
     addSystem(wasInLobby ? 'Game started' : isPlayer ? 'Rejoined the game' : 'Spectating');
-    // Every device builds the starting game from the same inputs.
-    let game: GameState;
+    const gameId: GameId = rec.gameId ?? 'wingspan';
     try {
-      game = createGame(rec.options);
+      if (gameId === 'wyrmspan' && rec.wyrmspanOptions) {
+        const g = createWyrmspan(rec.wyrmspanOptions);
+        if (gameChecksum(g) !== rec.check) {
+          addSystem("This device set up a different game from the host's. Reload every device's page.");
+        }
+        useGameStore.getState().setWyrmspanState(g, rec.startedAt);
+      } else if (gameId === 'finspan' && rec.finspanOptions) {
+        const g = createFinspan(rec.finspanOptions);
+        if (gameChecksum(g) !== rec.check) {
+          addSystem("This device set up a different game from the host's. Reload every device's page.");
+        }
+        useGameStore.getState().setFinspanState(g, rec.startedAt);
+      } else {
+        const g = createWingspan(rec.options);
+        if (gameChecksum(g) !== rec.check) {
+          addSystem("This device set up a different game from the host's. Reload every device's page.");
+        }
+        useGameStore.getState().setGameState(g, rec.startedAt);
+      }
     } catch (e) {
       addSystem(`This device couldn't set up the game (${(e as Error).message}). Reload the page.`);
       return;
     }
-    if (gameChecksum(game) !== rec.check) {
-      addSystem(
-        "This device set up a different game from the host's, so moves won't line up. "
-          + "Reload every device's page so they all run the same version.",
-      );
-    }
-    useGameStore.getState().setGameState(game, rec.startedAt);
-    // Replay the log from the start: every device ends up with the same game.
     sync?.begin();
   }
 
@@ -359,7 +356,7 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       set({ myDisplayName: name });
     },
 
-    createRoom: async (name) => {
+    createRoom: async (name, initialGame) => {
       saveDisplayName(name);
       const my = beginSession();
       const me = get().myUuid;
@@ -367,7 +364,7 @@ export const useNetworkStore = create<NetStore>((set, get) => {
         hostUuid: me,
         seats: [{ uuid: me, name, isAI: false, color: DEFAULT_COLORS[0]! }],
         seed: randomSeed(),
-        game: defaultLobbyGame(),
+        game: normalizeLobbyGame(initialGame ?? defaultLobbyGame()),
       };
       sync = makeSync();
       set({
@@ -386,7 +383,6 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       try {
         const transport = await loadTransport();
         let c: RoomConnection | null = null;
-        // A code still in use by a live room is refused; draw another.
         for (let attempt = 0; attempt < 6 && !c && my === session; attempt++) {
           c = await transport.createRoom(
             generateRoomCode(),
@@ -461,7 +457,6 @@ export const useNetworkStore = create<NetStore>((set, get) => {
             + "If moves stop lining up, reload every device's page.",
         );
       }
-      // Take a seat while the lobby is open (rejoining keeps yours).
       await editLobby((lobby) => seatEdit(lobby, me, name));
     },
 
@@ -474,7 +469,6 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       const s = get();
       const c = conn;
       conn = null;
-      // A guest leaving the lobby gives up their seat.
       if (c && s.connection === 'lobby' && s.role !== 'host') {
         const me = s.myUuid;
         c.updateLobby((l) =>
@@ -522,7 +516,7 @@ export const useNetworkStore = create<NetStore>((set, get) => {
     },
 
     hostRemoveSeat: (slot) => {
-      if (get().role !== 'host' || slot <= 0) return; // can't remove the host
+      if (get().role !== 'host' || slot <= 0) return;
       const target = get().lobby.seats[slot];
       if (!target) return;
       const same = (s: LobbySeat) => s.uuid === target.uuid && s.name === target.name && s.isAI === target.isAI;
@@ -547,31 +541,58 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       const c = conn;
       const my = session;
       if (get().role !== 'host' || !c || lobbyStartProblem(get().lobby)) return;
-      // Lock the seats and settings first, atomically: a guest taking a seat
-      // at the same moment either makes it in or finds the lobby closed.
       const final = await editLobby((l) => (l.started || lobbyStartProblem(l) ? null : { ...l, started: true }));
       if (!final || my !== session) return;
       const reopen = (why: string) => {
         addSystem(`Couldn't start the game: ${why}`);
         void editLobby((l) => ({ ...l, started: false }));
       };
-      const options: CreateGameOptions = {
+      const g = normalizeLobbyGame(final.game);
+      const gameId: GameId = g.gameId ?? 'wingspan';
+      const options: WingspanOptions = {
         playerNames: final.seats.map((s) => s.name),
         playerTypes: final.seats.map((s) => (s.isAI ? 'ai' : 'human')),
         playerColors: final.seats.map((s) => s.color),
         seed: final.seed,
         settings: lobbySettings(final),
       };
+      let wyrmspanOptions: WyrmspanOptions | undefined;
+      let finspanOptions: FinspanOptions | undefined;
       let check: string;
       try {
-        check = gameChecksum(createGame(options));
+        if (gameId === 'wyrmspan') {
+          wyrmspanOptions = {
+            seed: final.seed,
+            playerNames: final.seats.map((s) => s.name),
+            isAI: final.seats.map((s) => s.isAI),
+            expansions: g.expansions ?? ['base', 'academy'],
+          };
+          check = gameChecksum(createWyrmspan(wyrmspanOptions));
+        } else if (gameId === 'finspan') {
+          finspanOptions = {
+            playerNames: final.seats.map((s) => s.name),
+            playerTypes: final.seats.map((s) => (s.isAI ? 'ai' : 'human')),
+            playerColors: final.seats.map((s) => s.color),
+            seed: final.seed,
+            settings: {
+              sets: g.sets,
+              achievementSide: g.achievementSide ?? 'A',
+            },
+          };
+          check = gameChecksum(createFinspan(finspanOptions));
+        } else {
+          check = gameChecksum(createWingspan(options));
+        }
       } catch (e) {
         reopen((e as Error).message);
         return;
       }
       try {
         await c.start({
+          gameId,
           options,
+          wyrmspanOptions,
+          finspanOptions,
           seatUuids: final.seats.map((s) => s.uuid),
           hostUuid: get().myUuid,
           startedAt: Date.now(),
@@ -587,62 +608,39 @@ export const useNetworkStore = create<NetStore>((set, get) => {
       const target = s.lobby.seats[slot];
       if (!target || s.connection !== 'lobby') return;
       const mine = target.uuid === s.myUuid;
-      if (!mine && !(target.isAI && s.role === 'host')) return;
-      const same = (x: LobbySeat) => x.uuid === target.uuid && x.name === target.name && x.isAI === target.isAI;
+      const aiForHost = s.role === 'host' && target.isAI;
+      if (!mine && !aiForHost) return;
       void editLobby((l) => {
-        const i = l.seats.findIndex(same);
-        const seat = l.seats[i];
-        if (l.started || !seat || seat.color === color) return null;
+        if (l.started) return null;
+        const me = l.seats[slot];
+        if (!me || me.color === color) return null;
+        const other = l.seats.findIndex((x, i) => i !== slot && x.color === color);
         return {
           ...l,
-          seats: l.seats.map((x, j) =>
-            j === i ? { ...x, color } : x.color === color ? { ...x, color: seat.color } : x,
+          seats: l.seats.map((x, i) =>
+            i === slot ? { ...x, color } : i === other ? { ...x, color: me.color } : x,
           ),
         };
       });
     },
 
     sendChat: (text) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      const msg = userMessage(trimmed, get().myUuid, get().myDisplayName);
-      // Shown at once; the room's copy is de-duplicated by id.
-      set({ chat: [...get().chat, msg] });
-      conn?.sendChat(msg).catch((e: unknown) => console.warn('[net] chat send failed:', (e as Error).message));
+      const clean = text.trim().slice(0, 500);
+      if (!clean || !conn) return;
+      const s = get();
+      const msg = userMessage(clean, s.myUuid, s.myDisplayName);
+      onChat(msg);
+      void conn.sendChat(msg);
     },
 
     uuidForPlayer: (playerId) => {
-      // 'p1' → seatToUuid[0]
       const idx = Number(playerId.slice(1)) - 1;
       return seatToUuid[idx] ?? null;
     },
 
-    isOnlinePlayer: (playerId: PlayerId): boolean => {
-      const state = get();
-      const uuid = state.uuidForPlayer(playerId);
-      if (!uuid) return false;
-      return state.onlineUuids.has(uuid);
+    isOnlinePlayer: (playerId) => {
+      const uuid = get().uuidForPlayer(playerId);
+      return uuid !== null && get().onlineUuids.has(uuid);
     },
   };
 });
-
-// Helper: are we currently controlling player `pid`?
-export function isMyPlayer(playerId: PlayerId): boolean {
-  const s = useNetworkStore.getState();
-  if (s.connection === 'disconnected' || s.role === 'solo') return true;
-  const uuid = s.uuidForPlayer(playerId);
-  return uuid === s.myUuid;
-}
-
-// Helper: the player id for our local seat, or null if spectator / hot-seat.
-export function getMyPlayerId(game: GameState | null): PlayerId | null {
-  if (!game) return null;
-  const s = useNetworkStore.getState();
-  if (s.connection === 'disconnected' || s.role === 'solo') {
-    return null; // hot-seat: many players on one device, no single "me"
-  }
-  for (let i = 0; i < game.players.length; i++) {
-    if (s.uuidForPlayer(game.players[i]!.id) === s.myUuid) return game.players[i]!.id;
-  }
-  return null;
-}

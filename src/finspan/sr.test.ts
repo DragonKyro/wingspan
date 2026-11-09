@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAbility } from './abilities';
 import { chooseAction } from './ai/chooseAction';
 import { FISH, sideBTilePool } from './cards';
-import { REEF_DISCARD_ITEMS, MAX_CORAL, REEF_COMPLETION_BONUS } from './constants';
+import { REEF_DISCARD_ITEMS, REEF_OVERLAY_SIDES, MAX_CORAL, REEF_COMPLETION_BONUS } from './constants';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
 import { addEgg, addYoung, allSlots, getPlayer, placeCoral, setPlayer, slotAt } from './helpers';
@@ -88,7 +88,8 @@ describe('reef overlay dives', () => {
     let s = applyAction(srGame(3, 2, 'A', costs), { type: 'dive', playerId: 'p1', col: 2 });
     const step = s.pending.find((x) => x.kind === 'chooseReefDiscard')!;
     expect(step.kind === 'chooseReefDiscard' && step.item).toBe('egg');
-    // Finish p1's turn (decline the reef offer + the optional bottom move).
+    // Finish p1's turn (decline the sunlight hatch + the reef offer + the bottom move).
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'decline' } });
     s = applyAction(s, {
       type: 'resolveChoice',
       playerId: 'p1',
@@ -101,19 +102,16 @@ describe('reef overlay dives', () => {
     expect(step2.kind === 'chooseReefDiscard' && step2.item).toBe('card');
   });
 
-  it('draws a randomized reef overlay per player when reefCosts is unset', () => {
+  it('deals each player a printed reef overlay side from REEF_OVERLAY_SIDES when reefCosts is unset', () => {
     const s = srGame(4);
-    expect(s.settings.reefCosts).toBeTruthy();
-    expect(s.settings.reefCosts!.length).toBe(2);
-    for (const row of s.settings.reefCosts!) {
-      expect(row.length).toBe(3);
-      for (const item of row) expect(['egg', 'young', 'card']).toContain(item);
+    expect(REEF_OVERLAY_SIDES.length).toBe(10);
+    for (const side of REEF_OVERLAY_SIDES) {
+      expect(side).toEqual(['egg', 'young', 'card']);
     }
-    // Different seeds produce different overlay combos.
-    const combos = new Set(
-      [1, 2, 3, 4, 5, 6].map((seed) => JSON.stringify(srGame(seed).settings.reefCosts)),
-    );
-    expect(combos.size).toBeGreaterThan(1);
+    expect(s.settings.reefCosts).toEqual([
+      ['egg', 'young', 'card'],
+      ['egg', 'young', 'card'],
+    ]);
     // Base games leave reefCosts unset.
     expect(baseGame(4).settings.reefCosts).toBeUndefined();
   });
@@ -130,8 +128,9 @@ describe('reef overlay dives', () => {
     // The reef step resolved; coral was placed (other pending steps may remain).
     expect(getPlayer(s, 'p1').ocean.corals[0]).toBe(1);
 
-    // Green site wants a card; decline it.
+    // Green site wants a card; decline the sunlight hatch first, then the reef offer.
     let s2 = applyAction(srGame(3, 2, 'A', FIXED_REEF), { type: 'dive', playerId: 'p1', col: 2 });
+    s2 = applyAction(s2, { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'decline' } });
     s2 = applyAction(s2, {
       type: 'resolveChoice',
       playerId: 'p1',
@@ -157,11 +156,11 @@ describe('reef overlay dives', () => {
   });
 
   it('S&R replaces the twilight bonus even where a twilight fish exists', () => {
-    // Purple column: sunlight benefit (Catalina Goby) + reef step replace the
-    // twilight egg bonus; the bottom 'egg' bonus still applies.
+    // Purple column: Showy Bristlemouth is in twilight; reef step replaces the
+    // twilight egg bonus, and the bottom 'egg' bonus still applies.
     const s = applyAction(srGame(3), { type: 'dive', playerId: 'p1', col: 1 });
     const kinds = s.pending.map((x) => x.kind);
-    expect(kinds).toEqual(['chooseEggTargets', 'chooseReefDiscard', 'chooseEggTargets']);
+    expect(kinds).toEqual(['chooseReefDiscard', 'chooseEggTargets']);
   });
 });
 
@@ -219,27 +218,48 @@ describe('coral requirements and scoring', () => {
 });
 
 describe('S&R abilities', () => {
-  it('gates the "also, if N coral" second benefit on this dive site', () => {
+  it('gates the "also, if N coral" second benefit on this dive site and maps [Discard] to chooseRecover', () => {
     // Furry Coffinfish: [Discard] also, if 3 blue coral: [SchoolFeederMove].
+    // [Discard] is the sideways fish-skeleton icon (recover a card from your discard pile).
     const card = FISH.find((c) => c.name === 'Furry Coffinfish')!;
     let s = srGame(7);
     let p = getPlayer(s, 'p1');
     const slots = p.ocean.slots.map((r) => r.map((x) => ({ ...x })));
     slots[3]![0] = { stack: [card.id], eggs: 0, young: 0, school: false };
-    p = { ...p, ocean: { ...p.ocean, slots }, hand: [1, 2, 3] };
+    p = { ...p, ocean: { ...p.ocean, slots }, hand: [1, 2, 3], discard: [4] };
     s = setPlayer(s, p);
     const ref: SlotRef = { row: 3, col: 0 };
 
     const noCoral = fireAbility(s, 'p1', card.ability, ref, 'test');
-    expect(noCoral.pending.map((x) => x.kind)).toEqual(['chooseHandDiscard']);
+    expect(noCoral.pending.map((x) => x.kind)).toEqual(['chooseRecover']);
 
     let p2 = getPlayer(s, 'p1');
     for (let i = 0; i < 3; i++) p2 = placeCoral(p2, 0);
     s = setPlayer(s, p2);
     const withCoral = fireAbility(s, 'p1', card.ability, ref, 'test');
     const kinds = withCoral.pending.map((x) => x.kind);
-    expect(kinds[0]).toBe('chooseHandDiscard');
+    expect(kinds[0]).toBe('chooseRecover');
     expect(kinds).toContain('chooseMove');
+  });
+
+  it('allows forming a school in an earlier effect and scattering it with [UnSchoolFish]', () => {
+    // Ninja Lanternshark: "[YoungFish][UnSchoolFish]"
+    let s = srGame(7);
+    let p = getPlayer(s, 'p1');
+    // Put 2 young on r0c0 (no school yet anywhere).
+    p = addYoung(p, { row: 0, col: 0 }, 2);
+    s = setPlayer(s, p);
+    s = fireAbility(s, 'p1', '[YoungFish][UnSchoolFish]', { row: 3, col: 0 }, 'test');
+    expect(s.pending.map((x) => x.kind)).toEqual(['chooseYoungSlots', 'chooseUnSchool']);
+    // Place the young on r0c0 -> forms a school there!
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'slots', slots: [{ row: 0, col: 0 }] },
+    });
+    expect(slotAt(getPlayer(s, 'p1').ocean, { row: 0, col: 0 }).school).toBe(true);
+    // Now chooseUnSchool is at the head and can scatter that newly formed school.
+    expect(s.pending[0]!.kind).toBe('chooseUnSchool');
   });
 
   it('scatters a school into 4 young (or 1 young with no school)', () => {
@@ -278,6 +298,26 @@ describe('S&R abilities', () => {
     const s3 = setPlayer(s, p3);
     const fired3 = fireAbility(s3, 'p1', raw, { row: 0, col: 0 }, 'test');
     expect(fired3.pending[0]!.kind).toBe('chooseYoungSlots');
+
+    // Double [UnSchoolFish][UnSchoolFish] with only 1 school: first scatters the
+    // school into 4 young; second converts to the 1-young fallback.
+    const firedDouble = fireAbility(s, 'p1', '[UnSchoolFish][UnSchoolFish]', { row: 0, col: 0 }, 'test');
+    expect(firedDouble.pending.map((x) => x.kind)).toEqual(['chooseUnSchool', 'chooseUnSchool']);
+    const afterFirst = applyAction(firedDouble, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: {
+        kind: 'unSchool',
+        schoolSlot: { row: 0, col: 0 },
+        youngSlots: [
+          { row: 0, col: 1 },
+          { row: 0, col: 2 },
+          { row: 1, col: 0 },
+          { row: 2, col: 0 },
+        ],
+      },
+    });
+    expect(afterFirst.pending[0]!.kind).toBe('chooseYoungSlots');
   });
 });
 
@@ -293,23 +333,31 @@ describe('S&R achievements', () => {
     p = { ...p, ocean: { ...p.ocean, slots } };
     // über + predator + bioluminescent = 3 unique tags from 2 fish.
     expect(achievementUnits(p, 'uniqueTags')).toBe(3);
+    // Unique Tags tile (s2) awards 2 points per unique tag (sharks_p07.png).
+    const s2Tile = sideBTilePool(2, ['base', 'sr']).find((t) => t.id === 's2')!;
+    expect(scoreAchievement(p, s2Tile)).toBe(6);
+    // Coral tile (s4) awards 2 points per coral (sharks_p01.png).
+    const s4Tile = sideBTilePool(2, ['base', 'sr']).find((t) => t.id === 's4')!;
+    p = placeCoral(placeCoral(p, 0), 1);
+    expect(scoreAchievement(p, s4Tile)).toBe(4);
   });
 
   it('side-B pools include S&R tiles on their printed week lines only with sr on', () => {
     const w1 = sideBTilePool(1, ['base', 'sr']).map((t) => t.id);
     const w2 = sideBTilePool(2, ['base', 'sr']).map((t) => t.id);
     const w3 = sideBTilePool(3, ['base', 'sr']).map((t) => t.id);
-    expect(w1).toContain('s1'); // <4 fish between 1-3 points
-    expect(w1).toContain('s3'); // fish in the sunlight zone
-    expect(w2).toContain('s2'); // unique tags
-    expect(w2).toContain('s4'); // coral
+    expect(w1).toContain('s3'); // fish in the sunlight zone (1 week-line, 1 pt)
+    expect(w2).toContain('s2'); // unique tags (2 week-lines, 2 pts)
+    expect(w2).toContain('s4'); // coral (2 week-lines, 2 pts)
+    expect(w3).toContain('s1'); // <4 fish between 1-3 points (3 week-lines, 1 pt)
     expect(w3).not.toContain('s4');
     const w1Base = sideBTilePool(1, ['base']).map((t) => t.id);
     const w2Base = sideBTilePool(2, ['base']).map((t) => t.id);
-    expect(w1Base).not.toContain('s1');
+    const w3Base = sideBTilePool(3, ['base']).map((t) => t.id);
     expect(w1Base).not.toContain('s3');
     expect(w2Base).not.toContain('s2');
     expect(w2Base).not.toContain('s4');
+    expect(w3Base).not.toContain('s1');
   });
 
   it('side-B tile draws respect week lines at setup', () => {
@@ -380,4 +428,13 @@ describe('S&R full games', () => {
       expect(p.effects.length > 0 || p.wave || p.alsoIf).toBeTruthy();
     }
   });
+
+  it('completes 20 seeds of base and S&R games across sides A and B without errors', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const s1 = runGame(seed, (seed % 4) + 2, ['base'], seed % 2 === 0 ? 'A' : 'B');
+      expect(s1.phase).toBe('gameOver');
+      const s2 = runGame(seed, (seed % 4) + 2, ['base', 'sr'], seed % 2 === 0 ? 'B' : 'A');
+      expect(s2.phase).toBe('gameOver');
+    }
+  }, 30000);
 });

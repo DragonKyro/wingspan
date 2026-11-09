@@ -400,7 +400,10 @@ export type PowerOption =
   | 'untuckDraw3'
   /** Wattled Jacana follow-up: trade a hand card with a tray card, or skip. */
   | 'traySwap'
-  | 'skip';
+  | 'skip'
+  /** Promo Canada Warbler: all players lay 1 egg vs all players draw 1 card. */
+  | 'allLayEgg'
+  | 'allDrawCard';
 
 export interface PlayerState {
   id: PlayerId;

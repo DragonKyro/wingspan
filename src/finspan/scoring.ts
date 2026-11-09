@@ -45,10 +45,12 @@ export function achievementUnits(p: PlayerState, kind: AchievementKind): number 
     case 'fish':
       return slots.filter(({ slot }) => slot.stack.length > 0).length;
     case 'tagPredator':
-      return slots.filter(({ slot }) => {
+      // "Each Predator Tag": count every predator tag on visible fish in your
+      // ocean (über predators have 2 predator tags: fish.txt p.1, official FAQ).
+      return slots.reduce((sum, { slot }) => {
         const c = topFish(slot);
-        return c != null && !c.forage && c.tags.predator > 0;
-      }).length;
+        return sum + (c != null && !c.forage ? c.tags.predator : 0);
+      }, 0);
     case 'schools':
       return totalSchools(p.ocean);
     case 'fishWithTokens':

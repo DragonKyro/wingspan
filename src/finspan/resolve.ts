@@ -5,6 +5,7 @@
 // supplies all `count` items (egg targets, hatches, discards, consumes,
 // removals) pop immediately.
 
+import { parseAbility } from './abilities';
 import { fish } from './cards';
 import {
   addEgg,
@@ -31,6 +32,7 @@ import {
   slotAt,
   topFish,
   tuckUnderFish,
+  validateMove,
   validatePayments,
 } from './helpers';
 import { fireAbility } from './powers';
@@ -63,9 +65,13 @@ export function feasible(state: GameState, step: PendingStep): boolean {
     case 'chooseYoungSlots':
       return true; // any slot is a legal young target
     case 'chooseMove':
-      return slots.some(({ slot }) => slot.young > 0 || slot.school);
+      return slots.some(({ ref, slot }) => {
+        if (slot.young > 0) return true;
+        if (!slot.school) return false;
+        return slots.some(({ ref: to }) => validateMove(p.ocean, ref, to, 'school').ok);
+      });
     case 'chooseHandDiscard':
-      return step.optional ? true : p.hand.length >= step.count;
+      return step.optional ? p.hand.length > 0 : p.hand.length >= step.count;
     case 'chooseEggRemoval':
       return slots.reduce((a, { slot }) => a + slot.eggs, 0) >= step.count;
     case 'chooseYoungRemoval':
@@ -73,13 +79,12 @@ export function feasible(state: GameState, step: PendingStep): boolean {
     case 'chooseSchoolRemoval':
       return slots.filter(({ slot }) => slot.school).length >= step.count;
     case 'chooseConsume': {
-      for (const id of p.hand) {
-        const c = fish(id);
-        for (const { ref, slot } of slots) {
-          if (step.onto && !sameRef(ref, step.onto)) continue;
-          const top = topFish(slot);
-          if (top && c.length < top.length) return true;
-        }
+      for (const { ref, slot } of slots) {
+        if (step.onto && !sameRef(ref, step.onto)) continue;
+        const top = topFish(slot);
+        if (!top) continue;
+        const tuckable = p.hand.filter((id) => fish(id).length < top.length);
+        if (tuckable.length >= step.count) return true;
       }
       return false;
     }
@@ -106,16 +111,38 @@ export function feasible(state: GameState, step: PendingStep): boolean {
       );
     }
     case 'chooseRecover':
-      return p.discard.length > 0 || state.deck.length > 0;
+      return (
+        p.discard.length > 0 ||
+        state.deck.length > 0 ||
+        state.players.some((pl) => pl.discard.length > 0)
+      );
     case 'chooseUnSchool':
       return slots.some(({ slot }) => slot.school);
   }
 }
 
-/** Drop leading pending steps that can never be satisfied. */
+/** Drop leading pending steps that can never be satisfied. For chooseUnSchool,
+ *  if no school exists when it reaches the head of the queue, fall back to
+ *  placing 1 young ("If you do not have a school token to discard, place
+ *  1 young instead"). */
 export function dropInfeasible(state: GameState): GameState {
   let s = state;
   while (s.pending.length && !feasible(s, s.pending[0]!)) {
+    const head = s.pending[0]!;
+    if (head.kind === 'chooseUnSchool') {
+      const fallback: PendingStep = {
+        kind: 'chooseYoungSlots',
+        playerId: head.playerId,
+        count: 1,
+        optional: head.optional,
+      };
+      const rest =
+        head.count > 1
+          ? [{ ...head, count: head.count - 1 }, ...s.pending.slice(1)]
+          : s.pending.slice(1);
+      s = { ...s, pending: [fallback, ...rest] };
+      break;
+    }
     s = { ...s, pending: s.pending.slice(1) };
   }
   return s;
@@ -275,6 +302,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       s = pop(s);
       if (card.abilityType === 'WhenPlayed' && card.ability) {
         s = fireAbility(s, playerId, card.ability, ref, `${card.name} (when played)`);
+      } else if (s.phase === 'gameEnd' && card.abilityType === 'GameEnd' && card.ability) {
+        const parsed = parseAbility(card.ability);
+        if (parsed && !parsed.wave && parsed.effects.length > 0) {
+          s = { ...s, gameEndQueue: [...(s.gameEndQueue ?? []), { playerId, slot: ref }] };
+        }
       }
       return s;
     }
@@ -303,7 +335,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
     }
     case 'chooseRecover': {
       if (choice.kind !== 'handCards') break;
-      if (choice.cardIds.length > step.count) throw new Error('too many cards');
+      const expected = Math.min(step.count, p.discard.length);
+      if (choice.cardIds.length !== expected)
+        throw new Error(`must recover ${expected} card(s) from discard pile`);
+      if (new Set(choice.cardIds).size !== choice.cardIds.length)
+        throw new Error('duplicate card ids');
       for (const id of choice.cardIds) {
         if (!p.discard.includes(id)) throw new Error('card not in discard pile');
       }

@@ -8,12 +8,7 @@ import { CAVES, DRAGONS } from './cards';
  * least one printed ability text (the test below fails on stale entries) and
  * every approximation should eventually be replaced by a real implementation.
  */
-const KNOWN_PARTIAL: { pattern: RegExp; note: string }[] = [
-  {
-    pattern: /of the cost printed on the tucked dragon/i,
-    note: "matchTuckGainCost grants a generic 'any resource' instead of a choice among the resource types printed in the tucked dragon's cost",
-  },
-];
+const KNOWN_PARTIAL: { pattern: RegExp; note: string }[] = [];
 
 describe('ability coverage', () => {
   it('parses every distinct ability text into fully-supported steps', () => {

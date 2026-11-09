@@ -32,8 +32,25 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
     if (n <= 0) return;
     const eg = tile.squares[i]?.endGame;
     if (!eg) return;
-    const units = eg.counter ? countCounter(state, p, eg.counter) : 0;
-    guildTile += n * eg.vpPer * (eg.counter ? units : 1);
+    if (eg.gamblerDraw4) {
+      const banked = state.guild.gamblerVp?.[p.id];
+      if (banked !== undefined) {
+        guildTile += banked;
+      } else {
+        // Fallback when a marker was placed directly in state without running immediate step.
+        const vps = state.dragonDeck
+          .slice(0, 4 * n)
+          .map((id) => dragonVp(p, dragonCard(id)))
+          .sort((a, b) => b - a);
+        guildTile += vps.slice(0, 2 * n).reduce((a, b) => a + b, 0);
+      }
+      return;
+    }
+    let units = eg.counter ? countCounter(state, p, eg.counter) : 1;
+    if (eg.divisor) units = Math.floor(units / eg.divisor);
+    let pts = eg.vpPer * units;
+    if (eg.max !== undefined) pts = Math.min(pts, eg.max);
+    guildTile += n * pts;
   });
 
   // Printed dragon VP + end-game abilities.

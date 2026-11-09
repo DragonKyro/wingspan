@@ -1,17 +1,20 @@
 // Board layout and scoring constants for Finspan.
 //
-// NOTE on the ocean mat: the rulebook describes the dive-site bonus mechanic
-// but not the exact printed icon grid (it is artwork). The mapping below is a
-// reconstruction from the rulebook's sample dive turn (purple column: egg
-// bonuses at every zone checkpoint, bottom bonus 1 egg — verified against
-// fish.pdf), tutorial videos (blue column: card draws, bottom bonus =
-// recover a card from your discard pile), and each site's stated specialty
-// (blue = cards, purple = eggs, green = hatching/moving young & schools).
-// Forage positions: Showy Bristlemouth is confirmed in the purple twilight
-// slot by the sample dive; Catalina Goby (purple sunlight) and Glasshead
-// Grenadier (blue midnight) follow the printed-mat layout. Starting tokens
-// (verified): 1 egg on each of the 2 starting egg slots (Bristlemouth +
-// Grenadier) and 1 young on the starting young slot (Catalina Goby).
+// Verified against the official Finspan and Sharks & Reefs rulebook pages
+// (fish_p01.png..p12.png, sharks_p01.png..p08.png):
+//   * INITIAL_OCEAN (fish_p03.png, fish_p07.png, fish_p08.png, fish_p10.png):
+//     - Catalina Goby (1 cm) at row 1, col 2 (green sunlight), starts with 1 egg.
+//     - Starting young slot at row 2, col 1 (purple sunlight, open slot), starts with 1 young.
+//     - Showy Bristlemouth (3 cm) at row 3, col 1 (purple twilight), starts with 0 tokens.
+//     - Glasshead Grenadier (9 cm) at row 4, col 0 (blue midnight), starts with 1 egg.
+//   * DIVE_BONUSES (fish_p07.png, fish_p10.png):
+//     - Blue (left): zones ['drawCard', 'drawCard', 'drawCard'], bottom 'recoverCard'.
+//     - Purple (center): zones ['egg', 'egg', 'egg'], bottom 'egg'.
+//     - Green (right): zones ['hatch', 'hatch', 'move'], bottom 'move'.
+//   * REEF_OVERLAY_SIDES (sharks_p01.png, sharks_p03.png..p06.png):
+//     All 5 double-sided coral reef overlays (10 sides: 5 with coral-shaped
+//     outlines, 5 with circular outlines) print ['egg', 'young', 'card'] for
+//     the [blue, purple, green] dive sites, with completion bonuses [6, 8, 5].
 
 import type { Benefit } from './types';
 
@@ -21,12 +24,14 @@ export const FORAGE_SHOWY_BRISTLEMOUTH = 901;
 export const FORAGE_GLASSHEAD_GRENADIER = 902;
 
 /** Initial ocean layout: forage fish and starting tokens.
- *  [forageId, row, col, startingEggs, startingYoung] */
-export const INITIAL_OCEAN: [number, number, number, number, number][] = [
-  // Catalina Goby — purple dive site, middle sunlight row. Starts with 1 young.
-  [FORAGE_CATALINA_GOBY, 1, 1, 0, 1],
-  // Showy Bristlemouth — purple dive site, twilight row. Starts with 1 egg.
-  [FORAGE_SHOWY_BRISTLEMOUTH, 3, 1, 1, 0],
+ *  [forageId | null, row, col, startingEggs, startingYoung] */
+export const INITIAL_OCEAN: [number | null, number, number, number, number][] = [
+  // Catalina Goby — green dive site, middle sunlight row. Starts with 1 egg.
+  [FORAGE_CATALINA_GOBY, 1, 2, 1, 0],
+  // Starting young slot — purple dive site, bottom sunlight row (open slot). Starts with 1 young.
+  [null, 2, 1, 0, 1],
+  // Showy Bristlemouth — purple dive site, twilight row. Starts with no tokens.
+  [FORAGE_SHOWY_BRISTLEMOUTH, 3, 1, 0, 0],
   // Glasshead Grenadier — blue dive site, upper midnight row. Starts with 1 egg.
   [FORAGE_GLASSHEAD_GRENADIER, 4, 0, 1, 0],
 ];
@@ -52,11 +57,16 @@ export const MAX_CORAL = 6;
  *  for purple (center), and 5 points for green (right)." */
 export const REEF_COMPLETION_BONUS = [6, 8, 5]; // blue, purple, green
 
-/** S&R reef overlays ask the diver to discard an indicated item (egg, young,
- *  or card) per dive site to place 1 coral. The printed overlay sides are not
- *  enumerated in the rulebook; createGame randomizes per-player overlays in
- *  settings.reefCosts when unset. This constant is only the fallback used if
- *  an sr game somehow lacks per-player costs. */
+/** S&R: the 5 double-sided coral reef overlays (10 sides total: 5 with
+ *  coral-shaped token outlines, 5 with circular token outlines — see
+ *  sharks_p01.png, sharks_p03.png..p06.png). Every printed overlay side shows
+ *  the same per-site discard items: blue = 'egg', purple = 'young', green = 'card'. */
+export const REEF_OVERLAY_SIDES: ('egg' | 'young' | 'card')[][] = Array.from(
+  { length: 10 },
+  () => ['egg', 'young', 'card'],
+);
+
+/** Default per-site discard items on a printed S&R coral reef overlay. */
 export const REEF_DISCARD_ITEMS: ('egg' | 'young' | 'card')[] = ['egg', 'young', 'card'];
 
 /** Points each school token is worth at the end of the game. */

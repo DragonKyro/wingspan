@@ -10,13 +10,15 @@ import {
   adjacentRefs,
   appendLog,
   birdAt,
-  columnEggCost,
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
+  isDuet,
+  isGoalDouble,
   isSideways,
   nestMatches,
   payFoodPlan,
+  playEggCost,
   playedBirds,
   playerToLeft,
   playerToRight,
@@ -36,10 +38,12 @@ import {
   faceCovers,
   feederReset,
   firePinkTriggers,
+  foodIconsInCost,
   grantHumBenefit,
   grantSupplyFood,
   hasPowerImpl,
   moveHumToken,
+  playFreeFromPool,
   POWER_IMPLS,
   pushPending,
   queueHumAction,
@@ -168,7 +172,7 @@ function feasible(state: GameState, step: PendingStep): number {
       const ok = habitats.some((habitat) => {
         if (!habitat) return false;
         if (p.board[habitat].length >= 5) return false;
-        const eggsNeeded = Math.max(0, columnEggCost(p.board[habitat].length) - (step.eggDiscount ?? 0));
+        const eggsNeeded = Math.max(0, playEggCost(p, habitat) - (step.eggDiscount ?? 0));
         if (totalEggs(p) < eggsNeeded) return false;
         return p.hand.some((id) => {
           const c = bird(id);
@@ -255,7 +259,12 @@ function feasible(state: GameState, step: PendingStep): number {
     case 'chooseCacheFromSupply': {
       const b = p.board[step.bird.habitat]?.[step.bird.index];
       if (!b || b.ghost) return 0;
-      const avail = step.food === 'any' ? totalFood(p) : p.food[step.food];
+      const avail =
+        step.food === 'any'
+          ? step.options
+            ? step.options.reduce((n, f) => n + p.food[f], 0)
+            : totalFood(p)
+          : p.food[step.food];
       return Math.min(step.count, avail);
     }
 
@@ -393,7 +402,8 @@ function humHabitatOptions(
 function trayCardMatches(step: Extract<PendingStep, { kind: 'chooseTrayCardEx' }>, id: number): boolean {
   const c = bird(id);
   if (step.nests && !step.nests.includes(c.nest)) return false;
-  if (step.wingspanLt != null && wingspanOf(c) >= step.wingspanLt) return false;
+  if (step.wingspanLt != null && c.wingspan !== '*' && c.wingspan >= step.wingspanLt) return false;
+  if (step.costFoods && !costHasFood(c, step.costFoods)) return false;
   return true;
 }
 
@@ -713,9 +723,17 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       if (choice.habitat === step.bird.habitat) throw new Error('pick another habitat');
       if (p.board[choice.habitat].length >= 5) throw new Error('row is full');
       row.splice(step.bird.index, 1);
+      const nextTargetRow = [...p.board[choice.habitat], b];
       s = setPlayer(s, {
         ...p,
-        board: { ...p.board, [step.bird.habitat]: row, [choice.habitat]: [...p.board[choice.habitat], b] },
+        board: { ...p.board, [step.bird.habitat]: row, [choice.habitat]: nextTargetRow },
+        // Americas p.9: if a moving bird lands on a Hornero placeholder egg and
+        // another empty spot remains in that habitat, the placeholder slides to
+        // the next empty spot; if the row is now full, the placeholder is lost.
+        horneroEggs:
+          nextTargetRow.length >= 5
+            ? p.horneroEggs.filter((h) => h !== choice.habitat)
+            : p.horneroEggs,
       });
       break;
     }
@@ -1141,6 +1159,15 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
           optional: true,
           then: { effect: 'amTraySwap1' },
         });
+      } else if (choice.option === 'allLayEgg') {
+        s = pushPending(
+          s,
+          ...s.playerOrder.map(
+            (pid): PendingStep => ({ kind: 'chooseBirdForEgg', playerId: pid, count: 1, nest: 'any' }),
+          ),
+        );
+      } else if (choice.option === 'allDrawCard') {
+        for (const pid of s.playerOrder) s = drawFromDeck(s, pid, 1);
       } else if (choice.option === 'skip') {
         // decline — nothing happens
       } else {
@@ -1211,7 +1238,10 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
     }
     case 'chooseCacheFromSupply': {
       if (choice.kind !== 'supplyFood') throw new Error('expected supplyFood');
-      if (choice.foods.length === 0 && step.optional) break; // cache nothing
+      if (choice.foods.length === 0 && step.optional) {
+        if (step.then?.effect === 'promoCanadaJay') break;
+        return dropImpossiblePending(s);
+      }
       if (choice.foods.length > step.count) throw new Error(`at most ${step.count}`);
       if (!step.optional && choice.foods.length !== step.count) {
         throw new Error(`choose ${step.count}`);
@@ -1219,6 +1249,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       let pl = getPlayer(s, playerId);
       for (const f of choice.foods) {
         if (step.food !== 'any' && f !== step.food) throw new Error(`must cache ${step.food}`);
+        if (step.options && !step.options.includes(f)) throw new Error(`${f} is not an option`);
         if (pl.food[f] <= 0) throw new Error(`you don't have ${f}`);
         pl = spendFood(pl, [f]);
       }
@@ -1319,15 +1350,20 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       );
       s = setPlayer(s, { ...pl, board: { ...pl.board, [step.bird.habitat]: newRow } });
       const t = getPlayer(s, step.target);
+      const nextTargetRow = [
+        ...t.board[choice.habitat],
+        { cardId: me.cardId, eggs: 0, tucked: [], cached: [] },
+      ];
       s = setPlayer(s, {
         ...t,
         board: {
           ...t.board,
-          [choice.habitat]: [
-            ...t.board[choice.habitat],
-            { cardId: me.cardId, eggs: 0, tucked: [], cached: [] },
-          ],
+          [choice.habitat]: nextTargetRow,
         },
+        horneroEggs:
+          nextTargetRow.length >= 5
+            ? t.horneroEggs.filter((h) => h !== choice.habitat)
+            : t.horneroEggs,
       });
       s = { ...s, discard: [...s.discard, ...me.tucked] };
       break;
@@ -1426,9 +1462,14 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         }
       }
       // Stop (yes exhausted or declined): under the cap → tuck them all,
-      // otherwise discard the drawn pool.
-      const total = pool.reduce((sum, id) => sum + wingspanOf(bird(id)), 0);
-      const cap = step.then?.n?.[0] ?? 0;
+      // otherwise discard the drawn pool. A negative cap encodes a point-value
+      // cap (Luzon Bleeding-Heart: total point value < 6).
+      const rawCap = step.then?.n?.[0] ?? 0;
+      const cap = Math.abs(rawCap);
+      const total =
+        rawCap < 0
+          ? pool.reduce((sum, id) => sum + bird(id).points, 0)
+          : pool.reduce((sum, id) => sum + wingspanOf(bird(id)), 0);
       if (pool.length > 0 && total < cap) {
         for (const id of pool) s = tuckCardOnBird(s, playerId, step.bird, id);
         s = firePinkTriggers(s, playerId, { kind: 'tuck' });
@@ -2577,6 +2618,491 @@ function continueEffect(
     case 'optionBird':
       // Marker tag — chooseOption already applied the option's effect.
       return s;
+
+    // === promo continuations ===
+    case 'promoWigeonBirds': {
+      if (choice.kind !== 'birds' || choice.birds.length === 0) return s;
+      return pushPending(s, {
+        kind: 'chooseHandTuck',
+        playerId,
+        bird: choice.birds[0]!,
+        optional: true,
+        then: tag.bird ? { effect: 'promoWigeonDeckTuck', bird: tag.bird } : undefined,
+      });
+    }
+    case 'promoWigeonDeckTuck': {
+      if (!tag.bird) return s;
+      const out = tuckFromDeck(s, playerId, tag.bird, 1);
+      return firePinkTriggers(out, playerId, { kind: 'tuck' });
+    }
+    case 'promoBaliStarling': {
+      if (choice.kind !== 'boolean' || !choice.yes) return s;
+      const lastId = tag.ids?.[0];
+      const left = (tag.n?.[0] ?? 1) - 1;
+      let out = s;
+      if (lastId != null) {
+        const p = getPlayer(out, playerId);
+        out = {
+          ...setPlayer(out, { ...p, bonusHand: p.bonusHand.filter((x) => x !== lastId) }),
+          bonusDiscard: [...out.bonusDiscard, lastId],
+        };
+      }
+      if (out.bonusDeck.length === 0) return out;
+      const newId = out.bonusDeck[out.bonusDeck.length - 1]!;
+      out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      const p2 = getPlayer(out, playerId);
+      out = setPlayer(out, { ...p2, bonusHand: [...p2.bonusHand, newId] });
+      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      if (left <= 0 || out.bonusDeck.length === 0) return out;
+      return pushPending(out, {
+        kind: 'confirm',
+        playerId,
+        then: { effect: 'promoBaliStarling', ids: [newId], n: [left] },
+      });
+    }
+    case 'promoRosyFinch': {
+      if (choice.kind !== 'bonusCards' || !tag.bird || !tag.ids) return s;
+      const other = tag.ids.find((id) => !choice.cardIds.includes(id));
+      if (other == null) return s;
+      const vp = bonusCardVp(getPlayer(s, playerId), other);
+      if (vp <= 0) return s;
+      return setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, vp));
+    }
+    case 'promoPlayFromTray': {
+      if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      const cardId = choice.cardIds[0]!;
+      const idx = s.tray.indexOf(cardId);
+      if (idx < 0) return s;
+      const p0 = getPlayer(s, playerId);
+      const card = bird(cardId);
+      const hab = card.habitats.find(
+        (h) =>
+          p0.board[h].length < 5 &&
+          totalEggsAvail(p0) >= playEggCost(p0, h) &&
+          payFoodPlan(p0.food, card.cost) != null,
+      );
+      if (!hab) return s;
+      const tray = [...s.tray];
+      tray[idx] = null;
+      const out = setPlayer({ ...s, tray }, { ...p0, hand: [...p0.hand, cardId] });
+      return playAdditionalBird(out, playerId, cardId, hab, 0);
+    }
+    case 'promoBonusIfPlayed': {
+      if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      if (s.bonusDeck.length === 0) return s;
+      const id = s.bonusDeck[s.bonusDeck.length - 1]!;
+      const out: GameState = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
+      const p = getPlayer(out, playerId);
+      return firePinkTriggers(
+        setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] }),
+        playerId,
+        { kind: 'drawBonus' },
+      );
+    }
+    case 'promoBrahminyStarling': {
+      if (!tag.bird || choice.kind !== 'supplyFood' || choice.foods.length === 0) return s;
+      let out = tuckFromDeck(s, playerId, tag.bird, choice.foods.length);
+      out = firePinkTriggers(out, playerId, { kind: 'tuck' });
+      return pushPending(out, { kind: 'pickDie', playerId, count: 1 });
+    }
+    case 'promoActivateIfBrown': {
+      if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      const p = getPlayer(s, playerId);
+      const row = p.board.forest;
+      const idx = row.length - 1;
+      const b = row[idx];
+      if (!b || b.ghost) return s;
+      const c = bird(b.cardId);
+      if (c.powerColor !== 'brown' || !c.powerText) return s;
+      return runPower(s, playerId, { habitat: 'forest', index: idx });
+    }
+    case 'promoCactusWren': {
+      if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      const nest = bird(choice.cardIds[0]!).nest;
+      if (nest === 'none') return s;
+      return pushPending(s, {
+        kind: 'chooseBirdForEgg',
+        playerId,
+        count: 2,
+        nest: nest === 'wild' ? 'any' : nest,
+        optional: true,
+      });
+    }
+    case 'promoCanadaJay': {
+      if (!tag.bird) return s;
+      const b = getPlayer(s, playerId).board[tag.bird.habitat]?.[tag.bird.index];
+      const cachedTypes = b ? [...new Set(b.cached)] : [];
+      if (cachedTypes.length === 0) return s;
+      return pushPending(s, { kind: 'chooseSupplyFood', playerId, count: 1, options: cachedTypes });
+    }
+    case 'promoCommonEider': {
+      if (!tag.bird || choice.kind !== 'birds' || choice.birds.length === 0) return s;
+      const target = choice.birds[0]!;
+      let p = getPlayer(s, playerId);
+      const src = p.board[tag.bird.habitat]?.[tag.bird.index];
+      const dst = p.board[target.habitat]?.[target.index];
+      if (!src || src.eggs <= 0 || !dst || dst.eggs >= bird(dst.cardId).eggLimit) return s;
+      const srcRow = [...p.board[tag.bird.habitat]];
+      srcRow[tag.bird.index] = { ...src, eggs: src.eggs - 1 };
+      p = { ...p, board: { ...p.board, [tag.bird.habitat]: srcRow } };
+      p = addEggs(p, target, 1);
+      return drawFromDeck(setPlayer(s, p), playerId, 1);
+    }
+    case 'promoTragopan1': {
+      if (!tag.bird || choice.kind !== 'supplyFood' || choice.foods.length === 0) return s;
+      return pushPending(s, {
+        kind: 'choosePlayer',
+        playerId,
+        other: true,
+        then: {
+          effect: 'promoTragopan2',
+          bird: tag.bird,
+          ids: [FOOD_TYPES.indexOf(choice.foods[0]!)],
+        },
+      });
+    }
+    case 'promoTragopan2': {
+      if (!tag.bird || choice.kind !== 'player') return s;
+      const f = FOOD_TYPES[tag.ids?.[0] ?? -1];
+      let out = s;
+      if (f) out = grantSupplyFood(out, choice.playerId, f);
+      return setPlayer(out, addEggs(getPlayer(out, playerId), tag.bird, 2));
+    }
+    case 'promoReturnRestToDeck': {
+      if (choice.kind !== 'handCards' || !tag.ids) return s;
+      const rest = tag.ids.filter((id) => !choice.cardIds.includes(id));
+      return { ...s, deck: [...s.deck, ...rest] };
+    }
+    case 'promoDovekie': {
+      if (choice.kind !== 'player') return s;
+      const target = getPlayer(s, choice.playerId);
+      const n = playedBirds(target).filter(({ bird: b }) => bird(b.cardId).powerColor === 'yellow').length;
+      if (n <= 0) return s;
+      const { s: s1, ids } = drawToPool(s, n);
+      if (ids.length === 0) return s1;
+      return playFreeFromPool(s1, playerId, ids);
+    }
+    case 'promoWhipPoorWill': {
+      const paid = choice.kind === 'supplyFood' ? choice.foods.length : 0;
+      let out = s;
+      const drawn: number[] = [];
+      for (let i = 0; i < 2 && out.bonusDeck.length > 0; i++) {
+        drawn.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (drawn.length === 0) return out;
+      const p = getPlayer(out, playerId);
+      out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, ...drawn] });
+      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      const keep = paid >= 2 ? 2 : 1;
+      const discard = drawn.length - keep;
+      if (discard <= 0) return out;
+      return pushPending(out, { kind: 'discardBonusCards', playerId, count: discard });
+    }
+    case 'promoGoldenPlover':
+      return pushPending(s, {
+        kind: 'chooseFirstPlayer',
+        playerId,
+        effect: 'gainDie',
+        then: { effect: 'eachPlayerDie' },
+      });
+    case 'promoDrawTopDiscard': {
+      if (s.discard.length === 0) return s;
+      const id = s.discard[s.discard.length - 1]!;
+      const p = getPlayer(s, playerId);
+      return {
+        ...setPlayer(s, { ...p, hand: [...p.hand, id] }),
+        discard: s.discard.slice(0, -1),
+      };
+    }
+    case 'promoGardenWarbler': {
+      if (!tag.bird || choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      let p = getPlayer(s, playerId);
+      p = addEggs(p, tag.bird, 1);
+      const newIdx = p.board[tag.bird.habitat].length - 1;
+      if (newIdx >= 0 && newIdx !== tag.bird.index) {
+        p = addEggs(p, { habitat: tag.bird.habitat, index: newIdx }, 1);
+      }
+      return setPlayer(s, p);
+    }
+    case 'promoCacheFishPerBonus': {
+      if (!tag.bird || choice.kind !== 'bonusCards' || choice.cardIds.length === 0) return s;
+      const n = (tag.n?.[0] ?? 3) * choice.cardIds.length;
+      let out = s;
+      for (let i = 0; i < n; i++) out = cacheOnBird(out, playerId, tag.bird, 'fish');
+      return out;
+    }
+    case 'promoForestEgg':
+      return pushPending(s, {
+        kind: 'chooseBirdForEgg',
+        playerId,
+        count: 1,
+        nest: 'any',
+        habitat: 'forest',
+        optional: true,
+      });
+    case 'promoTuckOrHandReturnDeck': {
+      if (choice.kind !== 'handCards' || !tag.ids || !tag.bird) return s;
+      const chosen = choice.cardIds[0];
+      const rest = tag.ids.filter((id) => id !== chosen);
+      s = { ...s, deck: [...s.deck, ...rest] };
+      if (chosen == null) return s;
+      return pushPending(s, {
+        kind: 'chooseTuckOrHand',
+        playerId,
+        bird: tag.bird,
+        cardId: chosen,
+      });
+    }
+    case 'promoTuckTrayUpTo2': {
+      if (!tag.bird) return s;
+      return pushPending(
+        s,
+        { kind: 'chooseTrayCardEx', playerId, destination: 'tuck', bird: tag.bird },
+        { kind: 'chooseTrayCardEx', playerId, destination: 'tuck', bird: tag.bird },
+      );
+    }
+    case 'promoPrairieChicken': {
+      if (choice.kind !== 'bonusCards' || !tag.ids) return s;
+      const revealed = tag.ids.find((id) => !choice.cardIds.includes(id));
+      if (revealed == null) return s;
+      return {
+        ...s,
+        bonusDiscard: s.bonusDiscard.filter((id) => id !== revealed),
+        players: s.players.map((pl) => ({
+          ...pl,
+          copiedBonus: [...pl.copiedBonus, revealed],
+        })),
+      };
+    }
+    case 'promoMagentaPetrel1': {
+      if (!tag.bird || choice.kind !== 'bonusCards' || choice.cardIds.length === 0) return s;
+      return pushPending(s, {
+        kind: 'choosePlayer',
+        playerId,
+        other: true,
+        then: { effect: 'promoMagentaPetrel2', bird: tag.bird, ids: [choice.cardIds[0]!] },
+      });
+    }
+    case 'promoMagentaPetrel2': {
+      if (!tag.bird || choice.kind !== 'player' || !tag.ids?.length) return s;
+      const gift = tag.ids[0]!;
+      const p = getPlayer(s, playerId);
+      if (!p.bonusHand.includes(gift)) return s;
+      let out = setPlayer(s, { ...p, bonusHand: p.bonusHand.filter((x) => x !== gift) });
+      const tp = getPlayer(out, choice.playerId);
+      out = setPlayer(out, { ...tp, bonusHand: [...tp.bonusHand, gift] });
+      const drawn: number[] = [];
+      for (let i = 0; i < 2 && out.bonusDeck.length > 0; i++) {
+        drawn.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (drawn.length > 0) {
+        const p2 = getPlayer(out, playerId);
+        out = setPlayer(out, { ...p2, bonusHand: [...p2.bonusHand, ...drawn] });
+        out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      }
+      return setPlayer(out, addEggs(getPlayer(out, playerId), tag.bird, 1));
+    }
+    case 'promoMedShearwater': {
+      let out = drawFromDeck(s, playerId, 1);
+      const pool: number[] = [];
+      for (let i = 0; i < 4 && out.bonusDeck.length > 0; i++) {
+        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (pool.length === 0) return out;
+      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+    }
+    case 'promoDabchick': {
+      if (choice.kind !== 'handCards' || !tag.ids) return s;
+      const rest = tag.ids.filter((id) => !choice.cardIds.includes(id));
+      const toDeck = rest.slice(0, 1);
+      const toDiscard = rest.slice(1);
+      return {
+        ...s,
+        deck: [...s.deck, ...toDeck],
+        discard: [...s.discard, ...toDiscard],
+      };
+    }
+    case 'promoFairyTern': {
+      if (!tag.bird) return s;
+      const n = choice.kind === 'bonusCards' ? choice.cardIds.length * 3 : 0;
+      let out = s;
+      for (let i = 0; i < n; i++) out = cacheOnBird(out, playerId, tag.bird, 'fish');
+      if (out.bonusDeck.length > 0) {
+        const id = out.bonusDeck[out.bonusDeck.length - 1]!;
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+        const p = getPlayer(out, playerId);
+        out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] });
+        out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      }
+      return out;
+    }
+    case 'promoCacheRodent':
+      return tag.bird ? cacheOnBird(s, playerId, tag.bird, 'rodent') : s;
+    case 'promoDraw1BonusChain': {
+      if (s.bonusDeck.length === 0) return s;
+      const id = s.bonusDeck[s.bonusDeck.length - 1]!;
+      let out: GameState = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
+      const p = getPlayer(out, playerId);
+      out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] });
+      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      const left = (tag.n?.[0] ?? 1) - 1;
+      if (left <= 0 || out.bonusDeck.length === 0) return out;
+      return pushPending(out, {
+        kind: 'discardBonusCards',
+        playerId,
+        count: 1,
+        optional: true,
+        then: { effect: 'promoDraw1BonusChain', n: [left] },
+      });
+    }
+    case 'promoCachePerTuckedCost': {
+      const ref = step.kind === 'chooseHandTuck' ? step.bird : tag.bird;
+      const f = FOOD_TYPES[tag.ids?.[0] ?? -1];
+      if (!ref || !f || choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      const n = foodIconsInCost(bird(choice.cardIds[0]!), f);
+      let out = s;
+      for (let i = 0; i < n; i++) out = cacheOnBird(out, playerId, ref, f);
+      return out;
+    }
+    case 'promoQupanuaq': {
+      const n = choice.kind === 'handCards' ? choice.cardIds.length : 0;
+      if (n <= 0) return s;
+      let out = s;
+      const pool: number[] = [];
+      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
+        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (pool.length === 0) return out;
+      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+    }
+    case 'promoGain1Die':
+      return pushPending(s, { kind: 'pickDie', playerId, count: 1 });
+    case 'promoBonusDraftEach': {
+      if (choice.kind !== 'bonusCards') return s;
+      const remaining = (tag.ids ?? []).filter((id) => !choice.cardIds.includes(id));
+      const actorIdx = tag.n?.[1] ?? 0;
+      const nextOffset = (tag.n?.[0] ?? 0) + 1;
+      if (nextOffset >= s.playerOrder.length || remaining.length === 0) return s;
+      const nextPid = s.playerOrder[(actorIdx + nextOffset) % s.playerOrder.length]!;
+      return pushPending(s, {
+        kind: 'chooseBonusCards',
+        playerId: nextPid,
+        cardIds: remaining,
+        keep: 1,
+        then: { effect: 'promoBonusDraftEach', ids: remaining, n: [nextOffset, actorIdx] },
+      });
+    }
+    case 'promoSandwichTern': {
+      if (!tag.bird || choice.kind !== 'player') return s;
+      const p = getPlayer(s, playerId);
+      if (p.food.fish <= 0) return s;
+      let out = setPlayer(s, spendFood(p, ['fish']));
+      out = grantSupplyFood(out, choice.playerId, 'fish');
+      out = tuckFromDeck(out, playerId, tag.bird, 1);
+      out = firePinkTriggers(out, playerId, { kind: 'tuck' });
+      return setPlayer(out, addEggs(getPlayer(out, playerId), tag.bird, 1));
+    }
+    case 'promoShorePlover': {
+      const n = choice.kind === 'supplyFood' ? choice.foods.length * 2 : 0;
+      const pool = [...(tag.ids ?? [])];
+      let out = s;
+      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
+        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (pool.length === 0) return out;
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+    }
+    case 'promoSaddleback': {
+      if (!tag.bird || choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      const playedCard = bird(choice.cardIds[0]!);
+      let out = s;
+      if (playedCard.cost.kind === 'and') {
+        for (const item of playedCard.cost.items) {
+          const f: FoodType = item.food === 'any' ? 'seed' : item.food;
+          for (let i = 0; i < item.count; i++) out = cacheOnBird(out, playerId, tag.bird, f);
+        }
+      } else if (playedCard.cost.kind === 'or' && playedCard.cost.foods[0]) {
+        out = cacheOnBird(out, playerId, tag.bird, playedCard.cost.foods[0]);
+      } else if (playedCard.cost.kind === 'any') {
+        for (let i = 0; i < playedCard.cost.count; i++) {
+          out = cacheOnBird(out, playerId, tag.bird, 'seed');
+        }
+      }
+      return out;
+    }
+    case 'promoStitchbird': {
+      if (!tag.bird) return s;
+      const { s: s1, ids } = drawToPool(s, 1);
+      const id = ids[0];
+      if (id == null) return s1;
+      const out: GameState = { ...s1, discard: [...s1.discard, id] };
+      const c = bird(id);
+      const eggs = c.beakLeft === true || c.id === 91 ? 2 : 1;
+      return setPlayer(out, addEggs(getPlayer(out, playerId), tag.bird, eggs));
+    }
+    case 'promoSuluHornbill': {
+      if (choice.kind !== 'player') return s;
+      const target = getPlayer(s, choice.playerId);
+      const n = playedBirds(target).filter(({ bird: b }) => bird(b.cardId).bonusPower).length;
+      if (n <= 0) return s;
+      let out = s;
+      const pool: number[] = [];
+      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
+        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+      }
+      if (pool.length === 0) return out;
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+    }
+    case 'promoTaiwanMagpie': {
+      if (!tag.bird) return s;
+      return pushPending(
+        s,
+        { kind: 'pickDie', playerId, count: 1, then: { effect: 'cacheLastGained', bird: tag.bird } },
+        { kind: 'pickDie', playerId, count: 1 },
+      );
+    }
+    case 'promoGiveOtherBonus': {
+      if (choice.kind !== 'bonusCards' || !tag.ids || s.players.length < 2) return s;
+      const other = tag.ids.find((id) => !choice.cardIds.includes(id));
+      if (other == null) return s;
+      return pushPending(s, {
+        kind: 'choosePlayer',
+        playerId,
+        other: true,
+        then: { effect: 'promoGiveBonusTo', ids: [other] },
+      });
+    }
+    case 'promoGiveBonusTo': {
+      if (choice.kind !== 'player' || !tag.ids?.length) return s;
+      const gift = tag.ids[0]!;
+      const tp = getPlayer(s, choice.playerId);
+      return {
+        ...setPlayer(s, { ...tp, bonusHand: [...tp.bonusHand, gift] }),
+        bonusDiscard: s.bonusDiscard.filter((id) => id !== gift),
+      };
+    }
+    case 'promoJackdawDice': {
+      const n = choice.kind === 'supplyFood' ? choice.foods.length : 0;
+      if (n <= 0) return s;
+      return pushPending(s, { kind: 'pickDie', playerId, count: n });
+    }
+    case 'promoDeckTuckPerCube': {
+      if (!tag.bird || choice.kind !== 'player') return s;
+      const h = HABITATS[tag.n?.[0] ?? -1];
+      if (!h) return s;
+      const n = getPlayer(s, choice.playerId).roundCubes[h];
+      if (n <= 0) return s;
+      const out = tuckFromDeck(s, playerId, tag.bird, n);
+      return firePinkTriggers(out, playerId, { kind: 'tuck' });
+    }
     default:
       return s;
   }
@@ -2591,7 +3117,7 @@ function autoPickHabitat(
   const card = bird(cardId);
   for (const h of card.habitats) {
     if (p.board[h].length >= 5) continue;
-    if (totalEggsAvail(p) < Math.max(0, columnEggCost(p.board[h].length) - eggDiscount)) continue;
+    if (totalEggsAvail(p) < Math.max(0, playEggCost(p, h) - eggDiscount)) continue;
     if (payFoodPlan(p.food, card.cost) == null) continue;
     return h;
   }
@@ -2613,7 +3139,7 @@ function playAdditionalBird(
   if (!card.habitats.includes(habitat)) throw new Error(`this bird can't live in the ${habitat}`);
   if (p.board[habitat].length >= 5) throw new Error('row is full');
   const slot = p.board[habitat].length;
-  const eggCost = Math.max(0, columnEggCost(slot) - eggDiscount);
+  const eggCost = Math.max(0, playEggCost(p, habitat) - eggDiscount);
   const paid = payFoodPlan(p.food, card.cost);
   if (!paid) throw new Error('cannot afford the food cost');
   if (eggCost > 0 && totalEggsAvail(p) < eggCost) throw new Error('not enough eggs for the column');
@@ -2645,9 +3171,21 @@ function playAdditionalBird(
     ...pl,
     hand: pl.hand.filter((id) => id !== cardId),
     board: { ...pl.board, [habitat]: newRow },
+    horneroEggs: pl.horneroEggs.filter((h) => h !== habitat),
   };
   let s = setPlayer(state, pl);
   const ref: BirdRef = { habitat, index: slot };
+  if (isDuet(s)) {
+    for (let i = 0; i < (isGoalDouble(card) ? 2 : 1); i++) {
+      s = pushPending(s, {
+        kind: 'chooseDuetSpace',
+        playerId,
+        cardId: card.id,
+        habitat,
+        foods: paid,
+      });
+    }
+  }
   if (card.powerColor === 'white' && card.powerText) {
     s = runPower(s, playerId, ref);
   }
@@ -2660,6 +3198,7 @@ function playAdditionalBird(
   if (card.powerColor === 'yellow' && card.powerText) {
     s = runPower(s, playerId, ref);
   }
+  s = firePinkTriggers(s, playerId, { kind: 'playBird', habitat, cardId });
   return s;
 }
 

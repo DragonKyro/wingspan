@@ -14,6 +14,8 @@ import type { CardFilter, SiteColor, SlotFilter } from './types';
 
 export type Effect =
   | { kind: 'draw' }
+  /** [Discard] icon (sideways fish-skeleton card): gain a card from your
+   *  discard pile to your hand (or draw from the deck if empty). */
   | { kind: 'discard' }
   | { kind: 'egg'; filter?: SlotFilter; onEach?: boolean }
   | { kind: 'hatch' }
@@ -186,7 +188,7 @@ function warn(text: string, what: string) {
 
 /** Parse the main icon sequence of an ability (no wave / also-if handling). */
 function parseEffectSeq(text: string): { effects: Effect[]; allPlayers: boolean } {
-  const { tokens, tail } = tokenize(text);
+  const { tokens } = tokenize(text);
   const effects: Effect[] = [];
   let allPlayers = false;
 
@@ -227,11 +229,12 @@ function parseEffectSeq(text: string): { effects: Effect[]; allPlayers: boolean 
           filter = applyCriterion(filter, tokens[j]!.icon) ?? filter;
           j++;
         }
-        const after = j < tokens.length ? tokens[j]!.before : tail;
-        const onEach = /on each/i.test(after);
         if (prev?.kind === 'egg') {
           prev.filter = filter;
-          if (onEach) prev.onEach = true;
+          // Per rulebook iconography (fish_p12.png), [FishEgg][ArrowDown] always
+          // means "put an egg on each of your fish that doesn't already have one
+          // in the location shown or with the characteristic shown".
+          prev.onEach = true;
         } else if (prev?.kind === 'playFromHand' || prev?.kind === 'freePlayFromHand') {
           prev.restrict = { ...(prev.restrict ?? {}), ...filter };
         } else {

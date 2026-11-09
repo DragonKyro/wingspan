@@ -1,42 +1,90 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore } from '@/store/networkStore';
-import { chooseAction } from '@/wingspan/ai/chooseAction';
-import { actingPlayerId, getPlayer } from '@/wingspan/helpers';
+import { chooseAction as chooseWingspanAction } from '@/wingspan/ai/chooseAction';
+import { actingPlayerId, getPlayer as getWingspanPlayer } from '@/wingspan/helpers';
 import type { PlayerId } from '@/wingspan/types';
+import { chooseAction as chooseWyrmspanAction } from '@/wyrmspan/ai';
+import { player as getWyrmspanPlayer } from '@/wyrmspan/helpers';
+import { chooseAction as chooseFinspanAction } from '@/finspan/ai/chooseAction';
+import { getPlayer as getFinspanPlayer } from '@/finspan/helpers';
 
-/** Who the game is waiting on right now. */
-function actorNeeded(s: NonNullable<ReturnType<typeof useGameStore.getState>['game']>): PlayerId | null {
-  if (s.phase === 'gameOver' || s.phase === 'gameEnd') return null;
-  const head = s.pending[0];
-  if (head) return head.playerId;
-  if (s.phase === 'roundEnd') return null; // queue drains automatically
+function wingspanActorNeeded(
+  s: NonNullable<ReturnType<typeof useGameStore.getState>['game']>,
+): PlayerId | null {
+  if (s.phase === 'gameOver') return null;
+  if (s.pending.length > 0) return s.pending[0]!.playerId;
   if (s.phase === 'setup') return s.setupRemaining[0] ?? null;
+  if (s.phase === 'roundEnd' || s.phase === 'gameEnd') return null;
   return actingPlayerId(s);
 }
 
-/** Runs AI seats: when the game waits on an AI player, feed it chooseAction
- *  results until a human (or the game over screen) is reached. */
 export function AIDriver() {
+  const activeGameId = useGameStore((s) => s.activeGameId);
   const game = useGameStore((s) => s.game);
+  const wyrmspanGame = useGameStore((s) => s.wyrmspanGame);
+  const finspanGame = useGameStore((s) => s.finspanGame);
+  const aiSpeed = useGameStore((s) => s.aiSpeed);
   const dispatch = useGameStore((s) => s.dispatch);
-  const role = useNetworkStore((s) => s.role);
-  const connection = useNetworkStore((s) => s.connection);
+  const { connection, role } = useNetworkStore();
 
   useEffect(() => {
-    if (!game) return;
-    const pid = actorNeeded(game);
-    if (!pid) return;
-    const player = getPlayer(game, pid);
-    if (!player.isAI) return;
-    // Offline: this device drives every AI. Online: the host drives AI seats.
-    const online = connection === 'in-game';
-    if (online && role !== 'host') return;
-    const action = chooseAction(game, pid);
-    if (!action) return;
-    const t = setTimeout(() => dispatch(action), 250);
-    return () => clearTimeout(t);
-  }, [game, dispatch, role, connection]);
+    // In online games only the host runs AI seats.
+    if (connection === 'in-game' && role !== 'host') return;
+
+    if (activeGameId === 'wingspan' && game) {
+      const pid = wingspanActorNeeded(game);
+      if (!pid) return;
+      const p = getWingspanPlayer(game, pid);
+      if (!p.isAI) return;
+      const anyHuman = game.players.some((pl) => !pl.isAI);
+      const delay = !anyHuman || aiSpeed === 'fast' ? 85 : 310;
+      const timer = setTimeout(() => {
+        const cur = useGameStore.getState().game;
+        if (!cur) return;
+        const action = chooseWingspanAction(cur, pid);
+        if (action) dispatch(action);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+
+    if (activeGameId === 'wyrmspan' && wyrmspanGame) {
+      if (wyrmspanGame.phase === 'gameEnd') return;
+      const pid = wyrmspanGame.pending[0]?.playerId ?? wyrmspanGame.turn;
+      if (!pid) return;
+      const p = getWyrmspanPlayer(wyrmspanGame, pid);
+      if (!p.isAI) return;
+      const anyHuman = wyrmspanGame.players.some((pl) => !pl.isAI);
+      const delay = !anyHuman || aiSpeed === 'fast' ? 85 : 310;
+      const timer = setTimeout(() => {
+        const cur = useGameStore.getState().wyrmspanGame;
+        if (!cur || cur.phase === 'gameEnd') return;
+        const action = chooseWyrmspanAction(cur, pid);
+        if (action) dispatch(action);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+
+    if (activeGameId === 'finspan' && finspanGame) {
+      if (finspanGame.phase === 'gameOver') return;
+      const pid =
+        finspanGame.pending[0]?.playerId ??
+        finspanGame.playerOrder[finspanGame.currentPlayerIndex] ??
+        null;
+      if (!pid) return;
+      const p = getFinspanPlayer(finspanGame, pid);
+      if (!p.isAI) return;
+      const anyHuman = finspanGame.players.some((pl) => !pl.isAI);
+      const delay = !anyHuman || aiSpeed === 'fast' ? 85 : 310;
+      const timer = setTimeout(() => {
+        const cur = useGameStore.getState().finspanGame;
+        if (!cur || cur.phase === 'gameOver') return;
+        const action = chooseFinspanAction(cur, pid);
+        if (action) dispatch(action);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [activeGameId, game, wyrmspanGame, finspanGame, aiSpeed, connection, role, dispatch]);
 
   return null;
 }

@@ -1,9 +1,9 @@
 // Greedy heuristic AI: resolves pending choices sensibly, otherwise prefers
 // entice > excavate > explore > pass.
 
-import { dragonCard, isDragonCard, parseIcons } from './cards';
+import { dragonCard, dragonMatchesCond, isDragonCard, parseIcons } from './cards';
 import { dragonCost, excavateEggCost, exploreCost, nextEmptySpace } from './actions';
-import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
+import { GUILD_TILES, INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, player } from './helpers';
 import type { Action, ChoiceAnswer, GameState, PlayerId, Resource } from './types';
 import { RESOURCES } from './types';
@@ -73,7 +73,10 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
     case 'setupResources':
       return { kind: 'resources', resources: ['meat', 'gold', 'crystal'] };
     case 'chooseResource':
-      if (head.mode === 'gain') return { kind: 'resources', resources: Array(head.count).fill('meat') as Resource[] };
+      if (head.mode === 'gain') {
+        const pick = head.allowed?.[0] ?? 'meat';
+        return { kind: 'resources', resources: Array(head.count).fill(pick) as Resource[] };
+      }
       if (head.mode === 'pay' || head.mode === 'discard') {
         const owned = RESOURCES.filter((r) => p.resources[r] > 0);
         return { kind: 'resources', resources: Array(head.count).fill(owned[0] ?? 'meat') as Resource[] };
@@ -124,8 +127,15 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
         assignments: cards.map((cardId) => ({ cardId, pos: [pos.cave, pos.space] as [number, number] })),
       };
     }
-    case 'choosePay':
-      return canPay(p, head.tiers[0]!.cost) ? { kind: 'option', index: 0 } : { kind: 'decline' };
+    case 'choosePay': {
+      const cost = head.tiers[0]!.cost;
+      if (!canPay(p, cost)) return { kind: 'decline' };
+      if (cost.some((c) => c.kind === 'item' && c.count >= 3)) {
+        const totalItems = p.hand.length + RESOURCES.reduce((a, r) => a + p.resources[r], 0);
+        return totalItems >= 6 ? { kind: 'option', index: 0 } : { kind: 'decline' };
+      }
+      return { kind: 'option', index: 0 };
+    }
     case 'chooseHandCards': {
       const pool = p.hand.filter((id) => head.what === 'any' || (head.what === 'dragon') === isDragonCard(id));
       return { kind: 'cards', cardIds: pool.slice(0, head.count) };
@@ -140,19 +150,40 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
     case 'chooseAbility':
       return { kind: 'indexes', indexes: head.candidates.map((_, i) => i).slice(0, head.count) };
     case 'chooseExcavate': {
-      const pool = head.source === 'hand' ? p.hand.filter((c) => !isDragonCard(c)) : state.caveDisplay.filter((c) => c !== null);
+      const pool =
+        head.source === 'hand'
+          ? p.hand.filter((c) => !isDragonCard(c))
+          : head.source === 'display'
+            ? state.caveDisplay.filter((c): c is number => c !== null)
+            : head.source === 'handOrDisplay'
+              ? p.hand.filter((c) => !isDragonCard(c)).concat(state.caveDisplay.filter((c): c is number => c !== null))
+              : [];
       if (!pool.length && head.source !== 'deck') return { kind: 'decline' };
       const cave = [0, 1, 2].find((c) => p.caves[c]!.spaces.some((sp) => !sp.excavated));
       if (cave === undefined) return { kind: 'decline' };
       return { kind: 'index', index: 0 * 3 + cave };
     }
     case 'choosePlayDragon': {
-      const pool = p.hand.filter(isDragonCard);
+      if (head.source === 'deck') return { kind: 'index', index: 0 };
+      const rawPool =
+        head.source === 'hand'
+          ? p.hand.filter(isDragonCard)
+          : head.source === 'display'
+            ? state.dragonDisplay.filter((c): c is number => c !== null)
+            : p.hand.filter(isDragonCard).concat(state.dragonDisplay.filter((c): c is number => c !== null));
+      const pool = head.cond ? rawPool.filter((id) => dragonMatchesCond(dragonCard(id), head.cond!)) : rawPool;
       if (!pool.length) return { kind: 'decline' };
       return { kind: 'index', index: 0 };
     }
-    case 'chooseGuildSquare':
-      return { kind: 'index', index: 0 };
+    case 'chooseGuildSquare': {
+      const tile = GUILD_TILES[state.guild.tile];
+      const emptyIdx = tile.squares.findIndex(
+        (sq, idx) => !sq.unlimited && (state.guild.squares[idx] ?? []).length === 0,
+      );
+      if (emptyIdx >= 0) return { kind: 'index', index: emptyIdx };
+      const unlimIdx = tile.squares.findIndex((sq) => sq.unlimited);
+      return { kind: 'index', index: unlimIdx >= 0 ? unlimIdx : 0 };
+    }
     case 'chooseOption':
       return { kind: 'option', index: 0 };
     case 'chooseTrain': {
@@ -173,6 +204,9 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
       if (ds.length < 2) return { kind: 'decline' };
       return { kind: 'dragons', positions: ds.map((d) => [d.cave, d.space] as [number, number]) };
     }
+    case 'chooseHandDragonSwap':
+    case 'chooseCaveCardSwap':
+      return { kind: 'index', index: 0 };
     case 'opponentMay':
       return { kind: 'confirm' };
     case 'discardDown': {

@@ -2,7 +2,7 @@
 // any-time exchange. Turn progression and round/upkeep live in engine.ts.
 
 import { dragonCard, isDragonCard, parseIcons } from './cards';
-import { MAT_ICONS, excavateAt, pushPending, runAbility, runSteps, tryPlayDragonAt } from './effects';
+import { excavateAt, runSteps, tryPlayDragonAt } from './effects';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payItems, player, removeEggs, setPlayer } from './helpers';
 import type { GameState, GainItem, PlayerId, PlayerState, Resource } from './types';
@@ -151,38 +151,12 @@ export function explore(state: GameState, playerId: PlayerId, cave: number): Gam
   removeEggs(q, eggN);
   q.explores[names[cave]!] += 1;
   let s = setPlayer(state, q);
-
-  // Walk left to right: printed path icon, then dragon's Adventurer ability;
-  // stop at the first space without a dragon. The printed icons sit on the
-  // path the adventurer walks, so the icon on the path segment leading to a
-  // space is "passed" (and may activate) BEFORE the adventurer walks onto the
-  // space and discovers it is empty (rulebook example: Tess activates the
-  // second printed "Gain" icon, then ends her turn on the next dragon-less
-  // space).
-  const row = q.caves[cave]!;
-  for (let i = 0; i < row.spaces.length; i++) {
-    const icons = MAT_ICONS[cave]?.[i] ?? [];
-    if (icons.length) s = runSteps(s, icons, { playerId });
-    const sp = player(s, playerId).caves[cave]!.spaces[i]!;
-    if (!sp.excavated || !sp.dragon) break;
-    s = runAbility(s, playerId, { cave, space: i }, ['Adventurer']);
-    // Hatchlings/fledglings also have non-adventurer abilities; adventurer
-    // only triggers 'Adventurer'-typed ones (handled inside runAbility).
-    // Academy: when the adventurer walks over a fledgling, its owner may pay
-    // the left-most empty box cost to place 1 training token (optional).
-    // Training must already be complete before the adventurer reaches a
-    // dragon for its purple "if activated" ability to fire, so offering the
-    // token placement after the ability ran is rules-correct.
-    const walked = player(s, playerId).caves[cave]!.spaces[i]!.dragon;
-    if (walked && walked.cardId >= 0) {
-      const card = dragonCard(walked.cardId);
-      const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
-      if (card.size === 'Fledgling' && track > 0 && (walked.training ?? 0) < track) {
-        s = pushPending(s, { kind: 'chooseTrain', playerId, times: 1, free: false, target: 'any', pos: [cave, i] });
-      }
-    }
-  }
   s = log(s, `${player(s, playerId).name} explored cave ${cave + 1}`);
+  // Walk left to right via continuation-chained steps: printed path icon [i],
+  // then dragon [i]'s Adventurer ability + fledgling training offer, stopping
+  // at the first space without a dragon (or after path icon [4] if all 4 spaces
+  // have dragons).
+  s = runSteps(s, [{ op: 'exploreStep', cave, index: 0 }], { playerId });
   return s;
 }
 

@@ -297,11 +297,11 @@ describe('americas expansion', () => {
   it('grants another hummingbird action on a hummingbird-icon space', () => {
     let s = autoSetup(newGame());
     const pid = actingPlayerId(s);
-    // HUM_BONUS_SPACES.bee = [3, 6]: one step up from 2 lands on an icon.
-    s = edit(s, pid, { humTrack: { bee: 2, brilliant: 0, emerald: 0, mango: 0, topaz: 0 } });
-    expect(HUM_BONUS_SPACES.bee).toContain(3);
+    // HUM_BONUS_SPACES.bee = [4, 8]: one step up from 3 lands on an icon.
+    s = edit(s, pid, { humTrack: { bee: 3, brilliant: 0, emerald: 0, mango: 0, topaz: 0 } });
+    expect(HUM_BONUS_SPACES.bee).toContain(4);
     s = moveHumToken(s, pid, 'bee');
-    expect(getPlayer(s, pid).humTrack.bee).toBe(3);
+    expect(getPlayer(s, pid).humTrack.bee).toBe(4);
     expect(s.pending[0]).toMatchObject({ kind: 'chooseHumHabitat', mode: 'either' });
   });
 

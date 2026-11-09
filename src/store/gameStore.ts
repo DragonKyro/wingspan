@@ -1,32 +1,35 @@
 import { create } from 'zustand';
-import type { Action, GameState } from '@/wingspan/types';
-import { applyAction } from '@/wingspan/engine';
-import { createGame } from '@/wingspan/createGame';
-import type { CreateGameOptions } from '@/wingspan/types';
+import type { Action as WingspanAction, CreateGameOptions as WingspanOptions, GameState as WingspanState } from '@/wingspan/types';
+import { applyAction as applyWingspan } from '@/wingspan/engine';
+import { createGame as createWingspan } from '@/wingspan/createGame';
+import type { Action as WyrmspanAction, GameState as WyrmspanState } from '@/wyrmspan/types';
+import { applyAction as applyWyrmspan } from '@/wyrmspan/engine';
+import { createGame as createWyrmspan, type CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
+import type { Action as FinspanAction, CreateGameOptions as FinspanOptions, GameState as FinspanState } from '@/finspan/types';
+import { applyAction as applyFinspan } from '@/finspan/engine';
+import { createGame as createFinspan } from '@/finspan/createGame';
+import type { AnyAction, GameId } from '@/net/types';
 
-/** The state captured for online rollbacks (just the game — the log is inside it). */
-export type GameSnapshot = GameState;
+/** Snapshot of whichever game is active, used for online rollbacks and solo undo. */
+export interface GameSnapshot {
+  gameId: GameId;
+  game: WingspanState | null;
+  wyrmspanGame: WyrmspanState | null;
+  finspanGame: FinspanState | null;
+}
 
-// Optional broadcast hook — when the network layer is active it registers a
-// function here so dispatched actions are sent to the room as a side effect.
-// `before` is the state the action was applied to (the room may roll back to
-// it). Kept here (rather than in networkStore) to avoid a circular import.
-let broadcastHandler: ((action: Action, before: GameSnapshot, at: number) => void) | null = null;
+let broadcastHandler: ((action: AnyAction, before: GameSnapshot, at: number) => void) | null = null;
 export function registerBroadcastHandler(
-  fn: ((action: Action, before: GameSnapshot, at: number) => void) | null,
+  fn: ((action: AnyAction, before: GameSnapshot, at: number) => void) | null,
 ): void {
   broadcastHandler = fn;
 }
 
-// Online, a device may only act for its own seat (and the host for AI
-// seats). The network layer registers the check; it returns an error
-// message to refuse the action, or null to allow it.
-let dispatchGuard: ((action: Action) => string | null) | null = null;
-export function registerDispatchGuard(fn: ((action: Action) => string | null) | null): void {
+let dispatchGuard: ((action: AnyAction) => string | null) | null = null;
+export function registerDispatchGuard(fn: ((action: AnyAction) => string | null) | null): void {
   dispatchGuard = fn;
 }
 
-// Some store behavior needs to know if we're in an online session.
 let isOnlinePredicate: () => boolean = () => false;
 export function registerOnlinePredicate(fn: () => boolean): void {
   isOnlinePredicate = fn;
@@ -36,47 +39,180 @@ export function isOnline(): boolean {
 }
 
 interface AppStore {
-  game: GameState | null;
+  activeGameId: GameId;
+  game: WingspanState | null;
+  wyrmspanGame: WyrmspanState | null;
+  finspanGame: FinspanState | null;
+  /** Undo history stack for solo / hot-seat play. */
+  undoStack: GameSnapshot[];
+  /** Last start options so "Play Again" can start a fresh match with a new seed. */
+  lastStart:
+    | { gameId: 'wingspan'; options: WingspanOptions }
+    | { gameId: 'wyrmspan'; options: WyrmspanOptions }
+    | { gameId: 'finspan'; options: FinspanOptions }
+    | null;
   error: string | null;
-  /** Wall-clock time the game started (from the room's start record; local games use now). */
   startedAt: number | null;
+  /** AI speed in human games: 'normal' (380ms) or 'fast' (90ms). */
+  aiSpeed: 'normal' | 'fast';
 
-  setGameState: (state: GameState, startedAt?: number) => void;
-  /** Start a local game (solo or hot-seat). */
-  startLocalGame: (options: CreateGameOptions) => void;
+  setGameState: (state: WingspanState, startedAt?: number) => void;
+  setWyrmspanState: (state: WyrmspanState, startedAt?: number) => void;
+  setFinspanState: (state: FinspanState, startedAt?: number) => void;
+
+  startLocalGame: (options: WingspanOptions) => void;
+  startLocalWyrmspan: (options: WyrmspanOptions) => void;
+  startLocalFinspan: (options: FinspanOptions) => void;
+  playAgainLocal: () => void;
+
   clearGame: () => void;
-  dispatch: (action: Action) => void;
-  /** Apply an action without broadcasting it (moves from the room). False when the engine rejects it. */
-  applyLocal: (action: Action, at?: number) => boolean;
+  dispatch: (action: AnyAction) => void;
+  applyLocal: (action: AnyAction, at?: number) => boolean;
+  undo: () => void;
+  setAiSpeed: (speed: 'normal' | 'fast') => void;
   takeSnapshot: () => GameSnapshot | null;
   restoreSnapshot: (snap: GameSnapshot) => void;
   dismissError: () => void;
 }
 
+function currentSnap(s: AppStore): GameSnapshot | null {
+  if (!s.game && !s.wyrmspanGame && !s.finspanGame) return null;
+  return {
+    gameId: s.activeGameId,
+    game: s.game,
+    wyrmspanGame: s.wyrmspanGame,
+    finspanGame: s.finspanGame,
+  };
+}
+
 export const useGameStore = create<AppStore>((set, get) => ({
+  activeGameId: 'wingspan',
   game: null,
+  wyrmspanGame: null,
+  finspanGame: null,
+  undoStack: [],
+  lastStart: null,
   error: null,
   startedAt: null,
+  aiSpeed: 'normal',
 
   setGameState: (state, startedAt) => {
-    set({ game: state, startedAt: startedAt ?? null, error: null });
+    set({
+      activeGameId: 'wingspan',
+      game: state,
+      wyrmspanGame: null,
+      finspanGame: null,
+      undoStack: [],
+      startedAt: startedAt ?? null,
+      error: null,
+    });
+  },
+
+  setWyrmspanState: (state, startedAt) => {
+    set({
+      activeGameId: 'wyrmspan',
+      game: null,
+      wyrmspanGame: state,
+      finspanGame: null,
+      undoStack: [],
+      startedAt: startedAt ?? null,
+      error: null,
+    });
+  },
+
+  setFinspanState: (state, startedAt) => {
+    set({
+      activeGameId: 'finspan',
+      game: null,
+      wyrmspanGame: null,
+      finspanGame: state,
+      undoStack: [],
+      startedAt: startedAt ?? null,
+      error: null,
+    });
   },
 
   startLocalGame: (options) => {
     try {
-      const game = createGame(options);
-      set({ game, startedAt: Date.now(), error: null });
+      const game = createWingspan(options);
+      set({
+        activeGameId: 'wingspan',
+        game,
+        wyrmspanGame: null,
+        finspanGame: null,
+        undoStack: [],
+        lastStart: { gameId: 'wingspan', options },
+        startedAt: Date.now(),
+        error: null,
+      });
     } catch (e) {
       set({ error: (e as Error).message });
     }
   },
 
+  startLocalWyrmspan: (options) => {
+    try {
+      const wyrmspanGame = createWyrmspan(options);
+      set({
+        activeGameId: 'wyrmspan',
+        game: null,
+        wyrmspanGame,
+        finspanGame: null,
+        undoStack: [],
+        lastStart: { gameId: 'wyrmspan', options },
+        startedAt: Date.now(),
+        error: null,
+      });
+    } catch (e) {
+      set({ error: (e as Error).message });
+    }
+  },
+
+  startLocalFinspan: (options) => {
+    try {
+      const finspanGame = createFinspan(options);
+      set({
+        activeGameId: 'finspan',
+        game: null,
+        wyrmspanGame: null,
+        finspanGame,
+        undoStack: [],
+        lastStart: { gameId: 'finspan', options },
+        startedAt: Date.now(),
+        error: null,
+      });
+    } catch (e) {
+      set({ error: (e as Error).message });
+    }
+  },
+
+  playAgainLocal: () => {
+    const last = get().lastStart;
+    if (!last) return;
+    const seed = Math.floor(Math.random() * 0xffffffff);
+    if (last.gameId === 'wingspan') {
+      get().startLocalGame({ ...last.options, seed });
+    } else if (last.gameId === 'wyrmspan') {
+      get().startLocalWyrmspan({ ...last.options, seed });
+    } else {
+      get().startLocalFinspan({ ...last.options, seed });
+    }
+  },
+
   clearGame: () => {
-    set({ game: null, startedAt: null, error: null });
+    set({
+      game: null,
+      wyrmspanGame: null,
+      finspanGame: null,
+      undoStack: [],
+      startedAt: null,
+      error: null,
+    });
   },
 
   dispatch: (action) => {
-    const before = get().game;
+    const s = get();
+    const before = currentSnap(s);
     if (!before) return;
     const refused = dispatchGuard?.(action);
     if (refused) {
@@ -85,8 +221,19 @@ export const useGameStore = create<AppStore>((set, get) => ({
     }
     const at = Date.now();
     try {
-      const next = applyAction(before, action);
-      set({ game: next, error: null });
+      const nextUndo = isOnline() ? [] : [...s.undoStack.slice(-24), before];
+      if (s.activeGameId === 'wingspan' && s.game) {
+        const next = applyWingspan(s.game, action as WingspanAction);
+        set({ game: next, undoStack: nextUndo, error: null });
+      } else if (s.activeGameId === 'wyrmspan' && s.wyrmspanGame) {
+        const next = applyWyrmspan(s.wyrmspanGame, action as WyrmspanAction);
+        set({ wyrmspanGame: next, undoStack: nextUndo, error: null });
+      } else if (s.activeGameId === 'finspan' && s.finspanGame) {
+        const next = applyFinspan(s.finspanGame, action as FinspanAction);
+        set({ finspanGame: next, undoStack: nextUndo, error: null });
+      } else {
+        return;
+      }
       broadcastHandler?.(action, before, at);
     } catch (e) {
       set({ error: (e as Error).message });
@@ -94,22 +241,53 @@ export const useGameStore = create<AppStore>((set, get) => ({
   },
 
   applyLocal: (action) => {
-    const before = get().game;
-    if (!before) return false;
+    const s = get();
     try {
-      const next = applyAction(before, action);
-      set({ game: next });
-      return true;
+      if (s.activeGameId === 'wingspan' && s.game) {
+        set({ game: applyWingspan(s.game, action as WingspanAction) });
+        return true;
+      }
+      if (s.activeGameId === 'wyrmspan' && s.wyrmspanGame) {
+        set({ wyrmspanGame: applyWyrmspan(s.wyrmspanGame, action as WyrmspanAction) });
+        return true;
+      }
+      if (s.activeGameId === 'finspan' && s.finspanGame) {
+        set({ finspanGame: applyFinspan(s.finspanGame, action as FinspanAction) });
+        return true;
+      }
+      return false;
     } catch (e) {
       console.warn('[gameStore] applyLocal rejected action:', (e as Error).message);
       return false;
     }
   },
 
-  takeSnapshot: () => get().game,
+  undo: () => {
+    if (isOnline()) return;
+    const stack = get().undoStack;
+    if (stack.length === 0) return;
+    const prev = stack[stack.length - 1]!;
+    set({
+      activeGameId: prev.gameId,
+      game: prev.game,
+      wyrmspanGame: prev.wyrmspanGame,
+      finspanGame: prev.finspanGame,
+      undoStack: stack.slice(0, -1),
+      error: null,
+    });
+  },
+
+  setAiSpeed: (aiSpeed) => set({ aiSpeed }),
+
+  takeSnapshot: () => currentSnap(get()),
 
   restoreSnapshot: (snap) => {
-    set({ game: snap });
+    set({
+      activeGameId: snap.gameId,
+      game: snap.game,
+      wyrmspanGame: snap.wyrmspanGame,
+      finspanGame: snap.finspanGame,
+    });
   },
 
   dismissError: () => set({ error: null }),

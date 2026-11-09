@@ -173,15 +173,16 @@ describe('oceania expansion', () => {
     expect(s.round).toBe(1);
   });
 
-  it('scores nectar majorities per habitat (5/2, ties share the rank)', () => {
+  it('scores nectar majorities per habitat (5/2, ties split summed rank points)', () => {
     const s = autoSetup(newGame());
     // p1: most in forest, tied most in grassland; p2: most in wetland.
+    // Per Oceania p.3, a 2-way tie for 1st splits (5 + 2) / 2 = 3 pts each.
     const p1 = getPlayer(s, 'p1');
     const p2 = getPlayer(s, 'p2');
     let g = setPlayer(s, { ...p1, nectarSpent: { forest: 3, grassland: 2, wetland: 0 } });
     g = setPlayer(g, { ...p2, nectarSpent: { forest: 1, grassland: 2, wetland: 4 } });
-    expect(nectarPoints(g, 'p1')).toBe(5 + 5); // forest 1st + grassland tie-1st
-    expect(nectarPoints(g, 'p2')).toBe(2 + 5 + 5); // forest 2nd + grassland tie-1st + wetland 1st
+    expect(nectarPoints(g, 'p1')).toBe(5 + 3); // forest 1st (5) + grassland tie-1st (3)
+    expect(nectarPoints(g, 'p2')).toBe(2 + 3 + 5); // forest 2nd (2) + grassland tie-1st (3) + wetland 1st (5)
   });
 
   it('runs the Tūī copy power on a neighbour forest bird', () => {

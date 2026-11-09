@@ -6,6 +6,13 @@ import { parseAbility } from './abilities';
 import { grantBenefit } from './actions';
 import { chooseAction } from './ai/chooseAction';
 import { ACHIEVEMENTS, FISH } from './cards';
+import {
+  DIVE_BONUSES,
+  FORAGE_CATALINA_GOBY,
+  FORAGE_GLASSHEAD_GRENADIER,
+  FORAGE_SHOWY_BRISTLEMOUTH,
+  INITIAL_OCEAN,
+} from './constants';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
 import {
@@ -65,10 +72,13 @@ describe('ability parser', () => {
     expect(p.wave).toEqual({ points: 3, cond: { kind: 'noTokens' } });
   });
 
-  it('parses arrow-down egg filters with on-each', () => {
+  it('parses arrow-down egg filters with on-each (including cards omitting "on each")', () => {
     const p = parseAbility('(all players) [FishEgg][ArrowDown][FishLengthSmall] on each [AllPlayers]')!;
     expect(p.allPlayers).toBe(true);
     expect(p.effects).toEqual([{ kind: 'egg', filter: { size: 'small' }, onEach: true }]);
+    // Cards like European Anchovy / Kawakawa omit the literal "on each" after [FishEgg][ArrowDown].
+    const p2 = parseAbility('[FishEgg][ArrowDown][Estuary]')!;
+    expect(p2.effects).toEqual([{ kind: 'egg', filter: { estuary: true }, onEach: true }]);
   });
 
   it('parses two-part also-if abilities', () => {
@@ -166,15 +176,32 @@ describe('token mechanics', () => {
 });
 
 describe('setup', () => {
-  it('deals 2 starters + 3 mains and places forage + tokens', () => {
+  it('deals 2 starters + 3 mains and places printed forage fish + tokens per ocean mat', () => {
     const s = newGame(42);
     const p = getPlayer(s, 'p1');
     expect(p.hand.length).toBe(5);
     const forage = [...allSlots(p.ocean)].filter(({ slot }) => slot.stack.length > 0);
     expect(forage.length).toBe(3);
-    expect(p.ocean.slots[1]![1]!.young).toBe(1); // Catalina Goby slot
-    expect(p.ocean.slots[3]![1]!.eggs).toBe(1); // Showy Bristlemouth slot
-    expect(p.ocean.slots[4]![0]!.eggs).toBe(1); // Glasshead Grenadier slot
+    // Verified against fish_p03.png, fish_p07.png, fish_p10.png:
+    expect(INITIAL_OCEAN).toEqual([
+      [FORAGE_CATALINA_GOBY, 1, 2, 1, 0],
+      [null, 2, 1, 0, 1],
+      [FORAGE_SHOWY_BRISTLEMOUTH, 3, 1, 0, 0],
+      [FORAGE_GLASSHEAD_GRENADIER, 4, 0, 1, 0],
+    ]);
+    expect(p.ocean.slots[1]![2]!.stack).toEqual([FORAGE_CATALINA_GOBY]);
+    expect(p.ocean.slots[1]![2]!.eggs).toBe(1);
+    expect(p.ocean.slots[2]![1]!.stack).toEqual([]);
+    expect(p.ocean.slots[2]![1]!.young).toBe(1);
+    expect(p.ocean.slots[3]![1]!.stack).toEqual([FORAGE_SHOWY_BRISTLEMOUTH]);
+    expect(p.ocean.slots[3]![1]!.eggs).toBe(0);
+    expect(p.ocean.slots[4]![0]!.stack).toEqual([FORAGE_GLASSHEAD_GRENADIER]);
+    expect(p.ocean.slots[4]![0]!.eggs).toBe(1);
+    expect(DIVE_BONUSES).toEqual([
+      { zones: ['drawCard', 'drawCard', 'drawCard'], bottom: 'recoverCard' },
+      { zones: ['egg', 'egg', 'egg'], bottom: 'egg' },
+      { zones: ['hatch', 'hatch', 'move'], bottom: 'move' },
+    ]);
     expect(s.deck.length).toBe(125 - 6); // 2 players x 3 mains
   });
 });
@@ -306,6 +333,20 @@ describe('scoring', () => {
     s = setPlayer(s, p);
     expect(gameEndWavePoints(getPlayer(s, 'p1'))).toBe(9);
   });
+
+  it('counts 2 predator tags on über predators for the Predator Tag achievement', () => {
+    const uber = FISH.find((c) => c.tags.predator === 2)!;
+    const pred = FISH.find((c) => c.tags.predator === 1)!;
+    const tile = ACHIEVEMENTS.sideBTiles.find((t) => t.kind === 'tagPredator')!;
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    const slots = p.ocean.slots.map((r) => r.map((x) => ({ ...x })));
+    slots[0]![0] = { stack: [uber.id], eggs: 0, young: 0, school: false };
+    slots[0]![1] = { stack: [pred.id], eggs: 0, young: 0, school: false };
+    p = { ...p, ocean: { ...p.ocean, slots } };
+    // 2 tags (über) + 1 tag (predator) = 3 predator tags x 2 pts = 6 pts.
+    expect(scoreAchievement(p, tile)).toBe(6);
+  });
 });
 
 describe('full games', () => {
@@ -349,5 +390,68 @@ describe('full games', () => {
     }
     const scores = Object.values(state.finalScores!);
     expect(scores[0]!.achievementPoints).toBeGreaterThan(0);
+  });
+
+  it('rejects duplicate card ids or under-recovery in chooseRecover, and falls back to deck when discard is empty', () => {
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    p = { ...p, discard: [10, 11] };
+    s = setPlayer(s, p);
+    s = { ...s, pending: [{ kind: 'chooseRecover', playerId: 'p1', count: 2 }] };
+    expect(() =>
+      applyAction(s, {
+        type: 'resolveChoice',
+        playerId: 'p1',
+        choice: { kind: 'handCards', cardIds: [10, 10] },
+      }),
+    ).toThrow(/duplicate/i);
+    expect(() =>
+      applyAction(s, {
+        type: 'resolveChoice',
+        playerId: 'p1',
+        choice: { kind: 'handCards', cardIds: [] },
+      }),
+    ).toThrow(/must recover/i);
+    const s2 = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'handCards', cardIds: [10, 11] },
+    });
+    expect(getPlayer(s2, 'p1').discard).toEqual([]);
+    expect(getPlayer(s2, 'p1').hand).toContain(10);
+    expect(getPlayer(s2, 'p1').hand).toContain(11);
+
+    const deckBefore = s2.deck.length;
+    const handBefore = getPlayer(s2, 'p1').hand.length;
+    const s3 = applyAction(
+      { ...s2, pending: [{ kind: 'chooseRecover', playerId: 'p1', count: 1 }] },
+      { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'handCards', cardIds: [] } },
+    );
+    expect(s3.deck.length).toBe(deckBefore - 1);
+    expect(getPlayer(s3, 'p1').hand.length).toBe(handBefore + 1);
+  });
+
+  it('activates a non-point GameEnd ability on a fish played during the gameEnd phase', () => {
+    // Card 10 (Barramundi): GameEnd "[FishFromHand][ArrowDown][Estuary]"
+    // Card 41 (European Anchovy, sunlight fish): GameEnd "[FishEgg][ArrowDown][Estuary]"
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    const slots = p.ocean.slots.map((r) => r.map((x) => ({ ...x })));
+    slots[1]![0] = { stack: [10], eggs: 0, young: 0, school: false };
+    p = { ...p, ocean: { ...p.ocean, slots }, hand: [41, 1, 2, 3] };
+    s = setPlayer(s, p);
+    s = {
+      ...s,
+      phase: 'gameEnd',
+      gameEndQueue: [],
+      pending: [{ kind: 'choosePlayFromHand', playerId: 'p1', free: true, restrict: { estuary: true }, optional: true }],
+    };
+    const s2 = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'playFromHand', cardId: 41, row: 0, col: 0 },
+    });
+    expect(s2.phase).toBe('gameOver');
+    expect(slotAt(getPlayer(s2, 'p1').ocean, { row: 0, col: 0 }).eggs).toBe(1);
   });
 });

@@ -1,45 +1,188 @@
+// Game picker + per-game local/online lobby screen, modeled on card-collecting
+// (GameLobby.tsx + App.tsx) and catan (HomeMenu.tsx + NewGame.tsx).
+
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore, warmUpNetwork } from '@/store/networkStore';
+import { GAME_TITLES, LOBBY_SETS } from '@/store/lobbyGame';
+import type { GameId, LobbyGame } from '@/net/types';
 import { SETS } from '@/wingspan/cards';
 import type { GameMode, PlayerColor } from '@/wingspan/types';
+import { RulesModal } from './RulesBook';
+import {
+  FinspanThumbnail,
+  PLAYER_COLOR_HEX,
+  WingspanThumbnail,
+  WyrmspanThumbnail,
+} from './svgArt';
 
 const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'];
 const OFFICIAL_SETS = ['core', 'european', 'oceania', 'asia', 'americas'];
+const PROMO_SETS = ['promoUS', 'promoEurope', 'promoAsia', 'promoNZ', 'promoCA', 'promoUK'];
 
-/** Valid total seat counts per mode (asia duet = 2, flock = 6-7). */
 const MODE_SEATS: Record<GameMode, number[]> = {
   standard: [1, 2, 3, 4, 5],
   duet: [2],
   flock: [6, 7],
 };
 
+interface SeatDraft {
+  id: string;
+  name: string;
+  color: PlayerColor;
+  isAI: boolean;
+}
+
+export function ColorSwatchPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: PlayerColor;
+  onChange: (c: PlayerColor) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        className="swatch-btn"
+        style={{ background: PLAYER_COLOR_HEX[value] ?? '#4a90d9' }}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        title={`Color: ${value}`}
+        aria-label={`Color: ${value}`}
+      />
+      {open && !disabled && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 20 }}
+          />
+          <div className="swatch-popover" onClick={(e) => e.stopPropagation()}>
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`swatch-option${c === value ? ' active' : ''}`}
+                style={{ background: PLAYER_COLOR_HEX[c] }}
+                onClick={() => {
+                  onChange(c);
+                  setOpen(false);
+                }}
+                title={c}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 export function MenuScreen() {
   const startLocalGame = useGameStore((s) => s.startLocalGame);
-  const { createRoom, joinRoom, connection, errorMessage, joinFailure, retryJoin, clearError, myDisplayName, setDisplayName } =
-    useNetworkStore();
-  const [humans, setHumans] = useState(1);
-  const [ais, setAis] = useState(1);
-  const [sets, setSets] = useState<string[]>(['core']);
+  const startLocalWyrmspan = useGameStore((s) => s.startLocalWyrmspan);
+  const startLocalFinspan = useGameStore((s) => s.startLocalFinspan);
+  const {
+    createRoom,
+    joinRoom,
+    connection,
+    errorMessage,
+    joinFailure,
+    retryJoin,
+    clearError,
+    myDisplayName,
+    setDisplayName,
+  } = useNetworkStore();
+
+  const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
+  const [rulesGame, setRulesGame] = useState<GameId | null>(null);
+  const [seats, setSeats] = useState<SeatDraft[]>([
+    { id: 's1', name: 'Player 1', color: 'red', isAI: false },
+    { id: 's2', name: 'AI 1', color: 'blue', isAI: true },
+  ]);
+
+  // Wingspan options
+  const [sets, setSets] = useState<string[]>(['core', 'european', 'oceania', 'asia', 'americas']);
   const [mode, setMode] = useState<GameMode>('standard');
+  const [goalSide, setGoalSide] = useState<'green' | 'blue'>('green');
+
+  // Wyrmspan options
+  const [wyrmAcademy, setWyrmAcademy] = useState(true);
+
+  // Finspan options
+  const [finSr, setFinSr] = useState(true);
+  const [finSide, setFinSide] = useState<'A' | 'B'>('A');
+
+  // Online join / host
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState(myDisplayName);
 
-  const seatsOk = MODE_SEATS[mode].includes(humans + ais);
+  const activeGameId = selectedGame ?? 'wingspan';
+  const maxPlayers =
+    activeGameId === 'wingspan'
+      ? mode === 'flock'
+        ? 7
+        : mode === 'duet'
+          ? 2
+          : 5
+      : 5;
+  const minPlayers = activeGameId === 'wingspan' && mode === 'flock' ? 6 : activeGameId === 'wingspan' && mode === 'duet' ? 2 : 1;
 
-  const startLocal = () => {
-    const names = [...Array.from({ length: humans }, (_, i) => `Player ${i + 1}`), ...Array.from({ length: ais }, (_, i) => `AI ${i + 1}`)];
-    const types: ('human' | 'ai')[] = [
-      ...Array.from({ length: humans }, () => 'human' as const),
-      ...Array.from({ length: ais }, () => 'ai' as const),
-    ];
-    startLocalGame({
-      playerNames: names,
-      playerTypes: types,
-      playerColors: COLORS.slice(0, names.length),
-      seed: Math.floor(Math.random() * 0xffffffff),
-      settings: { sets, goalSide: 'green', mode },
-    });
+  const seatsOk =
+    activeGameId === 'wingspan'
+      ? MODE_SEATS[mode].includes(seats.length)
+      : seats.length >= 1 && seats.length <= 5;
+
+  const addSeat = () => {
+    if (seats.length >= 7) return;
+    const used = new Set(seats.map((s) => s.color));
+    const color = COLORS.find((c) => !used.has(c)) ?? COLORS[seats.length % COLORS.length]!;
+    const aiCount = seats.filter((s) => s.isAI).length;
+    setSeats([
+      ...seats,
+      {
+        id: `s-${Date.now()}-${seats.length}`,
+        name: `AI ${aiCount + 1}`,
+        color,
+        isAI: true,
+      },
+    ]);
+  };
+
+  const removeSeat = (id: string) => {
+    if (seats.length <= 1) return;
+    setSeats(seats.filter((s) => s.id !== id));
+  };
+
+  const updateSeat = (id: string, patch: Partial<SeatDraft>) => {
+    setSeats(seats.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  };
+
+  const changeMode = (nextMode: GameMode) => {
+    setMode(nextMode);
+    if (nextMode === 'duet' && seats.length !== 2) {
+      setSeats([
+        seats[0] ?? { id: 's1', name: 'Player 1', color: 'red', isAI: false },
+        seats[1] ?? { id: 's2', name: 'AI 1', color: 'blue', isAI: true },
+      ]);
+    } else if (nextMode === 'flock' && seats.length < 6) {
+      const next = seats.slice();
+      while (next.length < 6) {
+        const idx = next.length;
+        next.push({
+          id: `s-flock-${idx}`,
+          name: `AI ${idx}`,
+          color: COLORS[idx % COLORS.length]!,
+          isAI: true,
+        });
+      }
+      setSeats(next);
+    } else if (nextMode === 'standard' && seats.length > 5) {
+      setSeats(seats.slice(0, 5));
+    }
   };
 
   const toggleSet = (id: string) => {
@@ -49,90 +192,454 @@ export function MenuScreen() {
     });
   };
 
-  return (
-    <div className="menu">
-      <div className="card">
-        <h2>New local game</h2>
-        <div className="row">
-          <label>Mode:</label>
-          <select value={mode} onChange={(e) => setMode(e.target.value as GameMode)}>
-            <option value="standard">Standard (1-5)</option>
-            <option value="duet">Asia Duet (2)</option>
-            <option value="flock">Asia Flock (6-7)</option>
-          </select>
-          <label>Humans:</label>
-          <select value={humans} onChange={(e) => setHumans(Number(e.target.value))}>
-            {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <label>AI:</label>
-          <select value={ais} onChange={(e) => setAis(Number(e.target.value))}>
-            {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div className="row">
-          <label>Sets:</label>
-          {OFFICIAL_SETS.filter((s) => (SETS as string[]).includes(s)).map((id) => (
-            <label key={id}>
-              <input type="checkbox" checked={sets.includes(id)} onChange={() => toggleSet(id)} /> {id}
-            </label>
-          ))}
-        </div>
-        <div>
-          <button className="primary" onClick={startLocal} disabled={!seatsOk}>
-            Start game
-          </button>
-          {!seatsOk && (
-            <span className="muted" style={{ fontSize: '0.8rem', marginLeft: 8 }}>
-              {mode === 'duet'
-                ? 'Duet needs exactly 2 players.'
-                : mode === 'flock'
-                  ? 'Flock needs 6-7 players.'
-                  : 'Standard needs 1-5 players.'}
-            </span>
-          )}
-        </div>
-        <div className="muted" style={{ fontSize: '0.8rem' }}>
-          Hot-seat: humans share this device; AI seats play themselves.
-        </div>
-      </div>
+  const startLocal = () => {
+    const seed = Math.floor(Math.random() * 0xffffffff);
+    if (activeGameId === 'wyrmspan') {
+      startLocalWyrmspan({
+        seed,
+        playerNames: seats.map((s) => s.name.trim() || 'Player'),
+        isAI: seats.map((s) => s.isAI),
+        expansions: wyrmAcademy ? ['base', 'academy'] : ['base'],
+      });
+      return;
+    }
+    if (activeGameId === 'finspan') {
+      startLocalFinspan({
+        seed,
+        playerNames: seats.map((s) => s.name.trim() || 'Player'),
+        playerTypes: seats.map((s) => (s.isAI ? 'ai' : 'human')),
+        playerColors: seats.map((s) => s.color),
+        settings: {
+          sets: finSr ? ['base', 'sr'] : ['base'],
+          achievementSide: finSide,
+        },
+      });
+      return;
+    }
+    startLocalGame({
+      playerNames: seats.map((s) => s.name.trim() || 'Player'),
+      playerTypes: seats.map((s) => (s.isAI ? 'ai' : 'human')),
+      playerColors: seats.map((s) => s.color),
+      seed,
+      settings: { sets, goalSide, mode },
+    });
+  };
 
-      <div className="card" onFocus={warmUpNetwork}>
-        <h2>Play online</h2>
+  const buildLobbyGame = (): LobbyGame => {
+    if (activeGameId === 'wyrmspan') {
+      const expansions: ('base' | 'academy')[] = wyrmAcademy ? ['base', 'academy'] : ['base'];
+      return { gameId: 'wyrmspan', sets: expansions, expansions };
+    }
+    if (activeGameId === 'finspan') {
+      return {
+        gameId: 'finspan',
+        sets: finSr ? ['base', 'sr'] : ['base'],
+        achievementSide: finSide,
+      };
+    }
+    return { gameId: 'wingspan', sets, mode, goalSide };
+  };
+
+  return (
+    <div className="picker-wrap">
+      {/* Online room bar at top (like card-collecting's JoinRoomBox) */}
+      <div className="join-room-bar" onFocus={warmUpNetwork} onPointerEnter={warmUpNetwork}>
+        <div className="join-room-title">
+          <strong>🌐 Online Multiplayer</strong>
+          <span className="muted">Join a friend&apos;s room code or host a room from any game below</span>
+        </div>
         <div className="row">
-          <label>Name:</label>
           <input
             type="text"
+            placeholder="Your name"
             value={name}
+            maxLength={24}
             onChange={(e) => {
               setName(e.target.value);
               setDisplayName(e.target.value);
             }}
+            style={{ width: 140 }}
           />
-        </div>
-        <div className="row">
-          <button className="primary" onClick={() => void createRoom(name)} disabled={connection === 'connecting'}>
-            Create room
-          </button>
           <input
             type="text"
             placeholder="Room code"
             value={joinCode}
+            maxLength={6}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            style={{ width: 110 }}
+            style={{ width: 110, textTransform: 'uppercase', letterSpacing: '0.08em' }}
           />
-          <button onClick={() => void joinRoom(joinCode, name)} disabled={joinCode.length < 3 || connection === 'connecting'}>
-            Join
+          <button
+            className="primary"
+            onClick={() => void joinRoom(joinCode, name)}
+            disabled={joinCode.trim().length < 3 || connection === 'connecting'}
+          >
+            {connection === 'connecting' ? 'Joining…' : 'Join Room'}
+          </button>
+          <button
+            className="secondary"
+            onClick={() => void createRoom(name, buildLobbyGame())}
+            disabled={!name.trim() || connection === 'connecting'}
+          >
+            Host Room
           </button>
         </div>
-        {connection === 'connecting' && <div className="muted">Connecting…</div>}
         {errorMessage && (
-          <div className="error">
-            {errorMessage}{' '}
+          <div className="error row" style={{ width: '100%', marginTop: 4 }}>
+            <span>{errorMessage}</span>
             {joinFailure && <button onClick={retryJoin}>Retry</button>}
             <button onClick={clearError}>Dismiss</button>
           </div>
         )}
       </div>
+
+      {/* 3-Game Picker Cards (Wingspan, Wyrmspan, Finspan) */}
+      {selectedGame === null ? (
+        <div className="game-list">
+          {(
+            [
+              {
+                id: 'wingspan' as const,
+                badge: '1–7p · +4 Expansions',
+                tags: ['Base', 'European', 'Oceania', 'Asia Duet & Flock', 'Americas'],
+                Thumb: WingspanThumbnail,
+              },
+              {
+                id: 'wyrmspan' as const,
+                badge: '1–5p · +Dragon Academy',
+                tags: ['Base Caverns', 'Dragon Guilds', 'Dragon Academy', 'Fledglings'],
+                Thumb: WyrmspanThumbnail,
+              },
+              {
+                id: 'finspan' as const,
+                badge: '1–5p · +Sharks & Reefs',
+                tags: ['Base Ocean', 'Schools & Diving', 'Sharks & Reefs', 'Coral'],
+                Thumb: FinspanThumbnail,
+              },
+            ] as const
+          ).map(({ id, badge, tags, Thumb }) => {
+            const meta = GAME_TITLES[id];
+            return (
+              <div
+                key={id}
+                className="game-card"
+                onClick={() => {
+                  setSelectedGame(id);
+                  if (id !== 'wingspan' && seats.length > 5) {
+                    setSeats(seats.slice(0, 5));
+                  }
+                }}
+              >
+                <div className="game-card-art">
+                  <Thumb />
+                </div>
+                <div className="game-card-body">
+                  <div className="game-card-meta">
+                    <h2>{meta.name}</h2>
+                    <span className="player-range">{badge}</span>
+                  </div>
+                  <p className="game-card-desc">{meta.subtitle}</p>
+                  <div className="game-card-tags">
+                    {tags.map((t) => (
+                      <span key={t} className="expansion-pill">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="game-card-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => setSelectedGame(id)}
+                    >
+                      Configure & Play →
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setRulesGame(id)}
+                    >
+                      📖 Rulebook
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Single-Game Lobby Panel (modeled on card-collecting's GameLobby.tsx) */
+        <div className="lobby-single">
+          <div className="lobby-topbar">
+            <button type="button" className="secondary" onClick={() => setSelectedGame(null)}>
+              ← All Games
+            </button>
+            <div className="lobby-game-tabs">
+              {(['wingspan', 'wyrmspan', 'finspan'] as const).map((gid) => (
+                <button
+                  key={gid}
+                  type="button"
+                  className={`lobby-game-tab${selectedGame === gid ? ' active' : ''}`}
+                  onClick={() => {
+                    setSelectedGame(gid);
+                    if (gid !== 'wingspan' && seats.length > 5) setSeats(seats.slice(0, 5));
+                  }}
+                >
+                  {GAME_TITLES[gid].name}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="secondary" onClick={() => setRulesGame(selectedGame)}>
+              📖 Rules
+            </button>
+          </div>
+
+          <section className="lobby-panel">
+            <div className="lobby-panel-header">
+              <div>
+                <h2>{GAME_TITLES[selectedGame].name}</h2>
+                <p className="muted" style={{ margin: '2px 0 0' }}>
+                  {GAME_TITLES[selectedGame].subtitle}
+                </p>
+              </div>
+              <span className="player-range">
+                {minPlayers === maxPlayers ? `${minPlayers} players` : `${minPlayers}–${maxPlayers} players`}
+              </span>
+            </div>
+
+            {/* Seats section */}
+            <h4 className="lobby-section-h">Seats ({seats.length})</h4>
+            <div className="seat-list">
+              {seats.map((s) => (
+                <div key={s.id} className="seat-row">
+                  <ColorSwatchPicker
+                    value={s.color}
+                    onChange={(color) => updateSeat(s.id, { color })}
+                  />
+                  <input
+                    type="text"
+                    className="seat-name"
+                    value={s.name}
+                    maxLength={24}
+                    onChange={(e) => updateSeat(s.id, { name: e.target.value })}
+                  />
+                  <div className="seat-type-toggle" role="group" aria-label="Seat type">
+                    <button
+                      type="button"
+                      className={!s.isAI ? 'active' : 'secondary'}
+                      onClick={() => updateSeat(s.id, { isAI: false })}
+                    >
+                      👤 Human
+                    </button>
+                    <button
+                      type="button"
+                      className={s.isAI ? 'active' : 'secondary'}
+                      onClick={() => updateSeat(s.id, { isAI: true })}
+                    >
+                      🤖 AI
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary seat-remove"
+                    onClick={() => removeSeat(s.id)}
+                    disabled={seats.length <= 1}
+                    title="Remove seat"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="row" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                className="secondary"
+                onClick={addSeat}
+                disabled={seats.length >= maxPlayers}
+              >
+                + Add Seat
+              </button>
+              <span className="muted" style={{ fontSize: '0.8rem' }}>
+                Hot-seat humans share this screen; AI seats play automatically.
+              </span>
+            </div>
+
+            {/* Game-specific options */}
+            <h4 className="lobby-section-h">Game Options</h4>
+            {selectedGame === 'wingspan' && (
+              <div className="options-stack">
+                <div className="option-group">
+                  <span className="option-label">Mode:</span>
+                  <div className="pill-group">
+                    {(
+                      [
+                        { id: 'standard', label: 'Standard (1–5p)' },
+                        { id: 'duet', label: 'Asia Duet Map (2p)' },
+                        { id: 'flock', label: 'Asia Flock Mode (6–7p)' },
+                      ] as const
+                    ).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={mode === m.id ? 'primary' : 'secondary'}
+                        onClick={() => changeMode(m.id)}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="option-group">
+                  <span className="option-label">Goal Board:</span>
+                  <div className="pill-group">
+                    <button
+                      type="button"
+                      className={goalSide === 'green' ? 'primary' : 'secondary'}
+                      onClick={() => setGoalSide('green')}
+                    >
+                      🟩 Green (Ranked Majority: 4/1 → 7/4/3)
+                    </button>
+                    <button
+                      type="button"
+                      className={goalSide === 'blue' ? 'primary' : 'secondary'}
+                      onClick={() => setGoalSide('blue')}
+                    >
+                      🟦 Blue (1 pt per item, max 5)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="option-group">
+                  <span className="option-label">Card Sets:</span>
+                  <div className="pill-group">
+                    {OFFICIAL_SETS.filter((s) => (SETS as string[]).includes(s)).map((id) => {
+                      const lbl = LOBBY_SETS.find((x) => x.id === id)?.label ?? id;
+                      const on = sets.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          className={on ? 'primary' : 'secondary'}
+                          onClick={() => toggleSet(id)}
+                        >
+                          {on ? '✓ ' : ''}
+                          {lbl}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      className={PROMO_SETS.every((p) => sets.includes(p)) ? 'primary' : 'secondary'}
+                      onClick={() => {
+                        const allOn = PROMO_SETS.every((p) => sets.includes(p));
+                        if (allOn) {
+                          const filtered = sets.filter((s) => !PROMO_SETS.includes(s));
+                          setSets(filtered.length ? filtered : ['core']);
+                        } else {
+                          setSets([...new Set([...sets, ...PROMO_SETS])]);
+                        }
+                      }}
+                    >
+                      {PROMO_SETS.every((p) => sets.includes(p)) ? '✓ ' : ''}Promo Packs
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedGame === 'wyrmspan' && (
+              <div className="options-stack">
+                <div className="option-group">
+                  <span className="option-label">Expansions:</span>
+                  <div className="pill-group">
+                    <button type="button" className="primary" disabled>
+                      ✓ Base Wyrmspan
+                    </button>
+                    <button
+                      type="button"
+                      className={wyrmAcademy ? 'primary' : 'secondary'}
+                      onClick={() => setWyrmAcademy((v) => !v)}
+                    >
+                      {wyrmAcademy ? '✓ ' : ''}Dragon Academy (Fledglings, Pass Income & New Guilds)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedGame === 'finspan' && (
+              <div className="options-stack">
+                <div className="option-group">
+                  <span className="option-label">Expansions:</span>
+                  <div className="pill-group">
+                    <button type="button" className="primary" disabled>
+                      ✓ Base Finspan
+                    </button>
+                    <button
+                      type="button"
+                      className={finSr ? 'primary' : 'secondary'}
+                      onClick={() => setFinSr((v) => !v)}
+                    >
+                      {finSr ? '✓ ' : ''}Sharks & Reefs (Coral Reefs, Sharks & S&R Tiles)
+                    </button>
+                  </div>
+                </div>
+                <div className="option-group">
+                  <span className="option-label">Achievement Board:</span>
+                  <div className="pill-group">
+                    <button
+                      type="button"
+                      className={finSide === 'A' ? 'primary' : 'secondary'}
+                      onClick={() => setFinSide('A')}
+                    >
+                      Side A (Fixed Weekly Achievements)
+                    </button>
+                    <button
+                      type="button"
+                      className={finSide === 'B' ? 'primary' : 'secondary'}
+                      onClick={() => setFinSide('B')}
+                    >
+                      Side B (Random Tiles + 3 VP Weekly Leader Bonus)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Launch bar */}
+            <div className="lobby-launch-row">
+              <button
+                type="button"
+                className="primary btn-lg"
+                onClick={startLocal}
+                disabled={!seatsOk}
+              >
+                ▶ Start {GAME_TITLES[selectedGame].name}
+              </button>
+              <button
+                type="button"
+                className="secondary btn-lg"
+                onClick={() => void createRoom(name || 'Host', buildLobbyGame())}
+                disabled={connection === 'connecting'}
+              >
+                🌐 Host Online Room
+              </button>
+              {!seatsOk && (
+                <span className="error">
+                  {mode === 'duet'
+                    ? 'Duet Mode requires exactly 2 seats.'
+                    : mode === 'flock'
+                      ? 'Flock Mode requires 6–7 seats.'
+                      : 'Requires 1–5 seats.'}
+                </span>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {rulesGame && <RulesModal gameId={rulesGame} onClose={() => setRulesGame(null)} />}
     </div>
   );
 }

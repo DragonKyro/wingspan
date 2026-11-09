@@ -4,12 +4,17 @@
 // zero-unit exclusion, and right-to-left power activation.
 
 import { describe, expect, it } from 'vitest';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { greedyChoice } from '@/wingspan/ai/choices';
 import { finishRound, internals } from './actions';
+import { bird } from './cards';
+import { HUM_BONUS_SPACES } from './constants';
 import { createGame } from './createGame';
-import { applyAction } from './engine';
+import { DUET_MAP, duetFoodsFor, FLOCK_GOAL_POINTS } from './duetMap';
+import { applyAction, settle } from './engine';
 import { actingPlayerId, getPlayer } from './helpers';
 import { firePinkTriggers, resetPinkFlags, runPower, setPlayer } from './powers';
+import { bonusCardVp, bonusUnits, goalScore, nectarPoints } from './scoring';
 import type { BirdRef, GameState, PlayerId, PlayerState, PlayedBird } from './types';
 
 const COMMON_YELLOWTHROAT = 94; // brown: draw 2, discard 1 at end of turn.
@@ -237,7 +242,7 @@ describe('goal scoring', () => {
     );
     const map: (PlayerId | null)[] = s.duet!.map.slice();
     map[0] = 'p2'; // forest bonus space (food die)
-    map[9] = 'p2'; // forest bonus space (food die)
+    map[14] = 'p2'; // forest bonus space (food die)
     s = {
       ...s,
       phase: 'roundEnd',
@@ -249,6 +254,287 @@ describe('goal scoring', () => {
     s = finishRound(s);
     // p1 has 0 tokens on bonus spaces and cannot win "fewest"; p2 scores.
     expect(s.goalScores[0]).toEqual([0, 2]);
+  });
+
+  it('scores blue-side goals at 1 pt per item up to max 5 (no competition)', () => {
+    let s = createGame({
+      playerNames: ['A', 'B'],
+      playerTypes: ['human', 'human'],
+      playerColors: ['red', 'blue'],
+      seed: 12,
+      settings: { sets: ['core', 'americas'], goalSide: 'blue' },
+    });
+    expect(s.settings.goalSide).toBe('blue');
+    s = autoSetup(s);
+    s = edit(s, 'p1', { hand: [1, 2, 3, 4, 5, 6, 7] }); // 7 cards → capped at 5
+    s = edit(s, 'p2', { hand: [8, 9, 10] }); // 3 cards → 3 pts
+    s = {
+      ...s,
+      phase: 'roundEnd',
+      round: 0,
+      roundEndQueue: [],
+      goalTiles: [CARDS_IN_HAND_GOAL, CARDS_IN_HAND_GOAL, CARDS_IN_HAND_GOAL, CARDS_IN_HAND_GOAL],
+    };
+    s = finishRound(s);
+    expect(s.goalScores[0]).toEqual([5, 3]);
+  });
+
+  it('scores Americas blue-side goals: eggLimitTotal ÷ 5, humPoints best track, humColumn point value', () => {
+    let s = createGame({
+      playerNames: ['A', 'B'],
+      playerTypes: ['human', 'human'],
+      playerColors: ['red', 'blue'],
+      seed: 12,
+      settings: { sets: ['core', 'americas'], goalSide: 'blue' },
+    });
+    s = autoSetup(s);
+    // Acorn Woodpecker (id 2) has eggLimit 4; 3 of them = 12 → floor(12 / 5) = 2 on blue side.
+    expect(bird(ACORN_WOODPECKER).eggLimit).toBe(4);
+    s = edit(s, 'p1', {
+      board: {
+        forest: [mkBird(ACORN_WOODPECKER), mkBird(ACORN_WOODPECKER), mkBird(ACORN_WOODPECKER)],
+        grassland: [],
+        wetland: [],
+      },
+      humTrack: { bee: 5, brilliant: 2, emerald: 0, mango: 0, topaz: 0 }, // bee=4 pts, brilliant=1 pt
+    });
+    // 2050 = Total of egg limits (blue side: ÷ 5)
+    expect(goalScore(s, 'p1', 2050)).toBe(2);
+    // 2049 = Hummingbird Points (blue side: best track = 4 pts)
+    expect(goalScore(s, 'p1', 2049)).toBe(4);
+    // 2051 = [bee] column (blue side: point value of bee token = 4 pts)
+    expect(goalScore(s, 'p1', 2051)).toBe(4);
+  });
+
+  it('ranks a player with 0 or negative humPoints on green side when they moved up the track', () => {
+    let s = createGame({
+      playerNames: ['A', 'B', 'C'],
+      playerTypes: ['human', 'human', 'human'],
+      playerColors: ['red', 'blue', 'orange'],
+      seed: 15,
+      settings: { sets: ['core', 'americas'], goalSide: 'green' },
+    });
+    s = autoSetup(s);
+    // p1: bee at 5 (4 pts), brilliant at 5 (4 pts), emerald at 2 (1 pt), mango at 0 (-3), topaz at 0 (-3) -> sum = +3?
+    // Wait: make p1 sum to exactly 0: bee at 4 (3 pts), brilliant at 4 (3 pts), emerald at 1 (0 pts), mango at 0 (-3), topaz at 0 (-3) => 3+3+0-3-3 = 0!
+    s = edit(s, 'p1', {
+      humTrack: { bee: 4, brilliant: 4, emerald: 1, mango: 0, topaz: 0 },
+    });
+    // p2: moved once (bee at 1 = 0 pts, others at 0 = -3 each) => sum = -12!
+    s = edit(s, 'p2', {
+      humTrack: { bee: 1, brilliant: 0, emerald: 0, mango: 0, topaz: 0 },
+    });
+    // p3: never moved at all => sum = -15 (ineligible to score!).
+    s = edit(s, 'p3', {
+      humTrack: { bee: 0, brilliant: 0, emerald: 0, mango: 0, topaz: 0 },
+    });
+    expect(goalScore(s, 'p1', 2049)).toBe(0);
+    expect(goalScore(s, 'p2', 2049)).toBe(-12);
+    expect(goalScore(s, 'p3', 2049)).toBe(-15);
+    s = {
+      ...s,
+      phase: 'roundEnd',
+      round: 1, // Round 2 green points: [5, 2, 1]
+      roundEndQueue: [],
+      goalTiles: [2049, 2049, 2049, 2049],
+    };
+    s = finishRound(s);
+    const idx1 = s.playerOrder.indexOf('p1');
+    const idx2 = s.playerOrder.indexOf('p2');
+    const idx3 = s.playerOrder.indexOf('p3');
+    expect(s.goalScores[1]![idx1]).toBe(5); // 1st place (0 > -12)
+    expect(s.goalScores[1]![idx2]).toBe(2); // 2nd place (-12, moved once)
+    expect(s.goalScores[1]![idx3]).toBe(0); // unmoved (-15) cannot score
+  });
+
+  it('counts food icons in bird costs for costIncludes goals and ignores wild/nectar', () => {
+    let s = autoSetup(newGame(7, ['core', 'oceania']));
+    // Acorn Woodpecker (id 2) costs 3 seed; Grey Warbler (id 294) costs 1 invertebrate/seed/fruit ('or');
+    // Woodcock (id 13) costs 2 invertebrate + 1 seed.
+    s = edit(s, 'p1', {
+      board: {
+        forest: [mkBird(2), mkBird(294), mkBird(WOODCOCK)],
+        grassland: [],
+        wetland: [],
+      },
+    });
+    // 2030 = [fruit] + [seed] in food cost of your birds:
+    // Acorn Woodpecker = 3 seed; Grey Warbler ('or' inv/seed/fruit) = 1; Woodcock = 1 seed -> total 5!
+    expect(goalScore(s, 'p1', 2030)).toBe(5);
+    // 2031 = [invertebrate] in food cost of your birds:
+    // Acorn Woodpecker = 0; Grey Warbler ('or') = 1; Woodcock = 2 inv -> total 3!
+    expect(goalScore(s, 'p1', 2031)).toBe(3);
+  });
+
+  it('noGoal tile keeps the round action cube (+1 turn in following rounds) and resets cubesOnPlayBird', () => {
+    let s = autoSetup(newGame(7, ['core', 'oceania']));
+    s = edit(s, 'p1', { cubesOnPlayBird: 3 });
+    s = {
+      ...s,
+      phase: 'roundEnd',
+      round: 0,
+      roundEndQueue: [],
+      goalTiles: [2033, CARDS_IN_HAND_GOAL, CARDS_IN_HAND_GOAL, CARDS_IN_HAND_GOAL],
+    };
+    s = finishRound(s);
+    expect(s.goalScores[0]).toEqual([0, 0]);
+    // Round 2 normally gives 7 cubes; after round 1 noGoal, players get 8 cubes!
+    for (const pl of s.players) {
+      expect(pl.actionCubes).toBe(8);
+      expect(pl.cubesOnPlayBird).toBe(0);
+    }
+  });
+});
+
+describe('oceania & asia & americas rule audit fixes', () => {
+  it('splits nectar majority ties (rounded down) in standard mode and uses friendly ties in flock mode', () => {
+    let s = createGame({
+      playerNames: ['A', 'B', 'C'],
+      playerTypes: ['human', 'human', 'human'],
+      playerColors: ['red', 'blue', 'orange'],
+      seed: 9,
+      settings: { sets: ['core', 'oceania'] },
+    });
+    s = autoSetup(s);
+    // Forest: p1 & p2 tied for 1st (2 each) -> floor((5+2)/2) = 3 each; p3 has 1 -> 3rd place = 0.
+    // Grassland: p1 has 3 (1st = 5); p2 & p3 tied for 2nd (1 each) -> floor(2/2) = 1 each.
+    // Wetland: all have 0 -> 0 pts.
+    s = edit(s, 'p1', { nectarSpent: { forest: 2, grassland: 3, wetland: 0 } });
+    s = edit(s, 'p2', { nectarSpent: { forest: 2, grassland: 1, wetland: 0 } });
+    s = edit(s, 'p3', { nectarSpent: { forest: 1, grassland: 1, wetland: 0 } });
+    expect(nectarPoints(s, 'p1')).toBe(3 + 5);
+    expect(nectarPoints(s, 'p2')).toBe(3 + 1);
+    expect(nectarPoints(s, 'p3')).toBe(0 + 1);
+
+    // Flock mode: friendly ties (tied 1st gets 5 each, next-highest still gets 2).
+    const flock: GameState = { ...s, settings: { ...s.settings, mode: 'flock' } };
+    expect(nectarPoints(flock, 'p1')).toBe(5 + 5);
+    expect(nectarPoints(flock, 'p2')).toBe(5 + 2);
+    expect(nectarPoints(flock, 'p3')).toBe(2 + 2);
+  });
+
+  it('scores Oceania bonus cards (Mechanical Engineer, Site Selection Expert, Data Analyst)', () => {
+    let s = autoSetup(newGame(7, ['core', 'oceania']));
+    // 573 Acadian Flycatcher = wild nest (23cm); 2 Acorn Woodpecker = cavity (46cm);
+    // 13 Woodcock = ground (46cm); 94 Common Yellowthroat = bowl (18cm).
+    s = edit(s, 'p1', {
+      board: {
+        forest: [mkBird(94), mkBird(573), mkBird(2), mkBird(13)], // bowl(18), wild(23), cavity(46), ground(46)
+        grassland: [mkBird(94)], // col 0 has bowl + bowl
+        wetland: [mkBird(573)], // col 0 has bowl + bowl + wild = trio!
+      },
+    });
+    const p = getPlayer(s, 'p1');
+    // Mechanical Engineer (1036): bowl + cavity + ground + wild (substitutes platform) = 1 full set -> 3 VP.
+    expect(bonusUnits(p, 'Mechanical Engineer')).toBe(1);
+    expect(bonusCardVp(p, 1036)).toBe(3);
+    // Site Selection Expert (1037): col 0 has bowl, bowl, wild = 3 matching nests -> 3 VP.
+    expect(bonusCardVp(p, 1037)).toBe(3);
+    // Forest Data Analyst (1034): 18 <= 23 <= 46 <= 46 = 4 consecutive ascending/equal birds -> 5 VP.
+    expect(bonusUnits(p, 'Forest Data Analyst')).toBe(4);
+    expect(bonusCardVp(p, 1034)).toBe(5);
+  });
+
+  it('Pūkeko lays an egg on orthogonally adjacent birds above/below as well as left/right', () => {
+    const PUKEKO = 327;
+    let s = autoSetup(newGame(7, ['core', 'oceania']));
+    s = edit(s, 'p1', {
+      board: {
+        forest: [mkBird(WOODCOCK)], // col 0, above grassland col 0
+        grassland: [mkBird(PUKEKO)], // col 0
+        wetland: [],
+      },
+    });
+    s = runPower(s, 'p1', ref('grassland', 0));
+    expect(s.pending[0]?.kind).toBe('chooseBirdForEgg');
+    s = autoResolve(s);
+    expect(getPlayer(s, 'p1').board.forest[0]!.eggs).toBe(1);
+  });
+
+  it('verifies printed Duet Map bonus coordinates, Flock goal table, and Hummingbird bonus spaces', () => {
+    expect(DUET_MAP.length).toBe(36);
+    expect(DUET_MAP[0]).toEqual({ habitat: 'forest', criterion: { type: 'nest', nest: 'cavity' }, bonus: 'food' });
+    expect(DUET_MAP[1]).toEqual({ habitat: 'forest', criterion: { type: 'wingspan', lt50: true }, bonus: 'card' });
+    expect(DUET_MAP[4]).toEqual({ habitat: 'forest', criterion: { type: 'nest', nest: 'bowl' }, bonus: 'egg' });
+    expect(DUET_MAP[18]).toEqual({ habitat: 'wetland', criterion: { type: 'nest', nest: 'platform' }, bonus: 'card' });
+    expect(DUET_MAP[24]).toEqual({ habitat: 'wetland', criterion: { type: 'nest', nest: 'ground' }, bonus: 'egg' });
+    expect(DUET_MAP[28]).toEqual({ habitat: 'grassland', criterion: { type: 'nest', nest: 'bowl' }, bonus: null });
+    expect(FLOCK_GOAL_POINTS[2]).toEqual([7, 4, 3, 2, 1]);
+    expect(FLOCK_GOAL_POINTS[3]).toEqual([8, 5, 4, 3, 2]);
+    expect(HUM_BONUS_SPACES).toEqual({
+      bee: [4, 8],
+      brilliant: [2, 6],
+      emerald: [1, 5],
+      mango: [3, 7],
+      topaz: [4, 8],
+    });
+    // Spending nectar on a wild-cost bird qualifies for any base food on the Duet map.
+    expect(duetFoodsFor(bird(294), ['nectar'])).toEqual(['invertebrate', 'seed', 'fruit']);
+  });
+});
+
+describe('promo bird powers', () => {
+  it('runs Daurian Jackdaw, Lesser Prairie-Chicken, Western Yellow Wagtail, and California Scrub-Jay', () => {
+    const DAURIAN_JACKDAW = 455;
+    const PRAIRIE_CHICKEN = 587;
+    const YELLOW_WAGTAIL = 570;
+    const SCRUB_JAY = 583;
+    let s = autoSetup(
+      createGame({
+        playerNames: ['A', 'B'],
+        playerTypes: ['human', 'human'],
+        playerColors: ['red', 'blue'],
+        seed: 21,
+        settings: { sets: ['core', 'promoAsia', 'promoUS', 'promoUK'] },
+      }),
+    );
+    // 1. Daurian Jackdaw: caches goal tile (1 cached food) and sets round goal to noGoal (2033).
+    s = edit(s, 'p1', {
+      board: { forest: [mkBird(DAURIAN_JACKDAW)], grassland: [mkBird(PRAIRIE_CHICKEN)], wetland: [mkBird(YELLOW_WAGTAIL)] },
+    });
+    s = runPower(s, 'p1', ref('forest', 0));
+    expect(getPlayer(s, 'p1').board.forest[0]!.cached.length).toBe(1);
+    expect(s.goalTiles[s.round]).toBe(2033);
+
+    // 2. Lesser Prairie-Chicken: draws 2 bonus cards, keeps 1, reveals the other for all players to score.
+    s = runPower(s, 'p1', ref('grassland', 0));
+    s = autoResolve(s);
+    expect(getPlayer(s, 'p1').copiedBonus.length).toBe(1);
+    expect(getPlayer(s, 'p2').copiedBonus).toEqual(getPlayer(s, 'p1').copiedBonus);
+
+    // 3. Western Yellow Wagtail: counts double toward qualifying bonus cards (e.g. Anatomist).
+    expect(bonusUnits(getPlayer(s, 'p1'), 'Anatomist')).toBeGreaterThanOrEqual(2);
+
+    // 4. California Scrub-Jay: triggers when another player upgrades an action.
+    s = edit(s, 'p2', {
+      board: { forest: [mkBird(SCRUB_JAY)], grassland: [], wetland: [] },
+    });
+    s = firePinkTriggers(s, 'p1', { kind: 'actionUpgrade', food: 'seed' });
+    expect(getPlayer(s, 'p2').board.forest[0]!.cached).toEqual(['seed']);
+  });
+
+  it('completes a full AI game with all promo sets enabled', () => {
+    let s = createGame({
+      playerNames: ['A', 'B'],
+      playerTypes: ['ai', 'ai'],
+      playerColors: ['red', 'blue'],
+      seed: 33,
+      settings: {
+        sets: ['core', 'promoUS', 'promoEurope', 'promoAsia', 'promoNZ', 'promoCA', 'promoUK'],
+      },
+    });
+    let guard = 0;
+    while (s.phase !== 'gameOver' && guard++ < 5000) {
+      const head = s.pending[0];
+      const pid = head?.playerId ?? (s.phase === 'setup' ? s.setupRemaining[0] : actingPlayerId(s));
+      if (!pid) break;
+      const a = chooseAction(s, pid);
+      if (!a) break;
+      s = applyAction(s, a);
+    }
+    s = settle(s);
+    expect(s.phase).toBe('gameOver');
+    expect(s.finalScores).not.toBeNull();
   });
 });
 

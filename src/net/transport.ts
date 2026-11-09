@@ -2,8 +2,8 @@
 // real one (Firebase Realtime Database); `fakeTransport.ts` is an in-memory
 // stand-in for tests. Nothing here knows about game rules.
 
-import type { Action } from '@/wingspan/types';
 import type {
+  AnyAction,
   ChatMessage,
   LobbyState,
   LoggedAction,
@@ -95,7 +95,7 @@ export function encodeAction(entry: LoggedAction): string {
 export function decodeAction(value: unknown): LoggedAction | null {
   if (typeof value !== 'string') return null;
   try {
-    const v = JSON.parse(value) as { a?: Action; n?: unknown; t?: unknown };
+    const v = JSON.parse(value) as { a?: AnyAction; n?: unknown; t?: unknown };
     if (!v.a || typeof v.a.type !== 'string' || typeof v.n !== 'string') return null;
     return { action: v.a, nonce: v.n, at: typeof v.t === 'number' ? v.t : 0 };
   } catch {

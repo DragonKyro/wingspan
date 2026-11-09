@@ -4,10 +4,30 @@
 // followed by a choice of any 3 resources.
 
 import { CAVES, DRAGONS } from './cards';
-import { GUILD_TILES, GUILD_TILE_IDS } from './guild';
+import { BASE_GUILD_TILE_IDS, GUILD_TILES, GUILD_TILE_IDS } from './guild';
 import { drawCards, shuffle } from './helpers';
 import { OBJECTIVE_IDS } from './objectives';
 import type { CaveRow, Expansion, GameState, PlayerId, PlayerState } from './types';
+
+/**
+ * Filter a card list by `expansions`, deduplicating replacement cards by
+ * `card.number` so that when `'academy'` is enabled its updated versions
+ * (dragons 119, 124, 131, 132, 134 and caves 50, 51) replace the base cards.
+ */
+export function selectDeckCards<T extends { id: number; number: number; expansion: Expansion }>(
+  cards: readonly T[],
+  expansions: readonly Expansion[],
+): number[] {
+  const inPool = cards.filter((c) => expansions.includes(c.expansion));
+  const byNumber = new Map<number, T>();
+  for (const c of inPool) {
+    const prev = byNumber.get(c.number);
+    if (!prev || c.expansion === 'academy') {
+      byNumber.set(c.number, c);
+    }
+  }
+  return Array.from(byNumber.values(), (c) => c.id);
+}
 
 export interface CreateGameOptions {
   seed?: number;
@@ -67,9 +87,9 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
     log: [],
   };
 
-  // Decks.
-  const dragonIds = DRAGONS.filter((d) => expansions.includes(d.expansion)).map((d) => d.id);
-  const caveIds = CAVES.filter((c) => expansions.includes(c.expansion)).map((c) => c.id);
+  // Decks (Academy replacement cards replace their base counterparts by card number).
+  const dragonIds = selectDeckCards(DRAGONS, expansions);
+  const caveIds = selectDeckCards(CAVES, expansions);
   const [dDeck, s1] = shuffle(state, dragonIds);
   state = s1;
   const [cDeck, s2] = shuffle(state, caveIds);
@@ -83,9 +103,10 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
   const [objs, s3] = shuffle(state, objPool);
   state = { ...s3, objectives: objs.slice(0, 4) };
 
-  // Guild tile: random.
+  // Guild tile: random from base + enabled expansion tiles.
   {
-    const [tiles, s4] = shuffle(state, GUILD_TILE_IDS);
+    const tilePool = expansions.includes('academy') ? GUILD_TILE_IDS : BASE_GUILD_TILE_IDS;
+    const [tiles, s4] = shuffle(state, tilePool);
     state = s4;
     const tile = tiles[0]!;
     state = {

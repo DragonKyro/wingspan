@@ -5,12 +5,12 @@ import { bird, hummingbird } from '@/wingspan/cards';
 import { duetEligibleSpaces, duetFoodsFor } from '@/wingspan/duetMap';
 import {
   adjacentRefs,
-  columnEggCost,
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
   nestMatches,
   payFoodPlan,
+  playEggCost,
   playedBirds,
   playerToLeft,
   playerToRight,
@@ -180,7 +180,7 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       }
       for (const habitat of habitats) {
         if (!habitat || p.board[habitat].length >= 5) continue;
-        if (totalEggs(p) < Math.max(0, columnEggCost(p.board[habitat].length) - (step.eggDiscount ?? 0))) continue;
+        if (totalEggs(p) < Math.max(0, playEggCost(p, habitat) - (step.eggDiscount ?? 0))) continue;
         const cardId = p.hand.find(
           (id) => bird(id).habitats.includes(habitat) && payFoodPlan(p.food, bird(id).cost) != null,
         );
@@ -315,7 +315,8 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
         if (id == null) return false;
         const c = bird(id);
         if (step.nests && !step.nests.includes(c.nest)) return false;
-        if (step.wingspanLt != null && wingspanOf(c) >= step.wingspanLt) return false;
+        if (step.wingspanLt != null && c.wingspan !== '*' && c.wingspan >= step.wingspanLt) return false;
+        if (step.costFoods && !costHasFood(c, step.costFoods)) return false;
         return true;
       });
       if (idx >= 0) return { kind: 'trayPick', cardId: state.tray[idx]! };
@@ -330,7 +331,9 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'boolean', yes: true };
     case 'chooseCacheFromSupply': {
       const owned = (Object.keys(p.food) as (keyof typeof p.food)[]).filter(
-        (f) => p.food[f] > 0 && (step.food === 'any' || f === step.food),
+        (f) =>
+          p.food[f] > 0 &&
+          (step.food === 'any' ? !step.options || step.options.includes(f) : f === step.food),
       );
       const n = step.optional ? Math.min(step.count, owned.length) : step.count;
       if (owned.length === 0 || n <= 0) {
@@ -432,10 +435,15 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'dice', picks };
     }
     case 'drawUpTo': {
-      const cap = step.then?.n?.[0] ?? 0;
+      const rawCap = step.then?.n?.[0] ?? 0;
+      if (rawCap < 0) {
+        const cap = Math.abs(rawCap);
+        const total = step.pool.reduce((n, id) => n + bird(id).points, 0);
+        return { kind: 'boolean', yes: step.left > 0 && total + 2 < cap };
+      }
       const total = step.pool.reduce((n, id) => n + wingspanOf(bird(id)), 0);
       // Keep drawing while there's a comfortable margin under the cap.
-      return { kind: 'boolean', yes: step.left > 0 && total + 40 <= cap };
+      return { kind: 'boolean', yes: step.left > 0 && total + 40 <= rawCap };
     }
 
     // === americas expansion steps ===

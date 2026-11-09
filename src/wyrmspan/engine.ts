@@ -71,11 +71,20 @@ function advanceTurn(state: GameState): GameState {
   let s = state;
   const p = player(s, s.turn);
   // Discard down to 9 coins / 9 cards / 9 resources.
-  const res = p.resources.meat + p.resources.gold + p.resources.crystal + p.resources.milk;
-  if (p.coins > 9 || p.hand.length > 9 || res > 9) {
-    s = pushDiscardDown(s, p.id);
+  if (p.coins > 9) {
+    const q = clone(p);
+    q.coins = 9;
+    s = { ...s, players: s.players.map((pl) => (pl.id === q.id ? q : pl)) };
+  }
+  const cur = player(s, s.turn);
+  const res = cur.resources.meat + cur.resources.gold + cur.resources.crystal + cur.resources.milk;
+  if (cur.hand.length > 9 || res > 9) {
+    s = pushDiscardDown(s, cur.id);
     return { ...s, turnEnding: true };
   }
+  // Rulebook p.11: "Do not refill dragons or cave cards into the card display
+  // board until the end of each player's turn."
+  s = refillDisplayGaps(s);
   if (s.players.every((q) => q.passed)) {
     return endRound(s);
   }

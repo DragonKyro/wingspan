@@ -90,34 +90,35 @@ export function doPlayFish(state: GameState, a: PlayFishAction): GameState {
 export function grantBenefit(state: GameState, playerId: PlayerId, benefit: Benefit): GameState {
   const p = getPlayer(state, playerId);
   const slots = [...allSlots(p.ocean)];
+  const hasPending = state.pending.length > 0;
   switch (benefit) {
     case 'drawCard':
       return drawFromDeck(state, playerId, 1);
     case 'discardCard': {
-      if (p.hand.length === 0) return state;
+      if (p.hand.length === 0 && !hasPending) return state;
       return pushStep(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional: true });
     }
     case 'egg': {
       const hasTarget = slots.some(({ slot }) => slot.stack.length > 0 && slot.eggs === 0);
-      if (!hasTarget) return state;
+      if (!hasTarget && !hasPending) return state;
       return pushStep(state, { kind: 'chooseEggTargets', playerId, count: 1, optional: true });
     }
     case 'hatch': {
-      if (!slots.some(({ slot }) => slot.eggs > 0)) return state;
+      if (!slots.some(({ slot }) => slot.eggs > 0) && !hasPending) return state;
       return pushStep(state, { kind: 'chooseHatch', playerId, count: 1, optional: true });
     }
     case 'young':
       return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
     case 'move': {
-      if (!slots.some(({ slot }) => slot.young > 0 || slot.school)) return state;
+      if (!slots.some(({ slot }) => slot.young > 0 || slot.school) && !hasPending) return state;
       return pushStep(state, { kind: 'chooseMove', playerId, count: 1, optional: true });
     }
     case 'consumeHand': {
-      if (p.hand.length === 0) return state;
+      if (p.hand.length === 0 && !hasPending) return state;
       return pushStep(state, { kind: 'chooseConsume', playerId, count: 1, optional: true });
     }
     case 'recoverCard': {
-      if (p.discard.length === 0) {
+      if (p.discard.length === 0 && !hasPending) {
         // Official FAQ: with an empty discard pile, draw from the deck instead.
         return drawFromDeck(state, playerId, 1);
       }
@@ -126,7 +127,7 @@ export function grantBenefit(state: GameState, playerId: PlayerId, benefit: Bene
     case 'unSchool': {
       // "Discard a school token, then place 1 young in each of four different
       //  slots. If you do not have a school token to discard, place 1 young."
-      if (slots.some(({ slot }) => slot.school)) {
+      if (slots.some(({ slot }) => slot.school) || hasPending) {
         return pushStep(state, { kind: 'chooseUnSchool', playerId, count: 1, optional: true });
       }
       return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
@@ -173,6 +174,7 @@ export function doDive(state: GameState, a: DiveAction): GameState {
           REEF_DISCARD_ITEMS[col]!;
         const pl = [...allSlots(p.ocean)];
         const feasible =
+          s.pending.length > 0 ||
           (item === 'egg' && pl.some((x) => x.slot.eggs > 0)) ||
           (item === 'young' && pl.some((x) => x.slot.young > 0)) ||
           (item === 'card' && p.hand.length > 0);

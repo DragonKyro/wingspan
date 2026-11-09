@@ -95,6 +95,26 @@ describe('wingspan self-play', () => {
   for (const players of [6, 7]) {
     it(`asia flock · ${players}p`, () => sweep((seed) => play(['core', 'asia'], players, seed, 'flock')));
   }
+  it('all sets + promo packs · 3p', () =>
+    sweep((seed) =>
+      play(
+        [
+          'core',
+          'european',
+          'oceania',
+          'asia',
+          'americas',
+          'promoUS',
+          'promoEurope',
+          'promoAsia',
+          'promoNZ',
+          'promoCA',
+          'promoUK',
+        ],
+        3,
+        seed,
+      ),
+    ));
 });
 
 describe('finspan self-play', () => {

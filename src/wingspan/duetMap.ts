@@ -16,6 +16,7 @@
 // (Counts from the rulebook's duet-mode section and the published map image.)
 
 import type { BirdCard, DuetCriterion, DuetSpace, FoodType, Habitat } from './types';
+import { BASE_FOODS } from './types';
 import { wingspanOf } from './helpers';
 
 const N = (nest: 'bowl' | 'cavity' | 'ground' | 'platform'): DuetCriterion => ({ type: 'nest', nest });
@@ -26,25 +27,64 @@ const F = (food: 'invertebrate' | 'seed' | 'fish' | 'fruit' | 'rodent'): DuetCri
 const WS = (lt50: boolean): DuetCriterion => ({ type: 'wingspan', lt50 });
 const BEAK = (left: boolean): DuetCriterion => ({ type: 'beak', left });
 
-type Entry = { c: DuetCriterion; b?: 'food' | 'egg' | 'card' };
+type GridEntry = { h: Habitat; c: DuetCriterion; b?: 'food' | 'egg' | 'card' };
 
-const ROW: Record<Habitat, Entry[][]> = {
-  forest: [
-    [{ c: N('cavity'), b: 'food' }, { c: F('seed') }, { c: F('invertebrate') }, { c: N('bowl') }, { c: WS(true) }, { c: BEAK(true) }],
-    [{ c: N('bowl') }, { c: F('fruit') }, { c: N('cavity') }, { c: N('platform'), b: 'food' }, { c: F('rodent') }, { c: F('invertebrate'), b: 'food' }],
+/** Exact 6×6 Duet Map layout from the Wingspan Asia rulebook (pages 1, 10, 14):
+ *  forest (green, upper-left), wetland (blue, lower-left), grassland (yellow, right),
+ *  with the printed food/egg/card bonus spaces at their exact coordinates. */
+const GRID: GridEntry[][] = [
+  [
+    { h: 'forest', c: N('cavity'), b: 'food' },
+    { h: 'forest', c: WS(true), b: 'card' },
+    { h: 'forest', c: F('seed') },
+    { h: 'forest', c: N('platform') },
+    { h: 'forest', c: N('bowl'), b: 'egg' },
+    { h: 'grassland', c: WS(false) },
   ],
-  wetland: [
-    [{ c: N('platform'), b: 'card' }, { c: F('fish') }, { c: N('ground') }, { c: BEAK(true) }, { c: F('seed') }, { c: F('invertebrate') }],
-    [{ c: F('fish') }, { c: N('platform') }, { c: N('cavity'), b: 'card' }, { c: N('ground') }, { c: WS(false) }, { c: BEAK(false), b: 'card' }],
+  [
+    { h: 'forest', c: F('fruit') },
+    { h: 'forest', c: F('invertebrate') },
+    { h: 'forest', c: N('cavity') },
+    { h: 'forest', c: F('invertebrate') },
+    { h: 'forest', c: BEAK(true), b: 'egg' },
+    { h: 'grassland', c: F('rodent'), b: 'card' },
   ],
-  grassland: [
-    [{ c: N('bowl'), b: 'egg' }, { c: F('seed') }, { c: F('invertebrate') }, { c: N('ground') }, { c: WS(true) }, { c: BEAK(false) }],
-    [{ c: F('seed') }, { c: F('fruit') }, { c: N('cavity') }, { c: F('rodent') }, { c: F('invertebrate'), b: 'egg' }, { c: WS(false), b: 'egg' }],
+  [
+    { h: 'wetland', c: N('platform') },
+    { h: 'forest', c: F('rodent') },
+    { h: 'forest', c: N('bowl'), b: 'food' },
+    { h: 'wetland', c: BEAK(true) },
+    { h: 'grassland', c: F('invertebrate') },
+    { h: 'grassland', c: N('cavity') },
   ],
-};
+  [
+    { h: 'wetland', c: N('platform'), b: 'card' },
+    { h: 'wetland', c: F('fish') },
+    { h: 'wetland', c: F('seed'), b: 'card' },
+    { h: 'wetland', c: BEAK(false) },
+    { h: 'grassland', c: N('ground') },
+    { h: 'grassland', c: F('invertebrate') },
+  ],
+  [
+    { h: 'wetland', c: N('ground'), b: 'egg' },
+    { h: 'wetland', c: WS(false) },
+    { h: 'wetland', c: N('cavity') },
+    { h: 'grassland', c: WS(true) },
+    { h: 'grassland', c: N('bowl') },
+    { h: 'grassland', c: F('fruit'), b: 'card' },
+  ],
+  [
+    { h: 'wetland', c: F('fish'), b: 'card' },
+    { h: 'wetland', c: WS(false), b: 'food' },
+    { h: 'wetland', c: F('invertebrate') },
+    { h: 'grassland', c: F('seed') },
+    { h: 'grassland', c: BEAK(false) },
+    { h: 'grassland', c: F('seed'), b: 'food' },
+  ],
+];
 
-export const DUET_MAP: DuetSpace[] = (['forest', 'wetland', 'grassland'] as const).flatMap(
-  (habitat) => ROW[habitat].flatMap((row) => row.map((e) => ({ habitat, criterion: e.c, bonus: e.b ?? null }))),
+export const DUET_MAP: DuetSpace[] = GRID.flatMap((row) =>
+  row.map((e) => ({ habitat: e.h, criterion: e.c, bonus: e.b ?? null })),
 );
 
 // === geometry ===
@@ -92,26 +132,42 @@ export function duetCriterionMatch(
     case 'food':
       return foods.includes(criterion.food);
     case 'wingspan':
+      if (card.wingspan === '*') return true;
       return criterion.lt50 ? wingspanOf(card) < 50 : wingspanOf(card) >= 50;
     case 'beak':
+      // Common Loon (id 91) depicts two birds facing opposite directions.
+      if (card.id === 91) return true;
       return card.beakLeft === criterion.left;
   }
 }
 
 /** The food types a just-played bird may claim on food-symbol spaces: the
  *  food types it eats that were actually paid (2-for-1 / nectar-wild count as
- *  the required food, so all listed types qualify when a substitute was used). */
+ *  the required food, so all listed types qualify when a substitute was used).
+ *  Per Asia p.14: nectar spent as wild counts as the food it replaced; nectar
+ *  spent for a required nectar cost counts as any food on the Duet map. */
 export function duetFoodsFor(card: BirdCard, paid: FoodType[]): FoodType[] {
   const cost = card.cost;
   if (cost.kind === 'none') return [];
   const paidBase = [...new Set(paid.filter((f) => f !== 'nectar'))];
-  if (cost.kind === 'any') return paidBase;
+  const paidNectar = paid.includes('nectar');
+  if (cost.kind === 'any') return paidNectar ? [...BASE_FOODS] : paidBase;
   if (cost.kind === 'or') {
+    if (paidNectar) {
+      return cost.foods.includes('nectar')
+        ? [...BASE_FOODS]
+        : cost.foods.filter((f) => f !== 'nectar');
+    }
     const hit = paidBase.filter((f) => cost.foods.includes(f));
-    return hit.length > 0 ? hit : cost.foods.slice();
+    if (hit.length > 0) return hit;
+    return cost.foods.includes('nectar') ? [...BASE_FOODS] : cost.foods.slice();
   }
-  const listed = cost.items.filter((i) => i.food !== 'any').map((i) => i.food as FoodType);
+  if (cost.items.some((i) => i.food === 'nectar')) return [...BASE_FOODS];
   const hasAny = cost.items.some((i) => i.food === 'any');
+  if (hasAny && paidNectar) return [...BASE_FOODS];
+  const listed = cost.items
+    .filter((i) => i.food !== 'any' && i.food !== 'nectar')
+    .map((i) => i.food as FoodType);
   return hasAny ? [...new Set([...listed, ...paidBase])] : listed;
 }
 
@@ -152,6 +208,6 @@ export const DUET_LOWER_IS_BETTER = new Set([2043]);
 export const FLOCK_GOAL_POINTS = [
   [5, 2, 1, 0, 0],
   [6, 3, 2, 1, 0],
-  [7, 4, 3, 2, 0],
-  [8, 5, 4, 3, 0],
+  [7, 4, 3, 2, 1],
+  [8, 5, 4, 3, 2],
 ];
