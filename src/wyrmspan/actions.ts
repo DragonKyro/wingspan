@@ -2,7 +2,8 @@
 // any-time exchange. Turn progression and round/upkeep live in engine.ts.
 
 import { dragonCard, isDragonCard, parseIcons } from './cards';
-import { MAT_ICONS, excavateAt, runAbility, runSteps, tryPlayDragonAt } from './effects';
+import { MAT_ICONS, excavateAt, pushPending, runAbility, runSteps, tryPlayDragonAt } from './effects';
+import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, clone, eggsOnMatCount, log, otherPlayers, payItems, player } from './helpers';
 import type { GameState, GainItem, PlayerId, PlayerState, Resource } from './types';
 import { RESOURCES } from './types';
@@ -87,6 +88,7 @@ export function entice(state: GameState, playerId: PlayerId, cave: number, cardI
 
   if (!canPay(p, cost)) return log(state, 'entice: cannot pay');
   const q = payItems(clone(p), cost, undefined);
+  q.coinsSpentEntice += cost.filter((it) => it.kind === 'coin').reduce((a, i) => a + i.count, 0);
   // pay egg portion of the printed cost from the mat
   const eggCost = cost.filter((it) => it.kind === 'egg').reduce((a, i) => a + i.count, 0);
   let left = eggCost;
@@ -198,6 +200,19 @@ export function explore(state: GameState, playerId: PlayerId, cave: number): Gam
     s = runAbility(s, playerId, { cave, space: i }, ['Adventurer']);
     // Hatchlings/fledglings also have non-adventurer abilities; adventurer
     // only triggers 'Adventurer'-typed ones (handled inside runAbility).
+    // Academy: when the adventurer walks over a fledgling, its owner may pay
+    // the left-most empty box cost to place 1 training token (optional).
+    // Training must already be complete before the adventurer reaches a
+    // dragon for its purple "if activated" ability to fire, so offering the
+    // token placement after the ability ran is rules-correct.
+    const walked = player(s, playerId).caves[cave]!.spaces[i]!.dragon;
+    if (walked && walked.cardId >= 0) {
+      const card = dragonCard(walked.cardId);
+      const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+      if (card.size === 'Fledgling' && track > 0 && (walked.training ?? 0) < track) {
+        s = pushPending(s, { kind: 'chooseTrain', playerId, times: 1, free: false, target: 'any', pos: [cave, i] });
+      }
+    }
   }
   s = log(s, `${player(s, playerId).name} explored cave ${cave + 1}`);
   return s;
@@ -211,6 +226,19 @@ export function pass(state: GameState, playerId: PlayerId): GameState {
   p.passed = true;
   let s = setPlayer(state, p);
   s = log(s, `${p.name} passed`);
+  // Academy: in rounds 1-3 a passing player claims an income space for next
+  // round's collection (the benefit is gained at round end, not now).
+  if (s.expansions.includes('academy') && s.round <= 3) {
+    const section = INCOME_SECTIONS[incomeSectionIndex(s.round)]!;
+    const claimed = new Set(Object.values(s.incomeChoices));
+    let options = section.map((_, i) => i).filter((i) => !claimed.has(i));
+    // If every space is somehow taken, allow doubling up rather than stalling.
+    if (!options.length) options = section.map((_, i) => i);
+    s = {
+      ...s,
+      pending: [...s.pending, { kind: 'chooseIncomeSpace', playerId, options }],
+    };
+  }
   return s;
 }
 

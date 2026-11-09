@@ -285,6 +285,8 @@ export interface PlayerState {
   bonusVP: number;
   /** How many cards/resources the player has been told to discard at end of turn. */
   objectiveVps: number[]; // VP earned per round objective [round-1]
+  /** Coins paid on entice actions (tracks an Academy objective tile). */
+  coinsSpentEntice: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,8 +381,9 @@ export type PendingStep =
   | { kind: 'chooseGuildSquare'; playerId: PlayerId; resume?: Resume }
   /** Pick one of several option bundles. */
   | { kind: 'chooseOption'; playerId: PlayerId; options: { label: string; steps?: Step[]; items?: GainItem[] }[]; count?: number; resume?: Resume }
-  /** Pick a fledgling to train. */
-  | { kind: 'chooseTrain'; playerId: PlayerId; times: number | 'full'; free: boolean; gainItem?: boolean; target: 'any' | 'orthAdjacent' | 'mat'; resume?: Resume }
+  /** Pick a fledgling to train. `pos` pins the choice to a specific dragon
+   * (e.g. the fledgling the adventurer just walked over). */
+  | { kind: 'chooseTrain'; playerId: PlayerId; times: number | 'full'; free: boolean; gainItem?: boolean; target: 'any' | 'orthAdjacent' | 'mat'; pos?: [number, number]; resume?: Resume }
   /** Pick two dragons to swap. */
   | { kind: 'chooseSwap'; playerId: PlayerId; resume?: Resume }
   /** Pay-or-decline for an optional "pay X to ..." step (or choose payment tier). */
@@ -394,7 +397,11 @@ export type PendingStep =
   /** Pick which benefit group (for "gain N different benefits"). */
   | { kind: 'chooseBenefits'; playerId: PlayerId; count: number; options: GainItem[][]; resume?: Resume }
   /** Reveal resolution is automatic; kept for logging symmetry. */
-  | { kind: 'chooseEggPayment'; playerId: PlayerId; count: number; resume?: Resume };
+  | { kind: 'chooseEggPayment'; playerId: PlayerId; count: number; resume?: Resume }
+  /** Academy: on the turn a player passes (rounds 1-3), pick an income space.
+   * `options` are indices into INCOME_SECTIONS[section]; answer.index selects
+   * a position within `options`. */
+  | { kind: 'chooseIncomeSpace'; playerId: PlayerId; options: number[] };
 
 export interface AbilityCandidate {
   /** Dragon position [cave, space] on the chooser's mat, or -1 for mat path icons. */
@@ -451,6 +458,8 @@ export interface GameState {
   startPlayer: PlayerId;
   playerOrder: PlayerId[];
   players: PlayerState[];
+  /** Card pools in use; 'academy' enables the replacement round tracker. */
+  expansions: Expansion[];
   dragonDeck: number[];
   caveDeck: number[];
   dragonDisplay: (number | null)[];
@@ -462,6 +471,10 @@ export interface GameState {
   pending: PendingStep[];
   /** Queue of round-end once-per-round activations to process. */
   roundEndQueue: { playerId: PlayerId; pos: [number, number] }[];
+  /** Academy: income space index each player claimed this round (cleared per round). */
+  incomeChoices: Partial<Record<PlayerId, number>>;
+  /** Academy: players still due to collect income during round end. */
+  incomeQueue: PlayerId[];
   /** Players still resolving turn-end discards. */
   turnEnding: boolean;
   /** Setup offers: playerId -> dealt 6 cards. */

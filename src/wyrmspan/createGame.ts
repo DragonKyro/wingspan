@@ -47,6 +47,7 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
     startPlayer: 'p1',
     playerOrder: names.map((_, i) => `p${i + 1}` as PlayerId),
     players: [],
+    expansions,
     dragonDeck: [],
     caveDeck: [],
     dragonDisplay: [null, null, null],
@@ -57,6 +58,8 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
     guild: { tile: 'seafarers', squares: [], track: {} },
     pending: [],
     roundEndQueue: [],
+    incomeChoices: {},
+    incomeQueue: [],
     turnEnding: false,
     setupOffers: {},
     finalScores: null,
@@ -72,8 +75,12 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
   const [cDeck, s2] = shuffle(state, caveIds);
   state = { ...s2, dragonDeck: dDeck, caveDeck: cDeck };
 
-  // Objectives: 4 random distinct.
-  const [objs, s3] = shuffle(state, OBJECTIVE_IDS);
+  // Objectives: 4 random distinct. Fledgling objectives can't score without
+  // the Academy expansion.
+  const objPool = expansions.includes('academy')
+    ? OBJECTIVE_IDS
+    : OBJECTIVE_IDS.filter((id) => id !== 'fledglingsOnMat' && id !== 'trainedFledglings');
+  const [objs, s3] = shuffle(state, objPool);
   state = { ...s3, objectives: objs.slice(0, 4) };
 
   // Guild tile: random.
@@ -115,6 +122,7 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
       guildMarkersPlaced: 0,
       bonusVP: 0,
       objectiveVps: [],
+      coinsSpentEntice: 0,
     };
     state.guild.track[id] = 0;
     return p;

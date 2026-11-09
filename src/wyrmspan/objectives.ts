@@ -118,11 +118,7 @@ export const OBJECTIVES: Record<ObjectiveId, ObjectiveDef> = {
   },
   coinsSpentEntice: {
     label: 'coins spent enticing dragons',
-    unit: (s, p) => {
-      void s;
-      void p;
-      return 0; // tracking requires a log counter; scored 0 for now
-    },
+    unit: (_s, p) => p.coinsSpentEntice,
   },
   setsOfTraits: {
     label: 'sets of dragon traits (1 of each personality)',

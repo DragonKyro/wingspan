@@ -4,8 +4,8 @@
 
 import { entice, excavate, exchange, explore, nextTurnPlayer, pass } from './actions';
 import { cardAbilityTypes, dragonCard } from './cards';
-import { resolveChoice, runAbility } from './effects';
-import { clone, log, player, refreshDisplays } from './helpers';
+import { collectIncome, resolveChoice, runAbility } from './effects';
+import { clone, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
 import { scoreObjective } from './objectives';
 import { scoreGame } from './scoring';
 import type { Action, GameState, PlayerId } from './types';
@@ -123,8 +123,24 @@ function endRound(state: GameState): GameState {
     return endGame(s);
   }
 
-  // 3. Upkeep: refresh displays, +6 coins, +1 egg, rotate start player.
+  // 3. Refresh both displays.
   s = refreshDisplays(s);
+
+  // 4. Rotate the start player marker.
+  const startIdx = (s.playerOrder.indexOf(s.startPlayer) + 1) % s.playerOrder.length;
+  const start = s.playerOrder[startIdx]!;
+  s = { ...s, startPlayer: start };
+
+  if (s.expansions.includes('academy')) {
+    // 5. Academy: each player collects the income space they claimed when
+    // passing, in turn order from the new start player. settle() drains
+    // incomeQueue and begins the next round once empty.
+    const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)];
+    s = { ...s, phase: 'roundEnd', incomeQueue: order };
+    return s;
+  }
+
+  // Base upkeep: +6 coins, +1 egg, adventurers retrieved.
   const players = s.players.map((p) => {
     const q = clone(p);
     q.coins += 6;
@@ -144,13 +160,10 @@ function endRound(state: GameState): GameState {
     q.passed = false;
     return q;
   });
-  const startIdx = (s.playerOrder.indexOf(s.startPlayer) + 1) % s.playerOrder.length;
-  const start = s.playerOrder[startIdx]!;
   s = {
     ...s,
     players,
     round: s.round + 1,
-    startPlayer: start,
     turn: start,
     turnIndex: startIdx,
     turnEnding: false,
@@ -172,14 +185,48 @@ function endGame(state: GameState): GameState {
 
 export function settle(state: GameState): GameState {
   let s = state;
-  // Setup complete -> main phase.
-  if (s.phase === 'setup' && s.pending.length === 0) {
-    s = { ...s, phase: 'main' };
-  }
-  // A turn action finished resolving its pending chain -> advance the turn.
-  if (s.phase === 'main' && s.turnEnding && s.pending.length === 0) {
-    s = { ...s, turnEnding: false };
-    s = advanceTurn(s);
+  for (;;) {
+    // Setup complete -> main phase.
+    if (s.phase === 'setup' && s.pending.length === 0) {
+      s = { ...s, phase: 'main' };
+      continue;
+    }
+    // Academy round end: drain the income queue between pending answers.
+    if (s.phase === 'roundEnd' && s.pending.length === 0) {
+      // Drafted display cards are immediately refilled.
+      s = refillDisplayGaps(s);
+      if (s.incomeQueue.length) {
+        const pid = s.incomeQueue[0]!;
+        s = { ...s, incomeQueue: s.incomeQueue.slice(1) };
+        s = collectIncome(s, pid);
+        continue;
+      }
+      // All income collected — begin the next round.
+      s = {
+        ...s,
+        phase: 'main',
+        round: s.round + 1,
+        turn: s.startPlayer,
+        turnIndex: s.playerOrder.indexOf(s.startPlayer),
+        turnEnding: false,
+        incomeChoices: {},
+        players: s.players.map((p) => {
+          const q = clone(p);
+          q.explores = { crimson: 0, golden: 0, amethyst: 0 };
+          q.passed = false;
+          return q;
+        }),
+      };
+      s = log(s, `round ${s.round} begins`);
+      continue;
+    }
+    // A turn action finished resolving its pending chain -> advance the turn.
+    if (s.phase === 'main' && s.turnEnding && s.pending.length === 0) {
+      s = { ...s, turnEnding: false };
+      s = advanceTurn(s);
+      continue;
+    }
+    break;
   }
   return s;
 }

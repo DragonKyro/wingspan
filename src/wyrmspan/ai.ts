@@ -3,6 +3,7 @@
 
 import { dragonCard, isDragonCard } from './cards';
 import { dragonCost, excavateEggCost, exploreCost, nextEmptySpace } from './actions';
+import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, player } from './helpers';
 import type { Action, ChoiceAnswer, GameState, PlayerId, Resource } from './types';
 import { RESOURCES } from './types';
@@ -80,11 +81,17 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
         kind: 'eggSpots',
         spots: [],
       };
-      const list = (spots as { spots: { kind: 'dragon'; pos: [number, number] }[] }).spots;
+      const list = (spots as { spots: ({ kind: 'dragon'; pos: [number, number] } | { kind: 'nest' })[] }).spots;
       for (const d of allDragons(p)) {
         if (list.length >= head.count) break;
         if (d.dragon.eggs < dragonCard(d.dragon.cardId).capacity) {
           list.push({ kind: 'dragon', pos: [d.cave, d.space] });
+        }
+      }
+      // Overflow onto the printed mat nests (only for 'any' targets).
+      if (head.target.kind === 'any') {
+        while (list.length < head.count && p.nestEggs + list.filter((x) => x.kind === 'nest').length < 2) {
+          list.push({ kind: 'nest' });
         }
       }
       return list.length || !head.optional ? spots : { kind: 'decline' };
@@ -146,6 +153,9 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
     case 'chooseOption':
       return { kind: 'option', index: 0 };
     case 'chooseTrain': {
+      // Pinned choice (e.g. the fledgling the adventurer just walked over):
+      // train it — trainAt no-ops if the next box can't be paid.
+      if (head.pos) return { kind: 'dragon', pos: head.pos };
       const fl = allDragons(p).find((d) => {
         const c = dragonCard(d.dragon.cardId);
         const track = c.trainingTrack ? c.trainingTrack.length : 0;
@@ -179,6 +189,23 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
     }
     case 'oncePerRoundPick':
       return { kind: 'confirm' };
+    case 'chooseIncomeSpace': {
+      // Greedy: prefer more coins, then more total items.
+      const section = INCOME_SECTIONS[incomeSectionIndex(state.round)]!;
+      let best = 0;
+      let bestScore = -1;
+      head.options.forEach((sp, i) => {
+        const items = section[sp]!.items;
+        const coins = items.reduce((a, it) => a + (it.kind === 'coin' ? it.count : 0), 0);
+        const stuff = items.reduce((a, it) => a + it.count, 0);
+        const score = coins * 10 + stuff;
+        if (score > bestScore) {
+          bestScore = score;
+          best = i;
+        }
+      });
+      return { kind: 'index', index: best };
+    }
     case 'chooseBenefits':
       return { kind: 'indexes', indexes: head.options.map((_, i) => i).slice(0, head.count) };
   }

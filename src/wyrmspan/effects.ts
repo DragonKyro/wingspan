@@ -7,7 +7,7 @@
 
 import { parseAbility, warnUnsupported } from './abilities';
 import { cardAbilityTypes, cardName, caveCard, dragonCard, dragonMatchesCond, isDragonCard } from './cards';
-import { GUILD_TILES, GUILD_TRACK } from './guild';
+import { GUILD_TILES, GUILD_TRACK, INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import {
   allDragons,
   canPay,
@@ -46,7 +46,7 @@ function setPlayer(state: GameState, p: PlayerState): GameState {
   return { ...state, players: state.players.map((q) => (q.id === p.id ? p : q)) };
 }
 
-function pushPending(state: GameState, pending: PendingStep): GameState {
+export function pushPending(state: GameState, pending: PendingStep): GameState {
   return { ...state, pending: [...state.pending, pending] };
 }
 
@@ -1206,7 +1206,11 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         return head.resume ? runSteps(s, head.resume.steps, ctx) : s;
       }
       if (answer.kind !== 'dragon' && answer.kind !== 'index') return state;
-      const pos = answer.kind === 'dragon' ? { cave: answer.pos[0], space: answer.pos[1] } : undefined;
+      const pos = head.pos
+        ? { cave: head.pos[0], space: head.pos[1] }
+        : answer.kind === 'dragon'
+          ? { cave: answer.pos[0], space: answer.pos[1] }
+          : undefined;
       if (!pos) return state;
       s = trainAt(s, playerId, pos, head);
       const ctx0 = head.resume?.ctx ?? { playerId };
@@ -1270,7 +1274,30 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       }
       return resumeSteps(head.resume);
     }
+
+    case 'chooseIncomeSpace': {
+      if (answer.kind !== 'index' && answer.kind !== 'option') return state;
+      const spaceIdx = head.options[answer.index];
+      if (spaceIdx === undefined) return state;
+      const section = INCOME_SECTIONS[incomeSectionIndex(s.round)]!;
+      s = {
+        ...s,
+        incomeChoices: { ...s.incomeChoices, [playerId]: spaceIdx },
+      };
+      return log(s, `${player(s, playerId).name} claimed income: ${section[spaceIdx]!.label}`);
+    }
   }
+  return s;
+}
+
+/** Collect one player's claimed income space (Academy round end, step 5). */
+export function collectIncome(state: GameState, playerId: PlayerId): GameState {
+  const section = INCOME_SECTIONS[incomeSectionIndex(state.round)]!;
+  const idx = state.incomeChoices[playerId];
+  const space = idx !== undefined ? section[idx] : undefined;
+  if (!space) return state;
+  let s = log(state, `${player(state, playerId).name} collects income: ${space.label}`);
+  s = runSteps(s, [{ op: 'gain', items: space.items }], { playerId });
   return s;
 }
 
@@ -1415,9 +1442,12 @@ function trainAt(
 ): GameState {
   let s = state;
   const q = clone(player(s, playerId));
-  const d = q.caves[pos.cave]!.spaces[pos.space]!.dragon;
-  if (!d) return s;
-  const card = dragonCard(d.cardId);
+  // NOTE: re-fetch the dragon each iteration — payItems deep-clones `q`, so a
+  // held reference goes stale the moment a box cost is paid.
+  const dragon = () => q.caves[pos.cave]!.spaces[pos.space]!.dragon;
+  const d0 = dragon();
+  if (!d0) return s;
+  const card = dragonCard(d0.cardId);
   if (card.size !== 'Fledgling' || !card.trainingTrack) return s;
   const track = parseIcons(card.trainingTrack)
     .map((t): GainItem | null => {
@@ -1430,8 +1460,10 @@ function trainAt(
       }
     })
     .filter((i): i is GainItem => i !== null);
-  const times = head.times === 'full' ? track.length - (d.training ?? 0) : head.times;
+  const times = head.times === 'full' ? track.length - (d0.training ?? 0) : head.times;
   for (let i = 0; i < times; i++) {
+    const d = dragon();
+    if (!d) break;
     const boxIdx = d.training ?? 0;
     if (boxIdx >= track.length) break;
     const cost = track[boxIdx]!;
@@ -1459,7 +1491,7 @@ function trainAt(
         }
       }
     }
-    d.training = boxIdx + 1;
+    dragon()!.training = boxIdx + 1;
   }
   s = setPlayer(s, q);
   s = log(s, `${player(s, playerId).name} trained ${card.name}`);

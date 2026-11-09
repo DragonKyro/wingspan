@@ -272,6 +272,23 @@ export function takeFromDisplay(state: GameState, deck: DeckName, cardId: number
   return { ...state, [key]: disp };
 }
 
+/** Draw into any empty display slots (Academy: immediate refill after drafts). */
+export function refillDisplayGaps(state: GameState): GameState {
+  let s = state;
+  for (const deck of ['dragon', 'cave'] as DeckName[]) {
+    const key = displayOf(s, deck);
+    while (s[key].includes(null)) {
+      const [drawn, s2] = drawCards(s, deck, 1);
+      s = s2;
+      if (!drawn.length) break;
+      const disp = [...s[key]];
+      disp[disp.indexOf(null)] = drawn[0]!;
+      s = { ...s, [key]: disp };
+    }
+  }
+  return s;
+}
+
 /** Discard-and-restock both displays (round-end refresh). */
 export function refreshDisplays(state: GameState): GameState {
   let s = state;

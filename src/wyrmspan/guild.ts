@@ -11,7 +11,7 @@
 // immediate/end-game effects, unlimited rectangle, 4-marker cap) is faithful;
 // specific benefit icons are reasonable estimates pending better data.
 
-import type { Counter, GuildTileId, GuildTileSquare, Step } from './types';
+import type { Counter, GainItem, GuildTileId, GuildTileSquare, Step } from './types';
 
 const gainRes = (res: 'meat' | 'gold' | 'crystal' | 'milk' | 'any', count = 1): Step => ({
   op: 'gain',
@@ -158,3 +158,51 @@ export const GUILD_TILES: Record<GuildTileId, { name: string; squares: GuildTile
 };
 
 export const GUILD_TILE_IDS = Object.keys(GUILD_TILES) as GuildTileId[];
+
+// ---------------------------------------------------------------------------
+// Academy round tracker: income spaces. In rounds 1-3 a player who passes
+// places their adventurer on an unclaimed space of the current section and
+// collects its benefit at the end of the round (after display refresh and
+// start-player rotation), in turn order from the new start player.
+//
+// The board has two sections of 6 spaces each (decoded from the rulebook
+// diagram): one shared by the round-1 and round-2 passes, one for round 3.
+// Each space may be claimed by only one player per round.
+
+export interface IncomeSpace {
+  label: string;
+  items: GainItem[];
+}
+
+const c = (count: number): GainItem => ({ kind: 'coin', count });
+const e = (count: number): GainItem => ({ kind: 'egg', count });
+const card = (deck: 'dragon' | 'cave'): GainItem => ({ kind: 'card', deck, count: 1, source: 'display' });
+const guild: GainItem = { kind: 'guild', count: 1 };
+
+export const INCOME_SECTIONS: IncomeSpace[][] = [
+  // Section claimed when passing during round 1 or round 2
+  // (income collected at the start of rounds 2 and 3).
+  [
+    { label: '5 coins + 2 eggs', items: [c(5), e(2)] },
+    { label: '5 coins + 1 egg + dragon card', items: [c(5), e(1), card('dragon')] },
+    { label: '5 coins + 1 egg + cave card', items: [c(5), e(1), card('cave')] },
+    { label: '5 coins + 1 egg + guild advancement', items: [c(5), e(1), guild] },
+    { label: '5 coins + 1 egg', items: [c(5), e(1)] },
+    { label: '6 coins', items: [c(6)] },
+  ],
+  // Section claimed when passing during round 3
+  // (income collected at the start of round 4).
+  [
+    { label: '5 coins + 3 eggs', items: [c(5), e(3)] },
+    { label: '5 coins + 2 eggs + dragon card', items: [c(5), e(2), card('dragon')] },
+    { label: '5 coins + 2 eggs + cave card', items: [c(5), e(2), card('cave')] },
+    { label: '5 coins + 1 egg', items: [c(5), e(1)] },
+    { label: '6 coins + guild advancement', items: [c(6), guild] },
+    { label: '6 coins + 1 egg', items: [c(6), e(1)] },
+  ],
+];
+
+/** Which income section applies to a pass during `round` (1-3). */
+export function incomeSectionIndex(round: number): number {
+  return round <= 2 ? 0 : 1;
+}
