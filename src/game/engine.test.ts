@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { greedyChoice } from '@/ai/choices';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
-import type { Action, Choice, GameState } from './types';
+import type { Action, GameState } from './types';
 import { actingPlayerId, getPlayer } from './helpers';
-import { bird } from './cards';
 import { drawFromDeck, setPlayer } from './powers';
 import { settle } from './engine';
 import { GOAL_POINTS } from './constants';
@@ -40,121 +40,9 @@ function autoResolve(s: GameState): GameState {
   let guard = 0;
   while (s.pending.length > 0 && guard++ < 100) {
     const step = s.pending[0]!;
-    const pid = step.playerId;
-    const p = getPlayer(s, pid);
-    let choice: Choice;
-    switch (step.kind) {
-      case 'pickDie': {
-        const chosen = s.feederIn
-          .map((f, i) => ({ die: i, face: f }))
-          .filter(({ face }) =>
-            step.faces
-              ? step.faces.some(
-                  (w) => face === w || (face === 'split' && (w === 'invertebrate' || w === 'seed')),
-                )
-              : true,
-          )
-          .slice(0, step.count);
-        choice = {
-          kind: 'dice',
-          picks: chosen.map(({ die, face }, k) => ({
-            die: die - k,
-            take: face === 'split' ? ('seed' as const) : undefined,
-          })),
-        };
-        break;
-      }
-      case 'chooseSupplyFood':
-        choice = {
-          kind: 'supplyFood',
-          foods: Array.from(
-            { length: step.count },
-            (_, i) => (step.options === 'any' ? 'seed' : step.options[i % step.options.length]!),
-          ),
-        };
-        break;
-      case 'chooseBirdForEgg': {
-        const birds: { habitat: 'forest'; index: number }[] = [];
-        const targets: { habitat: 'forest' | 'grassland' | 'wetland'; index: number }[] = [];
-        for (const h of ['forest', 'grassland', 'wetland'] as const) {
-          p.board[h].forEach((b, index) => {
-            const c = bird(b.cardId);
-            const okNest =
-              step.nest === 'any' || step.nest === 'other' || c.nest === step.nest || c.nest === 'wild';
-            if (okNest && b.eggs < c.eggLimit + (step.overLimit ?? 0)) {
-              if (!step.exclude || step.exclude.habitat !== h || step.exclude.index !== index) {
-                targets.push({ habitat: h, index });
-              }
-            }
-          });
-        }
-        choice = { kind: 'birds', birds: targets.slice(0, step.count) };
-        void birds;
-        break;
-      }
-      case 'chooseBirdForEggDiscard': {
-        const targets: { habitat: 'forest' | 'grassland' | 'wetland'; index: number }[] = [];
-        for (const h of ['forest', 'grassland', 'wetland'] as const) {
-          p.board[h].forEach((b, index) => {
-            if (b.eggs > 0 && (!step.exclude || step.exclude.habitat !== h || step.exclude.index !== index)) {
-              targets.push({ habitat: h, index });
-            }
-          });
-        }
-        choice = { kind: 'birds', birds: targets.slice(0, step.count) };
-        break;
-      }
-      case 'chooseHandDiscard':
-        choice = { kind: 'handCards', cardIds: p.hand.slice(0, step.count) };
-        break;
-      case 'chooseHandTuck':
-        choice = { kind: 'handCards', cardIds: p.hand.slice(0, 1) };
-        break;
-      case 'chooseDrawnCard':
-        choice = { kind: 'handCards', cardIds: step.cardIds.slice(0, 1) };
-        break;
-      case 'chooseBonusCards':
-        choice = { kind: 'bonusCards', cardIds: step.cardIds.slice(0, step.keep) };
-        break;
-      case 'discardBonusCards':
-        choice = { kind: 'bonusCards', cardIds: p.bonusHand.slice(0, step.count) };
-        break;
-      case 'moveBirdHabitat':
-        choice = { kind: 'habitat', habitat: 'grassland' };
-        break;
-      case 'chooseFirstPlayer':
-        choice = { kind: 'player', playerId: pid };
-        break;
-      case 'chooseRepeatPower': {
-        const row = p.board[step.habitat];
-        const idx = row.findIndex(
-          (b, i) =>
-            !(step.then?.bird && step.then.bird.index === i) &&
-            bird(b.cardId).powerColor === 'brown',
-        );
-        choice = { kind: 'repeatTarget', bird: { habitat: step.habitat, index: Math.max(0, idx) } };
-        break;
-      }
-      case 'chooseAdditionalPlay':
-        choice = { kind: 'handCards', cardIds: [p.hand[0]!] };
-        break;
-      case 'chooseCacheFood':
-        choice = { kind: 'supplyFood', foods: Array.from({ length: step.count }, () => 'seed' as const) };
-        break;
-      case 'chooseWildTrade': {
-        const give = (['invertebrate', 'seed', 'fish', 'fruit', 'rodent', 'nectar'] as const).find(
-          (f) => p.food[f] > 0,
-        )!;
-        choice = { kind: 'wildTrade', give, to: 'seed' };
-        break;
-      }
-      case 'chooseCacheGained':
-        choice = { kind: 'boolean', yes: true };
-        break;
-      default:
-        throw new Error('unknown pending kind');
-    }
-    s = applyAction(s, { type: 'resolveChoice', playerId: pid, choice });
+    const choice = greedyChoice(s, step);
+    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
+    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
   }
   return s;
 }
@@ -297,6 +185,7 @@ describe('engine smoke test', () => {
       roundEndQueue: [{ playerId: 'p1', bird: { habitat: 'forest', index: 0 } }],
     };
     s = settle(s);
+    s = autoResolve(s); // the implemented teal power queues a sub-choice
     expect(s.roundEndQueue.length).toBe(0);
     expect(s.phase).toBe('main');
 
@@ -306,6 +195,7 @@ describe('engine smoke test', () => {
       gameEndQueue: [{ playerId: 'p1', bird: { habitat: 'forest', index: 0 } }],
     };
     s = settle(s);
+    s = autoResolve(s);
     expect(s.phase).toBe('gameOver');
     expect(s.finalScores).not.toBeNull();
   });

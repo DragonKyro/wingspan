@@ -3,13 +3,22 @@
 import birdsJson from './data/birds.json';
 import bonusJson from './data/bonusCards.json';
 import goalsJson from './data/goals.json';
-import type { BirdCard, BonusCard, GoalTile } from './types';
+import hummingbirdsJson from './data/hummingbirds.json';
+import type { BirdCard, BonusCard, GoalTile, HummingbirdCard } from './types';
 
 export const BIRDS = birdsJson as BirdCard[];
 export const BONUS_CARDS = bonusJson as (BonusCard & {
   vp: { kind: string; tiers?: { min: number; max: number | null; vp: number }[]; per?: number; one?: number; two?: number; text?: string };
 })[];
 export const GOALS = goalsJson as GoalTile[];
+export const HUMMINGBIRDS = hummingbirdsJson as HummingbirdCard[];
+export const HUM_BY_ID = new Map<number, HummingbirdCard>(HUMMINGBIRDS.map((h) => [h.id, h]));
+
+export function hummingbird(id: number): HummingbirdCard {
+  const h = HUM_BY_ID.get(id);
+  if (!h) throw new Error(`unknown hummingbird card ${id}`);
+  return h;
+}
 
 export const BIRD_BY_ID = new Map<number, BirdCard>(BIRDS.map((b) => [b.id, b]));
 export const BONUS_BY_ID = new Map<number, (typeof BONUS_CARDS)[number]>(BONUS_CARDS.map((b) => [b.id, b]));
@@ -49,4 +58,9 @@ export function bonusCardsInSets(sets: string[]): number[] {
 /** Goal tiles available for the given sets (only supported scorers are used). */
 export function goalsForSets(sets: string[]): GoalTile[] {
   return GOALS.filter((g) => sets.includes(g.set) && g.goal.kind !== 'unsupported');
+}
+
+/** Hummingbird mini-card ids (americas only — 2000-based ids). */
+export function hummingbirdsInSets(sets: string[]): number[] {
+  return sets.includes('americas') ? HUMMINGBIRDS.map((h) => h.id) : [];
 }

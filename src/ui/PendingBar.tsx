@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { bird } from '@/game/cards';
+import { bird, hummingbird } from '@/game/cards';
 import { DUET_MAP, duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
 import {
   eggStepTargets,
@@ -8,7 +8,7 @@ import {
   playedBirds,
   wingspanOf,
 } from '@/game/helpers';
-import { faceCovers, hasPowerImpl } from '@/game/powers';
+import { costHasFood, faceCovers, hasPowerImpl } from '@/game/powers';
 import type {
   BirdRef,
   Choice,
@@ -142,23 +142,105 @@ function StepPicker({
     }
     case 'chooseHandDiscard':
       return (
-        <HandPicker
-          hand={p.hand}
-          count={step.count}
-          label={`discard ${step.count} card${step.count > 1 ? 's' : ''}`}
-          onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
-        />
+        <div>
+          <HandPicker
+            hand={p.hand}
+            count={step.count}
+            min={step.optional ? 0 : step.count}
+            label={`discard ${step.optional ? 'up to ' : ''}${step.count} card${step.count > 1 ? 's' : ''}`}
+            onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+          />
+          {step.optional && (
+            <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>decline</button>
+          )}
+        </div>
       );
-    case 'chooseHandTuck':
+    case 'chooseHandTuck': {
+      const hand =
+        step.wingspanLt != null
+          ? p.hand.filter((id) => wingspanOf(bird(id)) < step.wingspanLt!)
+          : p.hand;
       return (
-        <HandPicker
-          hand={p.hand}
-          count={1}
-          label="tuck a card from your hand"
-          onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+        <div>
+          <HandPicker
+            hand={hand}
+            count={1}
+            min={step.optional ? 0 : 1}
+            label={`tuck a card from your hand${step.wingspanLt ? ` (<${step.wingspanLt}cm)` : ''}`}
+            onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+          />
+          {step.optional && (
+            <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>decline</button>
+          )}
+        </div>
+      );
+    }
+    case 'chooseCardDiscard': {
+      // Qualifying cards on the tray or in hand.
+      const matches = (id: number) => step.costFoods.some((f) => costHasFood(bird(id), [f]));
+      return (
+        <div className="row">
+          <span>discard a card with {step.costFoods.join('/')} in its cost:</span>
+          {step.fromTray &&
+            game.tray.map(
+              (id, i) =>
+                id != null &&
+                matches(id) && (
+                  <BirdCardView
+                    key={`t${i}`}
+                    cardId={id}
+                    selectable
+                    onClick={() => send({ kind: 'handCards', cardIds: [id] })}
+                  />
+                ),
+            )}
+          {step.fromHand &&
+            p.hand.map(
+              (id) =>
+                matches(id) && (
+                  <BirdCardView
+                    key={`h${id}`}
+                    cardId={id}
+                    selectable
+                    onClick={() => send({ kind: 'handCards', cardIds: [id] })}
+                  />
+                ),
+            )}
+          {step.optional && (
+            <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>decline</button>
+          )}
+        </div>
+      );
+    }
+    case 'chooseCachedDiscard': {
+      // Click a cached food to discard it.
+      const items: { bird: BirdRef; food: FoodType; label: string }[] = [];
+      for (const { ref, bird: b } of playedBirds(p)) {
+        for (const food of b.cached) {
+          items.push({ bird: ref, food, label: `${ref.habitat} #${ref.index + 1}` });
+        }
+      }
+      return (
+        <CachedDiscardPicker
+          items={items}
+          count={step.count}
+          optional={step.optional}
+          onDone={(chosen) => send({ kind: 'cacheAssign', items: chosen })}
         />
       );
-    case 'chooseDrawnCard':
+    }
+    case 'chooseDrawnCard': {
+      const keep = step.keep ?? 1;
+      if (keep > 1) {
+        return (
+          <HandPicker
+            hand={step.cardIds}
+            count={keep}
+            label={`keep ${keep} of the drawn cards`}
+            onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+          />
+        );
+      }
       return (
         <div className="row">
           <span>pick a card:</span>
@@ -172,6 +254,7 @@ function StepPicker({
           ))}
         </div>
       );
+    }
     case 'chooseBonusCards':
       return (
         <div className="row">
@@ -234,16 +317,22 @@ function StepPicker({
         .map((b, index) => ({ b, index }))
         .filter(({ b, index }) => {
           if (source && source.habitat === step.habitat && source.index === index) return false;
+          if (step.excludeIds?.includes(index)) return false;
           const c = bird(b.cardId);
           return c.powerColor === 'brown' && !!c.powerText && (!step.predatorOnly || c.predator);
         });
       return (
-        <BirdRefPicker
-          label="repeat which bird's power?"
-          targets={targets.map(({ index }) => ({ habitat: step.habitat, index }))}
-          count={1}
-          onDone={(birds) => send({ kind: 'repeatTarget', bird: birds[0]! })}
-        />
+        <div>
+          <BirdRefPicker
+            label="repeat which bird's power?"
+            targets={targets.map(({ index }) => ({ habitat: step.habitat, index }))}
+            count={1}
+            onDone={(birds) => send({ kind: 'repeatTarget', bird: birds[0]! })}
+          />
+          {step.optional && (
+            <button onClick={() => send({ kind: 'boolean', yes: false })}>done</button>
+          )}
+        </div>
       );
     }
     case 'chooseAdditionalPlay': {
@@ -468,17 +557,20 @@ function StepPicker({
     // === oceania expansion steps ===
     case 'chooseCopyPower': {
       const target = getPlayer(game, step.target);
+      const habitats = step.habitat === 'any' ? HABITATS : [step.habitat];
       const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
-      target.board[step.habitat].forEach((b, index) => {
-        if (b.ghost) return;
-        const c = bird(b.cardId);
-        if (c.powerColor === 'brown' && c.powerText) {
-          targets.push({ habitat: step.habitat, index });
-        }
-      });
+      for (const h of habitats) {
+        target.board[h].forEach((b, index) => {
+          if (b.ghost) return;
+          const c = bird(b.cardId);
+          if (c.powerColor === 'brown' && c.powerText && hasPowerImpl(c.id)) {
+            targets.push({ habitat: h, index });
+          }
+        });
+      }
       return (
         <BirdRefPicker
-          label={`copy a power on ${target.name}'s ${step.habitat}`}
+          label={`copy a power on ${target.name}'s ${step.habitat === 'any' ? 'mat' : step.habitat}`}
           targets={targets}
           count={1}
           onDone={(birds) => send({ kind: 'repeatTarget', bird: birds[0]! })}
@@ -626,7 +718,8 @@ function StepPicker({
         <HandPicker
           hand={step.cardIds}
           count={n}
-          label={`tuck ${n} of the drawn cards${step.rest === 'hand' ? ' (rest to hand)' : ' (rest discarded)'}`}
+          min={Math.min(step.min ?? n, n)}
+          label={`tuck up to ${n} of the drawn cards${step.rest === 'hand' ? ' (rest to hand)' : ' (rest discarded)'}`}
           onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
         />
       );
@@ -689,6 +782,115 @@ function StepPicker({
         </div>
       );
     }
+
+    // === americas expansion steps ===
+    case 'chooseHumSource': {
+      const pickable = (i: number) => {
+        const id = game.humGarden[i]![game.humGarden[i]!.length - 1];
+        return (
+          id != null &&
+          !p.humReturned.includes(id) &&
+          (!step.groups || step.groups.includes(hummingbird(id).group))
+        );
+      };
+      return (
+        <div className="row">
+          <span>attract a hummingbird to your {step.habitat}:</span>
+          {game.humGarden.map((slot, i) => {
+            const id = slot[slot.length - 1];
+            return (
+              id != null && (
+                <button
+                  key={i}
+                  disabled={!pickable(i)}
+                  onClick={() => send({ kind: 'humPick', source: i })}
+                >
+                  {hummingbird(id).name}
+                </button>
+              )
+            );
+          })}
+          {!step.groups && (game.humDeck.length > 0 || game.humDiscard.length > 0) && (
+            <button onClick={() => send({ kind: 'humPick', source: 'deck' })}>deck</button>
+          )}
+        </div>
+      );
+    }
+    case 'chooseHumCover': {
+      const humId = p.humBoard[step.habitat];
+      return (
+        <div className="row">
+          <span>
+            return {humId != null ? hummingbird(humId).name : 'the hummingbird'} — cover a garden
+            slot:
+          </span>
+          {game.humGarden.map((slot, i) => (
+            <button key={i} onClick={() => send({ kind: 'humCover', slot: i })}>
+              {slot.length > 0 ? hummingbird(slot[slot.length - 1]!).name : `slot ${i + 1}`}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    case 'chooseHumColumn': {
+      const options = step.down
+        ? step.groups.filter((g) => p.humTrack[g] > 0)
+        : step.groups;
+      return (
+        <div className="row">
+          <span>move a hummingbird token {step.down ? 'down' : 'up'}:</span>
+          {options.map((g) => (
+            <button key={g} onClick={() => send({ kind: 'humColumn', group: g })}>
+              {g}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    case 'chooseHumHabitat': {
+      const attractable = (h: (typeof HABITATS)[number]) => {
+        if (step.exclude === h || p.humBoard[h] != null) return false;
+        const visible = game.humGarden.some((slot) => {
+          const id = slot[slot.length - 1];
+          return (
+            id != null &&
+            !p.humReturned.includes(id) &&
+            (!step.groups || step.groups.includes(hummingbird(id).group))
+          );
+        });
+        const deckOk =
+          !step.groups && (game.humDeck.length > 0 || game.humDiscard.length > 0);
+        return visible || deckOk;
+      };
+      const returnable = (h: (typeof HABITATS)[number]) => {
+        if (step.exclude === h) return false;
+        const id = p.humBoard[h];
+        return id != null && (!step.groups || step.groups.includes(hummingbird(id).group));
+      };
+      const rows = HABITATS.filter((h) =>
+        step.mode === 'attract'
+          ? attractable(h)
+          : step.mode === 'return'
+            ? returnable(h)
+            : attractable(h) || returnable(h),
+      );
+      return (
+        <div className="row">
+          <span>
+            {step.mode === 'attract' ? 'attract to' : step.mode === 'return' ? 'return from' : 'hummingbird action in'}{' '}
+            a row{step.groups ? ` (${step.groups.join('/')})` : ''}:
+          </span>
+          {rows.map((h) => (
+            <button key={h} onClick={() => send({ kind: 'habitat', habitat: h })}>
+              {h}
+            </button>
+          ))}
+          {step.optional && (
+            <button onClick={() => send({ kind: 'boolean', yes: false })}>decline</button>
+          )}
+        </div>
+      );
+    }
     default:
       return <span>…</span>;
   }
@@ -703,6 +905,8 @@ function PromptText({ step }: { step: PendingStep }) {
     chooseBirdForEggDiscard: `discard ${count} egg${count > 1 ? 's' : ''}`,
     chooseHandDiscard: `discard ${count} card${count > 1 ? 's' : ''}`,
     chooseHandTuck: 'tuck a card',
+    chooseCardDiscard: 'discard a cost-matching card',
+    chooseCachedDiscard: `discard ${count} cached food`,
     chooseDrawnCard: 'pick a card',
     chooseBonusCards: 'choose bonus cards',
     discardBonusCards: 'discard bonus cards',
@@ -738,6 +942,10 @@ function PromptText({ step }: { step: PendingStep }) {
     chooseCopyPlayed: 'copy a power',
     chooseReroll: 'reroll dice',
     drawUpTo: 'draw or stop',
+    chooseHumSource: 'attract a hummingbird',
+    chooseHumCover: 'cover a garden slot',
+    chooseHumColumn: 'move a hummingbird token',
+    chooseHumHabitat: 'pick a hummingbird row',
   };
   return <span>{text[step.kind]}</span>;
 }
@@ -872,12 +1080,14 @@ function BirdRefPicker({
 function HandPicker({
   hand,
   count,
+  min,
   label,
   bonus,
   onDone,
 }: {
   hand: number[];
   count: number;
+  min?: number;
   label: string;
   bonus?: boolean;
   onDone: (cardIds: number[]) => void;
@@ -909,9 +1119,54 @@ function HandPicker({
           />
         ),
       )}
-      <button className="primary" disabled={picked.length !== count} onClick={() => onDone(picked)}>
+      <button
+        className="primary"
+        disabled={picked.length > count || picked.length < (min ?? count)}
+        onClick={() => onDone(picked)}
+      >
         Confirm
       </button>
+    </div>
+  );
+}
+
+/** Pick `count` cached-food items to discard (americas "discard a cached [wild]"). */
+function CachedDiscardPicker({
+  items,
+  count,
+  optional,
+  onDone,
+}: {
+  items: { bird: BirdRef; food: FoodType; label: string }[];
+  count: number;
+  optional?: boolean;
+  onDone: (items: { bird: BirdRef; food: FoodType }[]) => void;
+}) {
+  const [picked, setPicked] = useState<number[]>([]);
+  const toggle = (i: number) =>
+    setPicked((cur) =>
+      cur.includes(i) ? cur.filter((x) => x !== i) : cur.length < count ? [...cur, i] : cur,
+    );
+  return (
+    <div className="row">
+      <span>discard {count} cached food:</span>
+      {items.map((it, i) => (
+        <button
+          key={i}
+          style={picked.includes(i) ? { borderColor: 'var(--accent)' } : undefined}
+          onClick={() => toggle(i)}
+        >
+          {it.food} ({it.label})
+        </button>
+      ))}
+      <button
+        className="primary"
+        disabled={picked.length !== count}
+        onClick={() => onDone(picked.map((i) => ({ bird: items[i]!.bird, food: items[i]!.food })))}
+      >
+        Confirm
+      </button>
+      {optional && <button onClick={() => onDone([])}>decline</button>}
     </div>
   );
 }

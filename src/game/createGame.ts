@@ -1,7 +1,7 @@
 // Deterministic game setup from a numeric seed.
 
-import { birdsInSets, bonusCardsInSets, goalsForSets } from './cards';
-import { CUBES_PER_ROUND } from './constants';
+import { birdsInSets, bonusCardsInSets, goalsForSets, hummingbirdsInSets } from './cards';
+import { CUBES_PER_ROUND, HUM_GARDEN_SLOTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS } from './duetMap';
 import { rollBirdfeeder, rngInt, shuffle } from './rng';
 import type {
@@ -70,6 +70,11 @@ export function createGame(opts: CreateGameOptions): GameState {
   }
 
   const oceania = sets.includes('oceania');
+  const americas = sets.includes('americas');
+
+  // Americas: shuffle the hummingbird mini-deck.
+  let humDeck: number[];
+  [humDeck, rng] = shuffle(rng, hummingbirdsInSets(sets));
 
   // Feeder: roll 5 dice (Oceania dice replace the split face with nectar).
   let feederIn;
@@ -106,7 +111,22 @@ export function createGame(opts: CreateGameOptions): GameState {
       nectarSpent: { forest: 0, grassland: 0, wetland: 0 },
       feederGainedThisTurn: [],
       copiedBonus: [],
+      // Americas: a random hummingbird starts on each grassland space.
+      humBoard: {
+        forest: null,
+        grassland: americas ? (humDeck.pop() ?? null) : null,
+        wetland: null,
+      },
+      humTrack: { bee: 0, brilliant: 0, emerald: 0, mango: 0, topaz: 0 },
+      humReturned: [],
+      horneroEggs: [],
     };
+  });
+
+  // Americas: the garden holds one face-up hummingbird per slot.
+  const humGarden = Array.from({ length: HUM_GARDEN_SLOTS }, () => {
+    const id = americas ? humDeck.pop() : undefined;
+    return id == null ? [] : [id];
   });
 
   let startIdx;
@@ -141,6 +161,10 @@ export function createGame(opts: CreateGameOptions): GameState {
     setupRemaining: playerOrder.slice(),
     roundEndQueue: [],
     gameEndQueue: null,
+    humDeck,
+    humDiscard: [],
+    humGarden,
+    humAction: null,
     settings,
     winner: null,
     finalScores: null,

@@ -1,9 +1,11 @@
 // Round-goal unit counting and end-of-game scoring.
 
-import { bonusCard, BIRD_BY_ID, goalTile } from './cards';
-import { NECTAR_POINTS } from './constants';
+import { bonusCard, BIRD_BY_ID, goalTile, hummingbird } from './cards';
+import { HUM_BONUS_SPACES, HUM_LADDER, NECTAR_POINTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS, duetIsEdge, duetNeighbors } from './duetMap';
 import {
+  humIdsOnMat,
+  isAmericas,
   isGoalDouble,
   isOceania,
   playedBirds,
@@ -12,8 +14,8 @@ import {
   totalFood,
   totalTucked,
 } from './helpers';
-import type { GameState, Habitat, PlayedBird, PlayerId, PlayerState, ScoreBreakdown } from './types';
-import { HABITATS } from './types';
+import type { GameState, Habitat, HumGroup, PlayedBird, PlayerId, PlayerState, ScoreBreakdown } from './types';
+import { HABITATS, HUM_GROUPS } from './types';
 
 /** Goal-unit weight of a played bird: european "counts double toward the
  *  end-of-round goal" teal powers double the bird when it qualifies. */
@@ -141,32 +143,46 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
   if (state.duet && DUET_TILE_IDS.has(tileId)) {
     return duetGoalUnits(state, playerId, tileId);
   }
+  // Americas: "for scoring conditions that count birds, hummingbirds are
+  // birds" — an attracted hummingbird counts as a bird in its habitat.
+  const hums = humIdsOnMat(p).length;
+  const humIn = (h: Habitat) => (p.humBoard[h] != null ? 1 : 0);
   switch (g.kind) {
     case 'birdsInHabitat':
-      return playedBirds(p)
-        .filter(({ ref }) => ref.habitat === g.habitat)
-        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      return (
+        playedBirds(p)
+          .filter(({ ref }) => ref.habitat === g.habitat)
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) + humIn(g.habitat)
+      );
     case 'eggsInHabitat':
       return p.board[g.habitat].reduce((n, b) => n + b.eggs, 0);
     case 'birdsInOneRow':
       return Math.max(
-        ...HABITATS.map((h) =>
-          playedBirds(p)
-            .filter(({ ref }) => ref.habitat === h)
-            .reduce((n, { bird: b }) => n + goalWeight(b), 0),
+        ...HABITATS.map(
+          (h) =>
+            playedBirds(p)
+              .filter(({ ref }) => ref.habitat === h)
+              .reduce((n, { bird: b }) => n + goalWeight(b), 0) + humIn(h),
         ),
       );
     case 'birdsNoEggs':
-      return playedBirds(p)
-        .filter(({ bird: b }) => b.eggs === 0)
-        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      // Hummingbirds carry no eggs, so they count as eggless birds.
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => b.eggs === 0)
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) + hums
+      );
     case 'birdsPoints': {
-      return playedBirds(p)
-        .filter(({ bird: b }) => {
-          const pts = BIRD_BY_ID.get(b.cardId)!.points;
-          return g.op === 'gt' ? pts > g.value : pts <= g.value;
-        })
-        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      // Hummingbirds are 0-point birds (can satisfy 'lte' thresholds).
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => {
+            const pts = BIRD_BY_ID.get(b.cardId)!.points;
+            return g.op === 'gt' ? pts > g.value : pts <= g.value;
+          })
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) +
+        (g.op === 'lte' && g.value >= 0 ? hums : 0)
+      );
     }
     case 'nestBirdsWithEggs':
       return playedBirds(p)
@@ -185,14 +201,17 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
     case 'foodInSupply':
       return totalFood(p);
     case 'birdsPowerColor':
-      return playedBirds(p)
-        .filter(({ bird: b }) => {
-          const c = BIRD_BY_ID.get(b.cardId)!;
-          // "White & No Powers": no power at all, or a when-played power.
-          if (g.color === 'white') return c.powerColor == null || c.powerColor === 'white';
-          return c.powerColor === g.color;
-        })
-        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      // Hummingbirds have no power — they count for "white & no powers".
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => {
+            const c = BIRD_BY_ID.get(b.cardId)!;
+            // "White & No Powers": no power at all, or a when-played power.
+            if (g.color === 'white') return c.powerColor == null || c.powerColor === 'white';
+            return c.powerColor === g.color;
+          })
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) + (g.color === 'white' ? hums : 0)
+      );
     case 'filledColumns': {
       // Counts covered (ghost) spaces too: sideways birds fill both spaces.
       let n = 0;
@@ -206,15 +225,19 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
     case 'setsOfThreeEggs':
       return Math.min(...HABITATS.map((h) => p.board[h].reduce((x, b) => x + b.eggs, 0)));
     case 'totalBirds':
-      return playedBirds(p).reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      return playedBirds(p).reduce((n, { bird: b }) => n + goalWeight(b), 0) + hums;
     case 'birdsWithTucked':
       return playedBirds(p)
         .filter(({ bird: b }) => b.tucked.length > 0)
         .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'beakDirection':
-      return playedBirds(p)
-        .filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.beakLeft === (g.dir === 'L'))
-        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+      // Hummingbirds have a printed beak direction too.
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.beakLeft === (g.dir === 'L'))
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) +
+        humIdsOnMat(p).filter((id) => hummingbird(id).beakLeft === (g.dir === 'L')).length
+      );
     case 'cubesOnPlayBird':
       return p.cubesOnPlayBird;
     case 'costIncludes':
@@ -230,6 +253,35 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
           return g.all ? g.foods.every(have) : g.foods.some(have);
         })
         .reduce((n, { bird: b }) => n + goalWeight(b), 0);
+    // === americas expansion goals ===
+    case 'birdsParity':
+      // Hummingbirds are 0-point (even) birds.
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => {
+            const pts = BIRD_BY_ID.get(b.cardId)!.points;
+            return g.parity === 'even' ? pts % 2 === 0 : pts % 2 === 1;
+          })
+          .reduce((n, { bird: b }) => n + goalWeight(b), 0) + (g.parity === 'even' ? hums : 0)
+      );
+    case 'distinctPoints': {
+      const values = new Set(playedBirds(p).map(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.points));
+      // A hummingbird in the preserve may be counted as a 0.
+      if (hums > 0) values.add(0);
+      return values.size;
+    }
+    case 'humPoints':
+      // Green side: the total score of all hummingbird-track tokens (the
+      // printed point value at each token's position, can go negative).
+      return isAmericas(state)
+        ? HUM_GROUPS.reduce((n, grp) => n + (HUM_LADDER[p.humTrack[grp]] ?? 0), 0)
+        : 0;
+    case 'eggLimitTotal':
+      // Green side: sum the printed egg limits (hummingbirds have none).
+      return playedBirds(p).reduce((n, { bird: b }) => n + BIRD_BY_ID.get(b.cardId)!.eggLimit, 0);
+    case 'humColumn':
+      // Green side: how far the token has advanced in this column (index).
+      return p.humTrack[g.group];
     case 'noGoal':
     case 'unsupported':
       return 0;
@@ -344,8 +396,39 @@ export function bonusUnits(p: PlayerState, name: string): number {
       );
     case 'Winter Feeder':
       return totalFood(p);
+    // === americas bonus cards ===
+    case 'Apiarist':
+    case 'Brilliant Specialist':
+    case 'Emerald Specialist':
+    case 'Mango Specialist':
+    case 'Topaz Specialist': {
+      // "Point value of your [group] token" — its position on the canonical
+      // hummingbird track ladder (negative at START scores nothing via tiers).
+      const group: HumGroup =
+        name === 'Apiarist' ? 'bee' : (name.split(' ')[0]!.toLowerCase() as HumGroup);
+      return HUM_LADDER[p.humTrack[group]] ?? 0;
+    }
+    case 'Ecolodge Owner': {
+      // "Score more if your hummingbirds are close in value" — the difference
+      // between the highest and lowest token point values is the unit count.
+      const vals = HUM_GROUPS.map((g) => HUM_LADDER[p.humTrack[g]] ?? 0);
+      return Math.max(...vals) - Math.min(...vals);
+    }
+    case 'Hummingbird Counter':
+      // Hummingbird-icon spaces reached (canonical track layout).
+      return HUM_GROUPS.reduce(
+        (n, g) => n + HUM_BONUS_SPACES[g].filter((i) => p.humTrack[g] >= i).length,
+        0,
+      );
+    case 'Hummingbird Gardener':
+      return HUM_GROUPS.filter((g) => (HUM_LADDER[p.humTrack[g]] ?? 0) >= 4).length;
     default:
-      return playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.bonusFlags.includes(name)).length;
+      // Hummingbird names count toward name-based bonus cards too.
+      return (
+        playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.bonusFlags.includes(name))
+          .length +
+        humIdsOnMat(p).filter((id) => hummingbird(id).bonusFlags.includes(name)).length
+      );
   }
 }
 
@@ -416,6 +499,23 @@ export function finalScore(state: GameState, playerId: PlayerId): ScoreBreakdown
   const nectar = nectarPoints(state, playerId);
   // Duet mode: 1 pt per token in the largest contiguous group on the map.
   const duetTokens = state.duet ? duetLargestGroup(state, playerId) : 0;
-  const total = birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar + duetTokens;
-  return { birdPoints, bonusPoints: bonus, eggs, cached, tucked, nectar, duetTokens, goalPoints, total };
+  // Americas: each hummingbird-track token is worth the printed point value
+  // of the space it rests on (the START space is worth -3).
+  const hummingbirds = isAmericas(state)
+    ? HUM_GROUPS.reduce((n, g) => n + (HUM_LADDER[p.humTrack[g]] ?? 0), 0)
+    : 0;
+  const total =
+    birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar + duetTokens + hummingbirds;
+  return {
+    birdPoints,
+    bonusPoints: bonus,
+    eggs,
+    cached,
+    tucked,
+    nectar,
+    duetTokens,
+    hummingbirds,
+    goalPoints,
+    total,
+  };
 }

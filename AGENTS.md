@@ -77,7 +77,8 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   round (4/1, 5/2/1, 6/3/2, 7/4/3 — see GOAL_POINTS); players with 0 units
   score 0. 'blue' side (1 pt/item, max 5) is unimplemented.
 - Round end (EE order): teal powers → goal scored → tray discarded +
-  restocked → cubes reset → first player rotates.
+  restocked (americas: hummingbird garden too) → cubes reset → first
+  player rotates.
 
 ## European expansion (`set: 'european'`, 81 birds)
 
@@ -184,11 +185,64 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 
 - Standard tiles, FLOCK_GOAL_POINTS table (friendly ties share a rank).
 
+## Americas expansion (`set: 'americas'`, 111 birds + 40 hummingbirds)
+
+- Hummingbirds are a mini-deck (`data/hummingbirds.json`, ids 2000–2039)
+  with a `group` (bee/brilliant/emerald/mango/topaz), a `benefit`
+  (card/nectar/egg/advance/row), and `bonusFlags` so their names count for
+  name-based bonus cards. Shared state: `state.humDeck`/`humDiscard`/
+  `humGarden` (5 stack slots — returned hummingbirds cover the top card).
+  Per player: `p.humBoard` (one space per habitat), `p.humTrack` (token
+  position per group), `p.humReturned` (no-takeback list, reset each turn),
+  `p.horneroEggs` (Rufous Hornero placeholder-egg habitats).
+- Every forest/grassland/wetland row action ends on the row's hummingbird
+  space: `actions.ts` marks `state.humAction` and queues it once the brown
+  activation drains (`queueRowHumAction`). Empty space → chooseHumSource
+  (attract a garden top card or a deck draw, then `grantHumBenefit`);
+  occupied → chooseHumCover (return it, covering any garden slot; move up
+  1 space in the returned OR covered bird's column). Moving up off the end
+  offers a different token; landing on a hummingbird-icon space
+  (HUM_BONUS_SPACES) grants another action in any habitat.
+- **The printed per-player track layouts are randomized; the engine uses
+  one canonical ladder for everyone** — `HUM_LADDER` [-3,0,1,2,3,4,6,8,10]
+  with START worth -3 (game-end scores can go negative) and
+  `HUM_BONUS_SPACES` [3,6]/[4,7] per column. Track points are added to
+  finalScores as `hummingbirds`.
+- Hummingbirds ARE birds for powers/scoring that count birds (0 pts,
+  white/no power, egg limit/cost 0, live anywhere, smallest wingspan) —
+  `goalScore` adds them per habitat and to eggless/even/parity counts;
+  an EMPTY hum space counts as an empty space (`emptySlots`). They can't
+  be played on, tucked, cached, or egged (not PlayedBirds).
+- Garden mirrors the tray: empty slots refill at end of turn; the whole
+  garden is discarded+refilled at round end; deck reshuffles discards.
+- New PendingStep kinds: chooseHumSource, chooseHumCover, chooseHumColumn
+  (`down` for Crested Oropendola), chooseHumHabitat (mode
+  attract/return/either + `groups` for group-named powers — deck draws
+  aren't offered when restricted). New Choices: humPick/humCover/humColumn.
+- New pink watches: `feederReset` (ANY reroll counts — powers, the
+  all-same-face reroll, empty-feeder auto-refills) and `drawCards`
+  (Magnificent Frigatebird), plus `playBird`/`layEggs`/`tuck` variants.
+- Reset-then-cache powers reroll the feeder and cache ≤1 food per type
+  from the supply (dice are never removed) — `resetCachePresent` /
+  `resetCacheChoice`.
+- Rufous Hornero placeholders discount the first-empty-column egg cost by
+  1 and are consumed on the next play in that habitat (even at cost 0).
+  "Move with the action cube" birds relocate to a legal habitat and the
+  activation + owed hum action follow it (`amCubeMove`).
+- Goal tiles 2046–2055: birdsParity, distinctPoints (a hummingbird may
+  count as a 0), humPoints (sum of token values — negative totals still
+  rank), eggLimitTotal, humColumn (token progress per group). Bonus cards
+  1052–1059 score the track (Specialists = a group's value, Ecolodge =
+  best−worst spread, Hummingbird Counter = icon spaces reached,
+  Gardener = tokens worth ≥4).
+- Americas birds can cost nectar even without the oceania set — supply
+  nectar is still obtainable via the nectar hummingbird benefit.
+
 ## Known gaps (future work)
 
-- `POWER_IMPLS` covers all distinct core + european + oceania + asia texts;
-  other expansion texts warn once and no-op (`hasPowerImpl` is the check).
-  The Amazonian Parrotlet (promo) has no implementation.
+- `POWER_IMPLS` covers all distinct core + european + oceania + asia +
+  americas texts; other expansion texts warn once and no-op
+  (`hasPowerImpl` is the check).
 - The printed duet map layout is approximated (region criterion counts are
   official; exact space positions are not public data).
 - Blue (per-item) goal side unimplemented.

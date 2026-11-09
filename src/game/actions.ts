@@ -1,7 +1,7 @@
 // Handlers for the four turn actions, setup, activation and end-turn.
 // Every handler validates the action fully; invalid actions throw.
 
-import { bird } from './cards';
+import { bird, goalTile } from './cards';
 import {
   CUBES_PER_ROUND,
   FOREST_DICE,
@@ -27,6 +27,7 @@ import {
   canHoldEggs,
   columnEggCost,
   getPlayer,
+  isAmericas,
   isCardCostBird,
   isCoverBird,
   isDuet,
@@ -43,10 +44,12 @@ import { DUET_GOAL_POINTS, DUET_LOWER_IS_BETTER, FLOCK_GOAL_POINTS } from './due
 import { goalScore } from './scoring';
 import {
   drawFromDeck,
+  feederReset,
   firePinkTriggers,
   hasPowerImpl,
   pushPending,
-  refillFeeder,
+  queueRowHumAction,
+  refillHumGarden,
   refillTray,
   resetPinkFlags,
   runPower,
@@ -104,6 +107,21 @@ function startActivation(state: GameState, playerId: PlayerId, habitat: Habitat)
     if (c.powerColor === 'brown' && c.powerText && hasPowerImpl(c.id)) remaining.push(i);
   }
   return { ...state, activation: remaining.length ? { habitat, remaining } : null };
+}
+
+/** Americas: a row action lands the action cube on the row's hummingbird
+ *  space after the brown powers finish. Marks the owed action and queues it
+ *  immediately when the row has no brown powers to activate. */
+function rowHumAction(state: GameState, playerId: PlayerId, habitat: Habitat): GameState {
+  if (!isAmericas(state)) return state;
+  const s: GameState = { ...state, humAction: habitat };
+  return s.activation == null ? queueRowHumAction(s, playerId) : s;
+}
+
+/** Called whenever the activation track drains: queue the owed hummingbird
+ *  action (if any). */
+function activationDone(state: GameState, playerId: PlayerId): GameState {
+  return state.activation == null ? queueRowHumAction(state, playerId) : state;
 }
 
 // === setup ===
@@ -165,7 +183,10 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
   // "Pay the lower egg cost": the lower of the two covered columns' costs —
   // column costs are non-decreasing, so that is the left covered slot's cost.
   const eggCost = columnEggCost(slot);
-  if (action.eggPayments.length !== eggCost) throw new Error(`column ${slot + 1} costs ${eggCost} eggs`);
+  // Americas: a Rufous Hornero placeholder egg on this slot discounts the cost.
+  const horneroDiscount = p.horneroEggs.includes(action.habitat) && eggCost > 0;
+  const effEggCost = eggCost - (horneroDiscount ? 1 : 0);
+  if (action.eggPayments.length !== effEggCost) throw new Error(`column ${slot + 1} costs ${effEggCost} eggs`);
   for (const ref of action.eggPayments) {
     const b = birdAt(state, action.playerId, ref);
     if (b.ghost) throw new Error('that space is covered');
@@ -259,6 +280,9 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
     hand: pl.hand.filter((id) => id !== action.cardId && !paidSet.has(id)),
     board: { ...pl.board, [action.habitat]: newRow },
     cubesOnPlayBird: pl.cubesOnPlayBird + 1,
+    // The placeholder egg is discarded when a bird is played on its slot —
+    // whether or not it counted toward the egg cost (a 0-cost slot wastes it).
+    horneroEggs: pl.horneroEggs.filter((h) => h !== action.habitat),
   };
   s = setPlayer(s, pl);
 
@@ -288,7 +312,7 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
     s = firePinkTriggers(s, action.playerId, { kind: 'tuck' });
     s = firePinkTriggers(s, action.playerId, { kind: 'predatorSuccess' });
   }
-  s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: action.habitat });
+  s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: action.habitat, cardId: action.cardId });
   return s;
 }
 
@@ -337,7 +361,7 @@ function playOnTop(
   // as playing a bird in that habitat for pink triggers.
   s = firePinkTriggers(s, action.playerId, { kind: 'tuck' });
   s = firePinkTriggers(s, action.playerId, { kind: 'predatorSuccess' });
-  s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: ref.habitat });
+  s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: ref.habitat, cardId: action.cardId });
   return s;
 }
 
@@ -377,11 +401,11 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
   if (action.rerollCost != null) {
     const pl = getPlayer(s, action.playerId);
     s = setPlayer(s, spendNectarAware(pl, action.rerollCost, 'forest'));
-    s = refillFeeder(s);
+    s = feederReset(s, action.playerId);
   }
   if (action.reroll) {
     if (!allSameFace(s.feederIn)) throw new Error('can only reroll when all dice show the same face');
-    s = refillFeeder(s);
+    s = feederReset(s, action.playerId);
   }
   if (action.picks.length !== diceToTake) throw new Error(`take ${diceToTake} dice`);
   const gained: FoodType[] = [];
@@ -402,7 +426,7 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
   for (const f of new Set(gained)) {
     s = firePinkTriggers(s, action.playerId, { kind: 'gainFood', food: f });
   }
-  return startActivation(s, action.playerId, 'forest');
+  return rowHumAction(startActivation(s, action.playerId, 'forest'), action.playerId, 'forest');
 }
 
 /** Spend one food of `food` from `p`; nectar also goes to the spent-nectar
@@ -477,7 +501,7 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
     s = setPlayer(s, addEggs(getPlayer(s, action.playerId), ref, 1));
   }
   s = firePinkTriggers(s, action.playerId, { kind: 'layEggs' });
-  return startActivation(s, action.playerId, 'grassland');
+  return rowHumAction(startActivation(s, action.playerId, 'grassland'), action.playerId, 'grassland');
 }
 
 // === draw cards ===
@@ -553,7 +577,9 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
       s = { ...setPlayer(s, { ...pl, hand: [...pl.hand, id] }), tray };
     }
   }
-  return startActivation(s, action.playerId, 'wetland');
+  // Americas pink: "when another player takes the draw-cards action".
+  s = firePinkTriggers(s, action.playerId, { kind: 'drawCards' });
+  return rowHumAction(startActivation(s, action.playerId, 'wetland'), action.playerId, 'wetland');
 }
 
 // === activation ===
@@ -568,7 +594,7 @@ export function activatePower(state: GameState, playerId: PlayerId): GameState {
   const remaining = act.remaining.slice(1);
   let s: GameState = { ...state, activation: remaining.length ? { ...act, remaining } : null };
   s = runPower(s, playerId, ref);
-  return s;
+  return activationDone(s, playerId);
 }
 
 export function skipPower(state: GameState, playerId: PlayerId, all: boolean): GameState {
@@ -577,7 +603,8 @@ export function skipPower(state: GameState, playerId: PlayerId, all: boolean): G
   const act = state.activation;
   if (!act) return state;
   const remaining = all ? [] : act.remaining.slice(1);
-  return { ...state, activation: remaining.length ? { ...act, remaining } : null };
+  const s: GameState = { ...state, activation: remaining.length ? { ...act, remaining } : null };
+  return activationDone(s, playerId);
 }
 
 // === end turn ===
@@ -600,6 +627,8 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
     });
   }
   let s = refillTray(state);
+  // Americas: empty hummingbird-garden slots refill at the end of each turn.
+  if (isAmericas(s)) s = refillHumGarden(s);
   if (p.endOfTurnDiscards > 0) s = finishEndOfTurnDiscards(s, playerId);
   // Advance to the next player with cubes left.
   let next = state.currentPlayerIndex;
@@ -637,7 +666,7 @@ export function duetReset(state: GameState, action: DuetResetAction): GameState 
   const reset = state.duet.reset.filter((_, i) => i !== at);
   let s: GameState = { ...state, duet: { ...state.duet, reset } };
   if (action.target === 'feeder') {
-    s = refillFeeder(s);
+    s = feederReset(s, action.playerId);
   } else {
     s = {
       ...s,
@@ -720,10 +749,13 @@ export function finishRound(state: GameState): GameState {
       const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
       const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
       // Ranks with tie-split (floor of summed rank points). Players with 0
-      // units place their cube on the 0 space — they don't rank.
+      // units place their cube on the 0 space — they don't rank. The americas
+      // hummingbird-points goal can be negative, and a negative total is a
+      // real count (everyone has a track total), so it still ranks.
+      const humPointsGoal = goalTile(tile)?.goal.kind === 'humPoints';
       const order = s.playerOrder
         .map((pid, i) => ({ pid, units: units[i]! }))
-        .filter((x) => x.units > 0)
+        .filter((x) => (humPointsGoal ? x.units !== 0 : x.units > 0))
         .sort((a, b) => b.units - a.units);
       const scores = new Array<number>(s.playerOrder.length).fill(0);
       let i = 0;
@@ -747,6 +779,15 @@ export function finishRound(state: GameState): GameState {
     tray: [null, null, null],
   };
   s = refillTray(s);
+  // Americas: the hummingbird garden is wiped and restocked each round.
+  if (isAmericas(s)) {
+    s = {
+      ...s,
+      humDiscard: [...s.humDiscard, ...s.humGarden.flat()],
+      humGarden: s.humGarden.map(() => []),
+    };
+    s = refillHumGarden(s);
+  }
 
   const nextRound = s.round + 1;
   if (nextRound < 4) {

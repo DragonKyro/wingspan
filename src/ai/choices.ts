@@ -1,9 +1,10 @@
 // Greedy answers for pending steps — used by the AI and by tests that need
 // to push through sub-choices without caring about quality.
 
-import { bird } from '@/game/cards';
+import { bird, hummingbird } from '@/game/cards';
 import { duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
 import {
+  adjacentRefs,
   columnEggCost,
   eggStepTargets,
   eggsInHabitat,
@@ -16,7 +17,7 @@ import {
   totalEggs,
   wingspanOf,
 } from '@/game/helpers';
-import { faceCovers, hasPowerImpl } from '@/game/powers';
+import { costHasFood, faceCovers, hasPowerImpl } from '@/game/powers';
 import type { BirdRef, Choice, FoodType, GameState, PendingStep, PlayerId } from '@/game/types';
 import { FOOD_TYPES, HABITATS } from '@/game/types';
 
@@ -80,17 +81,58 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       }
       return { kind: 'birds', birds: targets.slice(0, step.count) };
     }
-    case 'chooseHandDiscard':
-      if (p.hand.length < step.count) return null;
-      return { kind: 'handCards', cardIds: p.hand.slice(0, step.count) };
-    case 'chooseHandTuck':
-      if (p.hand.length === 0) return null;
-      return { kind: 'handCards', cardIds: [p.hand[0]!] };
-    case 'chooseDrawnCard':
-      if (step.cardIds.length === 0) return null;
-      // Keep the highest-point bird.
-      const best = [...step.cardIds].sort((a, b) => bird(b).points - bird(a).points)[0]!;
-      return { kind: 'handCards', cardIds: [best] };
+    case 'chooseHandDiscard': {
+      if (p.hand.length === 0) {
+        return step.optional ? { kind: 'handCards', cardIds: [] } : null;
+      }
+      if (!step.optional && p.hand.length < step.count) return null;
+      return { kind: 'handCards', cardIds: p.hand.slice(0, Math.min(step.count, p.hand.length)) };
+    }
+    case 'chooseHandTuck': {
+      const id =
+        step.wingspanLt != null
+          ? p.hand.find((x) => wingspanOf(bird(x)) < step.wingspanLt!)
+          : p.hand[0];
+      if (id == null) {
+        return step.optional ? { kind: 'handCards', cardIds: [] } : null;
+      }
+      return { kind: 'handCards', cardIds: [id] };
+    }
+    case 'chooseCardDiscard': {
+      // Prefer a qualifying tray card (it costs nothing from the hand).
+      const trayPick = step.fromTray
+        ? state.tray.find((id) => id != null && step.costFoods.some((f) => costHasFood(bird(id!), [f])))
+        : undefined;
+      const handPick = step.fromHand
+        ? p.hand.find((id) => step.costFoods.some((f) => costHasFood(bird(id), [f])))
+        : undefined;
+      const pick = trayPick ?? handPick;
+      if (pick == null) {
+        return step.optional ? { kind: 'handCards', cardIds: [] } : null;
+      }
+      return { kind: 'handCards', cardIds: [pick] };
+    }
+    case 'chooseCachedDiscard': {
+      const items: { bird: BirdRef; food: FoodType }[] = [];
+      for (const { ref, bird: b } of playedBirds(p)) {
+        for (const food of b.cached) {
+          if (items.length < step.count) items.push({ bird: ref, food });
+        }
+      }
+      if (items.length < step.count) {
+        return step.optional ? { kind: 'cacheAssign', items: [] } : null;
+      }
+      return { kind: 'cacheAssign', items };
+    }
+    case 'chooseDrawnCard': {
+      const keep = step.keep ?? 1;
+      if (step.cardIds.length < keep) return null;
+      // Keep the highest-point birds.
+      const best = [...step.cardIds]
+        .sort((a, b) => bird(b).points - bird(a).points)
+        .slice(0, keep);
+      return { kind: 'handCards', cardIds: best };
+    }
     case 'chooseBonusCards':
       if (step.cardIds.length < step.keep) return null;
       return { kind: 'bonusCards', cardIds: step.cardIds.slice(0, step.keep) };
@@ -111,17 +153,23 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       const source = step.then?.bird;
       const idx = p.board[step.habitat].findIndex((b, i) => {
         if (source && source.habitat === step.habitat && source.index === i) return false;
+        if (step.excludeIds?.includes(i)) return false;
         const c = bird(b.cardId);
         return c.powerColor === 'brown' && !!c.powerText && (!step.predatorOnly || c.predator);
       });
-      if (idx < 0) return null;
+      if (idx < 0) {
+        return step.optional ? { kind: 'boolean', yes: false } : null;
+      }
       return { kind: 'repeatTarget', bird: { habitat: step.habitat, index: idx } };
     }
     case 'chooseAdditionalPlay': {
-      const habitats =
+      let habitats =
         step.habitat === 'any'
           ? HABITATS
           : [step.habitat === 'same' ? step.sourceBird?.habitat : step.habitat];
+      if (step.column != null) {
+        habitats = habitats.filter((h) => h && p.board[h].length === step.column);
+      }
       for (const habitat of habitats) {
         if (!habitat) continue;
         if (totalEggs(p) < Math.max(0, columnEggCost(p.board[habitat].length) - (step.eggDiscount ?? 0))) continue;
@@ -197,6 +245,9 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'dice', picks };
     }
     case 'chooseBirds': {
+      const adjacent = step.adjacentTo
+        ? new Set(adjacentRefs(p, step.adjacentTo).map((r) => `${r.habitat}:${r.index}`))
+        : null;
       const eligible: BirdRef[] = playedBirds(p)
         .filter(({ ref, bird: b }) => {
           if (step.habitat && ref.habitat !== step.habitat) return false;
@@ -205,6 +256,11 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
           }
           if (step.nest && !nestMatches(bird(b.cardId).nest, step.nest)) return false;
           if (step.eggsMin != null && b.eggs < step.eggsMin) return false;
+          if (step.costFood && !costHasFood(bird(b.cardId), [step.costFood])) return false;
+          if (adjacent && !adjacent.has(`${ref.habitat}:${ref.index}`)) return false;
+          if (step.hasEggs && b.eggs <= 0) return false;
+          if (step.hasCached && b.cached.length === 0) return false;
+          if (step.needRoom && b.eggs >= bird(b.cardId).eggLimit) return false;
           return true;
         })
         .map(({ ref }) => ref);
@@ -235,20 +291,23 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     // === oceania expansion steps ===
     case 'chooseCopyPower': {
       const target = getPlayer(state, step.target);
-      const idx = target.board[step.habitat].findIndex((b) => {
-        if (b.ghost) return false;
-        const c = bird(b.cardId);
-        return c.powerColor === 'brown' && !!c.powerText;
-      });
-      if (idx < 0) return null;
-      return { kind: 'repeatTarget', bird: { habitat: step.habitat, index: idx } };
+      const habitats = step.habitat === 'any' ? HABITATS : [step.habitat];
+      for (const h of habitats) {
+        const idx = target.board[h].findIndex((b) => {
+          if (b.ghost) return false;
+          const c = bird(b.cardId);
+          return c.powerColor === 'brown' && !!c.powerText && hasPowerImpl(c.id);
+        });
+        if (idx >= 0) return { kind: 'repeatTarget', bird: { habitat: h, index: idx } };
+      }
+      return null;
     }
     case 'chooseTrayCardEx': {
       const idx = state.tray.findIndex((id) => {
         if (id == null) return false;
         const c = bird(id);
         if (step.nests && !step.nests.includes(c.nest)) return false;
-        if (step.wingspanLt != null && c.wingspan >= step.wingspanLt) return false;
+        if (step.wingspanLt != null && wingspanOf(c) >= step.wingspanLt) return false;
         return true;
       });
       if (idx >= 0) return { kind: 'trayPick', cardId: state.tray[idx]! };
@@ -369,6 +428,72 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       const total = step.pool.reduce((n, id) => n + wingspanOf(bird(id)), 0);
       // Keep drawing while there's a comfortable margin under the cap.
       return { kind: 'boolean', yes: step.left > 0 && total + 40 <= cap };
+    }
+
+    // === americas expansion steps ===
+    case 'chooseHumSource': {
+      // Prefer a face-up garden pick over a blind deck draw.
+      for (let i = 0; i < state.humGarden.length; i++) {
+        const id = state.humGarden[i]![state.humGarden[i]!.length - 1];
+        if (id == null) continue;
+        if (step.groups && !step.groups.includes(hummingbird(id).group)) continue;
+        if (p.humReturned.includes(id)) continue;
+        return { kind: 'humPick', source: i };
+      }
+      if (!step.groups && (state.humDeck.length > 0 || state.humDiscard.length > 0)) {
+        return { kind: 'humPick', source: 'deck' };
+      }
+      return null;
+    }
+    case 'chooseHumCover': {
+      const humId = p.humBoard[step.habitat];
+      if (humId == null) return null;
+      const myGroup = hummingbird(humId).group;
+      // Covering a different group's top card advances two track columns.
+      const diff = state.humGarden.findIndex((slot) => {
+        const top = slot[slot.length - 1];
+        return top != null && hummingbird(top).group !== myGroup;
+      });
+      const empty = state.humGarden.findIndex((slot) => slot.length === 0);
+      const slot = diff >= 0 ? diff : empty >= 0 ? empty : 0;
+      return { kind: 'humCover', slot };
+    }
+    case 'chooseHumColumn': {
+      const options = step.down
+        ? step.groups.filter((g) => p.humTrack[g] > 0)
+        : step.groups;
+      if (options.length === 0) return null;
+      return { kind: 'humColumn', group: options[0]! };
+    }
+    case 'chooseHumHabitat': {
+      // Prefer attracting (benefits) over returning; attract rows first.
+      const attractable = (h: (typeof HABITATS)[number]) => {
+        if (step.exclude === h || p.humBoard[h] != null) return false;
+        const visible = state.humGarden.some((slot) => {
+          const id = slot[slot.length - 1];
+          return (
+            id != null &&
+            !p.humReturned.includes(id) &&
+            (!step.groups || step.groups.includes(hummingbird(id).group))
+          );
+        });
+        const deckOk =
+          !step.groups && (state.humDeck.length > 0 || state.humDiscard.length > 0);
+        return visible || deckOk;
+      };
+      const returnable = (h: (typeof HABITATS)[number]) => {
+        if (step.exclude === h) return false;
+        const id = p.humBoard[h];
+        return id != null && (!step.groups || step.groups.includes(hummingbird(id).group));
+      };
+      let pick: (typeof HABITATS)[number] | undefined;
+      if (step.mode === 'attract') pick = HABITATS.find(attractable);
+      else if (step.mode === 'return') pick = HABITATS.find(returnable);
+      else pick = HABITATS.find(attractable) ?? HABITATS.find(returnable);
+      if (!pick) {
+        return step.optional ? { kind: 'boolean', yes: false } : null;
+      }
+      return { kind: 'habitat', habitat: pick };
     }
   }
 }

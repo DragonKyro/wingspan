@@ -127,6 +127,8 @@ export function eggStepTargets(
     adjacentTo?: BirdRef;
     wingspanLt?: number;
     columnOf?: BirdRef;
+    habitat?: Habitat;
+    eggsMax?: number;
   },
 ): BirdRef[] {
   const p = getPlayer(state, step.playerId);
@@ -138,6 +140,9 @@ export function eggStepTargets(
     return Array.from({ length: Math.min(step.count, room) }, () => step.onlyBird!);
   }
   let refs = eggTargets(state, step.playerId, step.nest, step.exclude, over);
+  if (step.habitat) {
+    refs = refs.filter((r) => r.habitat === step.habitat);
+  }
   if (step.adjacentTo) {
     refs = refs.filter(
       (r) => r.habitat === step.adjacentTo!.habitat && Math.abs(r.index - step.adjacentTo!.index) === 1,
@@ -147,6 +152,12 @@ export function eggStepTargets(
     refs = refs.filter((r) => {
       const b = p.board[r.habitat]?.[r.index];
       return b != null && wingspanOf(bird(b.cardId)) < step.wingspanLt!;
+    });
+  }
+  if (step.eggsMax != null) {
+    refs = refs.filter((r) => {
+      const b = p.board[r.habitat]?.[r.index];
+      return b != null && b.eggs <= step.eggsMax!;
     });
   }
   if (step.columnOf) {
@@ -324,6 +335,42 @@ export function actionSlot(p: PlayerState, habitat: Habitat, oceania = false): n
 /** Does this game use the Oceania expansion (mat, nectar, cards)? */
 export function isOceania(state: GameState): boolean {
   return state.settings.sets.includes('oceania');
+}
+
+/** Does this game use the Americas expansion (hummingbird subsystem)? */
+export function isAmericas(state: GameState): boolean {
+  return state.settings.sets.includes('americas');
+}
+
+/** Hummingbird ids sitting on the player's mat (one per row, max 3). */
+export function humIdsOnMat(p: PlayerState): number[] {
+  return HABITATS.map((h) => p.humBoard[h]).filter((id): id is number => id != null);
+}
+
+/** Empty benefit spaces in a habitat row, counting the hummingbird space
+ *  when it is empty (americas rules: an empty hummingbird space counts as
+ *  an empty space for powers that count empty spaces). */
+export function emptySlots(state: GameState, p: PlayerState, habitat: Habitat): number {
+  return (
+    ROW_SIZE - p.board[habitat].length +
+    (isAmericas(state) && p.humBoard[habitat] == null ? 1 : 0)
+  );
+}
+
+/** Birds orthogonally adjacent to `ref` on the player's own mat (the slots
+ *  immediately left/right and above/below — americas "adjacent" powers). */
+export function adjacentRefs(p: PlayerState, ref: BirdRef): BirdRef[] {
+  const hi = HABITATS.indexOf(ref.habitat);
+  const out: BirdRef[] = [];
+  const push = (h: Habitat, index: number) => {
+    const b = p.board[h]?.[index];
+    if (b && !b.ghost) out.push({ habitat: h, index });
+  };
+  push(ref.habitat, ref.index - 1);
+  push(ref.habitat, ref.index + 1);
+  if (hi > 0) push(HABITATS[hi - 1]!, ref.index);
+  if (hi < HABITATS.length - 1) push(HABITATS[hi + 1]!, ref.index);
+  return out;
 }
 
 /** Asia 2-player duet mode (duet map + duet goal tiles). */

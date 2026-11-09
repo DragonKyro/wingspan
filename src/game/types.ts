@@ -74,7 +74,8 @@ export interface BirdCard {
   points: number;
   nest: NestType;
   eggLimit: number;
-  wingspan: number;
+  /** Flightless birds store '*' (treated as 0 by `wingspanOf`). */
+  wingspan: number | '*';
   habitats: Habitat[];
   cost: FoodCost;
   predator: boolean;
@@ -115,6 +116,17 @@ export type GoalKind =
   | { kind: 'cubesOnPlayBird' }
   | { kind: 'costIncludes'; foods: FoodType[]; all: boolean }
   | { kind: 'noGoal' }
+  // === americas expansion goals ===
+  /** Birds worth even (0,2,4,6,8) or odd (1,3,5,7,9) points; hummingbirds count as 0. */
+  | { kind: 'birdsParity'; parity: 'even' | 'odd' }
+  /** Number of different point values among your birds (hummingbirds = 0). */
+  | { kind: 'distinctPoints' }
+  /** Sum of hummingbird-track token positions (raw index, not points). */
+  | { kind: 'humPoints' }
+  /** Sum of egg limits on your played birds (hummingbirds have none). */
+  | { kind: 'eggLimitTotal' }
+  /** Position index of the token in one hummingbird column. */
+  | { kind: 'humColumn'; group: HumGroup }
   | { kind: 'unsupported'; text: string };
 
 export interface GoalTile {
@@ -122,6 +134,26 @@ export interface GoalTile {
   set: string;
   text: string;
   goal: GoalKind;
+}
+
+// === americas expansion: hummingbird mini-cards ===
+/** The five hummingbird taxonomic groups (track columns). */
+export type HumGroup = 'bee' | 'brilliant' | 'emerald' | 'mango' | 'topaz';
+export const HUM_GROUPS: HumGroup[] = ['bee', 'brilliant', 'emerald', 'mango', 'topaz'];
+
+/** Benefit printed on a hummingbird card, granted when it is attracted. */
+export type HumBenefit = 'card' | 'nectar' | 'egg' | 'advance' | 'row';
+
+export interface HummingbirdCard {
+  id: number;
+  name: string;
+  sciName: string;
+  set: string;
+  group: HumGroup;
+  benefit: HumBenefit;
+  bonusFlags: string[];
+  /** Beak direction — hummingbirds count for beak-direction goals/bonuses. */
+  beakLeft: boolean | null;
 }
 
 /** A bird on a player mat. `tucked`/`cached` live on the bird. */
@@ -163,17 +195,24 @@ export type PendingStep =
   /** Lay an egg on a chosen bird; `nest` = filter, 'any' or 'other' (array = any listed type).
    *  `onlyBird` pins every egg to that one bird (the same ref may repeat);
    *  `adjacentTo` restricts to the birds in the neighbouring slots;
-   *  `wingspanLt` restricts to birds whose wingspan is below the threshold. */
-  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; onlyBird?: BirdRef; adjacentTo?: BirdRef; wingspanLt?: number; columnOf?: BirdRef; then?: PendingTag }
-  /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. `habitat` restricts to one row. */
-  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; habitat?: Habitat; optional?: boolean; then?: PendingTag }
+   *  `wingspanLt` restricts to birds whose wingspan is below the threshold;
+   *  `habitat` restricts targets to one row; `eggsMax` restricts to birds with
+   *  at most that many eggs already. */
+  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; onlyBird?: BirdRef; adjacentTo?: BirdRef; wingspanLt?: number; columnOf?: BirdRef; habitat?: Habitat; eggsMax?: number; then?: PendingTag }
+  /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. `habitat` restricts to one row.
+   *  `moveTo`: the eggs move onto that bird instead of being discarded (americas egg-moving power). */
+  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; habitat?: Habitat; optional?: boolean; moveTo?: BirdRef; then?: PendingTag }
   /** Discard `count` resources of any mix: food tokens, eggs (from birds),
    *  and/or hand cards (asia "any 2 resources" powers). `optional` declines `then`. */
   | { kind: 'chooseResources'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Discard a card from hand (e.g. end-of-turn discard powers). `optional`: declining skips `then`. */
   | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
-  /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`. */
-  | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`.
+   *  `wingspanLt` restricts to hand cards with wingspan below the threshold (americas). */
+  | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; optional?: boolean; wingspanLt?: number; then?: PendingTag }
+  /** Discard a bird card carrying one of `costFoods` in its food cost, from
+   *  the tray and/or the player's hand (americas Limpkin). */
+  | { kind: 'chooseCardDiscard'; playerId: PlayerId; costFoods: FoodType[]; fromTray: boolean; fromHand: boolean; optional?: boolean; then?: PendingTag }
   /** Pick a player; `other` excludes the chooser. `optional`: a {boolean,no} answer declines. */
   | { kind: 'choosePlayer'; playerId: PlayerId; other?: boolean; optional?: boolean; then?: PendingTag }
   /** Pick a habitat; `noEggs` restricts to habitats with zero eggs (any owner's birds). */
@@ -184,24 +223,30 @@ export type PendingStep =
   /** Steal 1 food of `food` type ('any' = chooser picks a type the victim has) from `from`. */
   | { kind: 'chooseFoodSteal'; playerId: PlayerId; from: PlayerId; food: FoodType | 'any'; then?: PendingTag }
   /** Take a face-up tray card (`habitat` restricts to cards that can live there). */
-  | { kind: 'chooseTrayCard'; playerId: PlayerId; habitat?: Habitat; then?: PendingTag }
+  | { kind: 'chooseTrayCard'; playerId: PlayerId; habitat?: Habitat; peek?: boolean; then?: PendingTag }
   /** Remove `count` dice from the feeder without gaining their food. */
   | { kind: 'chooseDieRemove'; playerId: PlayerId; count: number; then?: PendingTag }
   /** Pick `min`..`max` own birds (optionally within one habitat).
-   *  `exclude`/`nest`/`eggsMin` filter the eligible birds. */
-  | { kind: 'chooseBirds'; playerId: PlayerId; min: number; max: number; habitat?: Habitat; exclude?: BirdRef; nest?: NestType; eggsMin?: number; then?: PendingTag }
+   *  `exclude`/`nest`/`eggsMin`/`costFood`/`adjacentTo`/`hasEggs`/`hasCached`/
+   *  `needRoom` filter the eligible birds. */
+  | { kind: 'chooseBirds'; playerId: PlayerId; min: number; max: number; habitat?: Habitat; exclude?: BirdRef; nest?: NestType; eggsMin?: number; costFood?: FoodType; adjacentTo?: BirdRef; hasEggs?: boolean; hasCached?: boolean; needRoom?: boolean; then?: PendingTag }
   /** Tuck hand cards behind `targets`: card i goes behind targets[i]; 0..len may be picked. */
   | { kind: 'assignHandTucks'; playerId: PlayerId; targets: BirdRef[]; then?: PendingTag }
   /** Cache `count` food (`food`) from the supply on any of your birds (stackable).
    *  'any' = the chooser picks which types. `habitat` restricts targets to a row;
    *  `optional` allows fewer/none; `maxPerBird` caps caches per bird. */
   | { kind: 'chooseCacheOnBirds'; playerId: PlayerId; count: number; food: FoodType | 'any'; habitat?: Habitat; optional?: boolean; maxPerBird?: number; then?: PendingTag }
-  /** Name a food type (e.g. "all players gain 1 of the chosen food"). */
-  | { kind: 'chooseFoodType'; playerId: PlayerId; then?: PendingTag }
+  /** Name a food type (e.g. "all players gain 1 of the chosen food").
+   *  `missing`: only players with none of that food gain it (americas Oilbird). */
+  | { kind: 'chooseFoodType'; playerId: PlayerId; missing?: boolean; then?: PendingTag }
   /** Pick one of several mutually exclusive effects. */
   | { kind: 'chooseOption'; playerId: PlayerId; options: PowerOption[]; then?: PendingTag }
-  /** Drew cards face-down to distribute: this player picks one of `cardIds`. */
-  | { kind: 'chooseDrawnCard'; playerId: PlayerId; cardIds: number[]; then?: PendingTag }
+  /** Discard cached food from your birds (`count` items). */
+  | { kind: 'chooseCachedDiscard'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
+  /** Drew cards face-down to distribute: this player keeps `keep` (default 1)
+   *  of `cardIds`; `discardRest` sends the remainder to the discard pile
+   *  (default: nothing happens to them — the continuation decides). */
+  | { kind: 'chooseDrawnCard'; playerId: PlayerId; cardIds: number[]; keep?: number; discardRest?: boolean; then?: PendingTag }
   /** Keep `keep` of `cardIds` bonus cards, discard the rest. `fromDiscard`: the
    *  pool is the discarded-bonus-cards pile and unchosen cards return there
    *  (Wrybill). */
@@ -212,10 +257,14 @@ export type PendingStep =
   | { kind: 'moveBirdHabitat'; playerId: PlayerId; bird: BirdRef; then?: PendingTag }
   /** Pick which player goes first in an everyone-gains effect. */
   | { kind: 'chooseFirstPlayer'; playerId: PlayerId; effect: 'gainDie'; then?: PendingTag }
-  /** Pick another bird in `habitat` whose brown/predator power to repeat. */
-  | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; then?: PendingTag }
-  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. `eggDiscount` reduces the column egg cost (Oceania powers). */
-  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; eggDiscount?: number; foodDiscount?: FoodType; then?: PendingTag }
+  /** Pick another bird in `habitat` whose brown/predator power to repeat.
+   *  `excludeIds`: slot indices already activated (americas "activate any or
+   *  all brown powers" chains until declined); `optional` allows declining. */
+  | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; excludeIds?: number[]; optional?: boolean; then?: PendingTag }
+  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. `eggDiscount` reduces the column egg cost (Oceania powers).
+   *  `column` (americas): the bird must be played at that column index —
+   *  eligible rows are those whose next slot IS that column. */
+  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; eggDiscount?: number; foodDiscount?: FoodType; column?: number; then?: PendingTag }
   /** Cache up to `count` food from the supply onto `bird` (choose which types). */
   | { kind: 'chooseCacheFood'; playerId: PlayerId; bird: BirdRef; count: number; optional?: boolean; then?: PendingTag }
   /** Spend a wild food for any other type from the supply.
@@ -224,8 +273,9 @@ export type PendingStep =
   /** Cache-or-keep for food just gained with a "may cache" power. */
   | { kind: 'chooseCacheGained'; playerId: PlayerId; bird: BirdRef; food: FoodType; then?: PendingTag }
   /** Oceania: copy a brown power on a bird in `target`'s `habitat` row; the
-   *  effect runs for `playerId` as the copying bird's own power. */
-  | { kind: 'chooseCopyPower'; playerId: PlayerId; target: PlayerId; habitat: Habitat; then?: PendingTag }
+   *  effect runs for `playerId` as the copying bird's own power.
+   *  `habitat` 'any' (americas): copy a brown power anywhere on their mat. */
+  | { kind: 'chooseCopyPower'; playerId: PlayerId; target: PlayerId; habitat: Habitat | 'any'; then?: PendingTag }
   /** Oceania: take a face-up tray card matching `nests`/`wingspanLt`;
    *  `mayResetTray` allows discarding+refilling the tray first.
    *  `destination` 'hand' or 'tuck' (onto `bird`). */
@@ -247,14 +297,32 @@ export type PendingStep =
   | { kind: 'confirm'; playerId: PlayerId; then?: PendingTag }
   /** Pick hand cards without spending them (the continuation decides their use). */
   | { kind: 'chooseHandPick'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
-  /** Pick `count` cards of a drawn pool to tuck behind `bird`; the rest go to hand or the discard pile. */
-  | { kind: 'choosePoolTuck'; playerId: PlayerId; cardIds: number[]; count: number; bird: BirdRef; rest: 'hand' | 'discard'; then?: PendingTag }
+  /** Pick `min`..`count` cards of a drawn pool to tuck behind `bird`; the rest go to hand or the discard pile. */
+  | { kind: 'choosePoolTuck'; playerId: PlayerId; cardIds: number[]; count: number; min?: number; bird: BirdRef; rest: 'hand' | 'discard'; then?: PendingTag }
   /** Asia: copy a white "when played" power on a bird of a neighbouring player. */
   | { kind: 'chooseCopyPlayed'; playerId: PlayerId; then?: PendingTag }
   /** Asia: pick feeder dice to reroll (empty pick = stop), up to `then.n` times. */
   | { kind: 'chooseReroll'; playerId: PlayerId; then?: PendingTag }
   /** Asia: "up to N times, draw 1 card" — answer yes to draw another, no to stop. */
-  | { kind: 'drawUpTo'; playerId: PlayerId; left: number; bird: BirdRef; pool: number[]; then?: PendingTag };
+  | { kind: 'drawUpTo'; playerId: PlayerId; left: number; bird: BirdRef; pool: number[]; then?: PendingTag }
+
+  // === americas expansion steps (hummingbirds) ===
+  /** Pick which hummingbird to attract into `habitat`'s empty hummingbird
+   *  space: the top card of a garden slot (answer = slot index), or 'deck' to
+   *  take the top of the hummingbird deck. `groups` restricts garden picks to
+   *  those groups (group-named attract powers — deck draw is then illegal). */
+  | { kind: 'chooseHumSource'; playerId: PlayerId; habitat: Habitat; groups?: HumGroup[]; then?: PendingTag }
+  /** Pick a garden slot for the hummingbird being returned from `habitat`'s
+   *  hummingbird space (may cover a garden card). */
+  | { kind: 'chooseHumCover'; playerId: PlayerId; habitat: Habitat; then?: PendingTag }
+  /** Move one hummingbird token `count` space(s) up (or down with `down`) in
+   *  a chosen column. `groups` lists the eligible columns. */
+  | { kind: 'chooseHumColumn'; playerId: PlayerId; groups: HumGroup[]; down?: boolean; then?: PendingTag }
+  /** Pick a row for a hummingbird action. `mode` 'attract' (empty spaces),
+   *  'return' (occupied), 'either' (the space decides); `exclude` removes a
+   *  row; `groups` restricts to actions producing a hummingbird of those
+   *  groups; `optional` allows declining (all-players-may powers). */
+  | { kind: 'chooseHumHabitat'; playerId: PlayerId; mode: 'attract' | 'return' | 'either'; exclude?: Habitat; groups?: HumGroup[]; optional?: boolean; then?: PendingTag };
 
 /** Bookkeeping tag so a resolved pending step can continue the effect that
  *  created it. Encoded as a plain string + optional numeric params. */
@@ -309,7 +377,28 @@ export type PowerOption =
   | 'gainSeed'
   | 'tuckDeckCard'
   | 'asiaCacheWild'
-  | 'asiaTuckHand';
+  | 'asiaTuckHand'
+  // === americas expansion options ===
+  /** Southern Lapwing: 1 egg on this bird (vs drawCard). */
+  | 'selfEgg1'
+  /** Great-Tailed Grackle: tuck up to 3 hand cards (vs tuckDeckCard). */
+  | 'tuck3Hand'
+  /** Great Potoo: take the die now vs reset the feeder then take it. */
+  | 'takeDieNow'
+  | 'resetThenDie'
+  /** Firewood-Gatherer: move eggs onto this bird vs off it. */
+  | 'moveEggsIn'
+  | 'moveEggsOut'
+  /** Scarlet Ibis: tuck from hand + draw, optionally resetting the tray first. */
+  | 'tuckHandDraw'
+  | 'resetTrayTuckDraw'
+  /** Southern Screamer: tuck a hand card (vs untuckDraw3). */
+  | 'tuckHand'
+  /** Southern Screamer: discard a tucked card to draw 3. */
+  | 'untuckDraw3'
+  /** Wattled Jacana follow-up: trade a hand card with a tray card, or skip. */
+  | 'traySwap'
+  | 'skip';
 
 export interface PlayerState {
   id: PlayerId;
@@ -339,6 +428,17 @@ export interface PlayerState {
   /** Bonus cards copied from neighbours by game-end powers (asia Adjutant etc.)
    *  — scored against this player's birds as extra hand bonus cards. */
   copiedBonus: number[];
+  // === americas expansion ===
+  /** Hummingbird card id sitting on each row's hummingbird space (null = empty). */
+  humBoard: Record<Habitat, number | null>;
+  /** Token position per hummingbird column (index into HUM_TRACK; 0 = START). */
+  humTrack: Record<HumGroup, number>;
+  /** Hummingbird ids this player returned to the garden this turn — they may
+   *  not be re-attracted by this player this turn (no takebacks). Reset per turn. */
+  humReturned: number[];
+  /** Rufous Hornero: a placeholder egg sits on the next empty slot of each
+   *  listed habitat; playing a bird there discounts its egg cost by 1. */
+  horneroEggs: Habitat[];
 }
 
 export interface ScoreBreakdown {
@@ -348,6 +448,8 @@ export interface ScoreBreakdown {
   cached: number;
   tucked: number;
   nectar: number;
+  /** Americas: sum of hummingbird-track token point values (may be negative). */
+  hummingbirds: number;
   /** Duet mode: 1 pt per token in the largest contiguous group on the duet map. */
   duetTokens: number;
   goalPoints: number;
@@ -406,6 +508,15 @@ export interface GameState {
   roundEndQueue: { playerId: PlayerId; bird: BirdRef }[];
   /** Game-end yellow powers remaining: resolved one at a time in 'gameEnd'. */
   gameEndQueue: { playerId: PlayerId; bird: BirdRef }[] | null;
+  // === americas expansion ===
+  /** Hummingbird mini-deck + discard pile + the 5-slot garden (each slot is a
+   *  stack, last element on top). All null/empty when the set isn't included. */
+  humDeck: number[];
+  humDiscard: number[];
+  humGarden: number[][];
+  /** The habitat whose hummingbird action is owed at the end of the current
+   *  activation (set by the three row actions; consumed when activation ends). */
+  humAction: Habitat | null;
   settings: GameSettings;
   winner: PlayerId[] | null;
   /** Final score breakdown per player (gameOver only). */
@@ -522,7 +633,13 @@ export type Choice =
   /** Asia "any resources" discards: a mix of supply food, eggs, and hand cards. */
   | { kind: 'resources'; foods: FoodType[]; eggs: BirdRef[]; cards: number[] }
   /** Copy target naming another player's bird (asia white-power copy). */
-  | { kind: 'playedTarget'; player: PlayerId; bird: BirdRef };
+  | { kind: 'playedTarget'; player: PlayerId; bird: BirdRef }
+  /** Americas: pick a hummingbird source — a garden slot index or 'deck'. */
+  | { kind: 'humPick'; source: number | 'deck' }
+  /** Americas: pick the garden slot a returned hummingbird covers (0-4). */
+  | { kind: 'humCover'; slot: number }
+  /** Americas: pick the hummingbird column whose token moves. */
+  | { kind: 'humColumn'; group: HumGroup };
 
 export interface EndTurnAction extends BaseAction {
   type: 'endTurn';

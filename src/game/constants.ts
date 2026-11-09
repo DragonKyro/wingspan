@@ -1,6 +1,6 @@
 // Fixed game constants (base-game player mat values).
 
-import type { FoodType, Habitat } from './types';
+import type { FoodType, Habitat, HumGroup } from './types';
 
 /** Action cubes each player gets per round (rounds 1-4). */
 export const CUBES_PER_ROUND = [8, 7, 6, 5];
@@ -72,4 +72,24 @@ export const HABITAT_OF_ACTION: Record<string, Habitat> = {
   gainFood: 'forest',
   layEggs: 'grassland',
   drawCards: 'wetland',
+};
+
+// === Americas expansion (hummingbirds) ===
+
+/** Face-up hummingbird garden slots (each a stack; returned birds cover). */
+export const HUM_GARDEN_SLOTS = 5;
+
+/** Point values along a hummingbird track column — index is the token
+ *  position, [0] is the START space. The printed per-player tracks vary
+ *  slightly; the engine uses this canonical ladder for every column. */
+export const HUM_LADDER = [-3, 0, 1, 2, 3, 4, 6, 8, 10];
+
+/** Token positions (indices into HUM_LADDER) bearing a hummingbird icon:
+ *  landing there grants another hummingbird action. Canonical layout. */
+export const HUM_BONUS_SPACES: Record<HumGroup, number[]> = {
+  bee: [3, 6],
+  brilliant: [4, 7],
+  emerald: [3, 6],
+  mango: [4, 7],
+  topaz: [3, 6],
 };
