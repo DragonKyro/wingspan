@@ -318,7 +318,9 @@ export interface GameSettings {
   achievementSide: 'A' | 'B';
   /** S&R: the discard item shown on each player's reef overlay, per dive
    *  site — reefCosts[playerIndex][col] = 'egg' | 'young' | 'card'.
-   *  Defaults to REEF_DISCARD_ITEMS for every site/player when unset. */
+   *  When unset, createGame draws a randomized overlay per player with the
+   *  seeded RNG (each player picks "either side of any coral reef overlay");
+   *  doDive falls back to REEF_DISCARD_ITEMS only if still absent. */
   reefCosts?: ('egg' | 'young' | 'card')[][];
   aiLevel?: number;
 }

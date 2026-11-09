@@ -10,20 +10,29 @@ import { FISH, sideBTilePool } from './cards';
 import { REEF_DISCARD_ITEMS, MAX_CORAL, REEF_COMPLETION_BONUS } from './constants';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
-import { allSlots, getPlayer, placeCoral, setPlayer, slotAt } from './helpers';
+import { addEgg, addYoung, allSlots, getPlayer, placeCoral, setPlayer, slotAt } from './helpers';
 import { fireAbility } from './powers';
-import { achievementUnits, scorePlayer } from './scoring';
+import { achievementUnits, scoreAchievement, scorePlayer } from './scoring';
+import { DIVERS_PER_WEEK } from './types';
 import type { GameState, SlotRef } from './types';
 
-function srGame(seed = 1, players = 2, side: 'A' | 'B' = 'A'): GameState {
+type ReefCosts = ('egg' | 'young' | 'card')[][];
+
+function srGame(seed = 1, players = 2, side: 'A' | 'B' = 'A', reefCosts?: ReefCosts): GameState {
   return createGame({
     playerNames: Array.from({ length: players }, (_, i) => `P${i + 1}`),
     playerTypes: Array.from({ length: players }, () => 'ai' as const),
     playerColors: Array.from({ length: players }, (_, i) => `c${i}`),
     seed,
-    settings: { sets: ['base', 'sr'], achievementSide: side },
+    settings: { sets: ['base', 'sr'], achievementSide: side, reefCosts },
   });
 }
+
+/** Both players on the same fixed overlay: blue=egg, purple=young, green=card. */
+const FIXED_REEF: ReefCosts = [
+  ['egg', 'young', 'card'],
+  ['egg', 'young', 'card'],
+];
 
 function baseGame(seed = 1, players = 2): GameState {
   return createGame({
@@ -60,9 +69,9 @@ const firstSlotWith = (s: GameState, pid: 'p1', pred: (slot: { eggs: number; you
 };
 
 describe('reef overlay dives', () => {
-  it('offers the site-specific discard item for 1 coral (blue=egg, purple=young, green=card)', () => {
+  it('offers the overlay\'s discard item for 1 coral at the twilight stop', () => {
     for (let col = 0; col < 3; col++) {
-      const s = applyAction(srGame(3), { type: 'dive', playerId: 'p1', col });
+      const s = applyAction(srGame(3, 2, 'A', FIXED_REEF), { type: 'dive', playerId: 'p1', col });
       const step = s.pending.find((x) => x.kind === 'chooseReefDiscard');
       expect(step).toBeTruthy();
       expect(step!.kind === 'chooseReefDiscard' && step!.item).toBe(REEF_DISCARD_ITEMS[col]);
@@ -70,9 +79,48 @@ describe('reef overlay dives', () => {
     }
   });
 
+  it('uses the player\'s own overlay when reefCosts differ', () => {
+    // p1's overlay: all eggs. p2's overlay: all cards.
+    const costs: ReefCosts = [
+      ['egg', 'egg', 'egg'],
+      ['card', 'card', 'card'],
+    ];
+    let s = applyAction(srGame(3, 2, 'A', costs), { type: 'dive', playerId: 'p1', col: 2 });
+    const step = s.pending.find((x) => x.kind === 'chooseReefDiscard')!;
+    expect(step.kind === 'chooseReefDiscard' && step.item).toBe('egg');
+    // Finish p1's turn (decline the reef offer + the optional bottom move).
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'reefDiscard', use: false },
+    });
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'decline' } });
+    s = applyAction(s, { type: 'endTurn', playerId: 'p1' });
+    s = applyAction(s, { type: 'dive', playerId: 'p2', col: 2 });
+    const step2 = s.pending.find((x) => x.kind === 'chooseReefDiscard')!;
+    expect(step2.kind === 'chooseReefDiscard' && step2.item).toBe('card');
+  });
+
+  it('draws a randomized reef overlay per player when reefCosts is unset', () => {
+    const s = srGame(4);
+    expect(s.settings.reefCosts).toBeTruthy();
+    expect(s.settings.reefCosts!.length).toBe(2);
+    for (const row of s.settings.reefCosts!) {
+      expect(row.length).toBe(3);
+      for (const item of row) expect(['egg', 'young', 'card']).toContain(item);
+    }
+    // Different seeds produce different overlay combos.
+    const combos = new Set(
+      [1, 2, 3, 4, 5, 6].map((seed) => JSON.stringify(srGame(seed).settings.reefCosts)),
+    );
+    expect(combos.size).toBeGreaterThan(1);
+    // Base games leave reefCosts unset.
+    expect(baseGame(4).settings.reefCosts).toBeUndefined();
+  });
+
   it('discarding the indicated item places 1 coral; declining does not', () => {
     // Blue site wants an egg (forage fish start with eggs).
-    let s = applyAction(srGame(3), { type: 'dive', playerId: 'p1', col: 0 });
+    let s = applyAction(srGame(3, 2, 'A', FIXED_REEF), { type: 'dive', playerId: 'p1', col: 0 });
     const eggSlot = firstSlotWith(s, 'p1', (x) => x.eggs > 0);
     s = applyAction(s, {
       type: 'resolveChoice',
@@ -83,7 +131,7 @@ describe('reef overlay dives', () => {
     expect(getPlayer(s, 'p1').ocean.corals[0]).toBe(1);
 
     // Green site wants a card; decline it.
-    let s2 = applyAction(srGame(3), { type: 'dive', playerId: 'p1', col: 2 });
+    let s2 = applyAction(srGame(3, 2, 'A', FIXED_REEF), { type: 'dive', playerId: 'p1', col: 2 });
     s2 = applyAction(s2, {
       type: 'resolveChoice',
       playerId: 'p1',
@@ -264,13 +312,44 @@ describe('S&R achievements', () => {
     expect(w2Base).not.toContain('s4');
   });
 
-  it('awards the side-B 3-point leader bonus across a full week', () => {
-    // A full S&R side-B game is covered below; here just check the tile draw
-    // respects week lines at setup.
+  it('side-B tile draws respect week lines at setup', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const s = srGame(seed, 2, 'B');
       s.achievements.forEach((a, i) => expect(a.week).toBe(i + 1));
     }
+  });
+
+  it('awards the side-B 3-point leader bonus at week end', () => {
+    let s = srGame(3, 2, 'B');
+    // Give p1 an edge that wins every possible week-1 side-B tile
+    // (eggs, young, eggs-and-young, 1-3pt fish, sunlight fish): a cheap
+    // sunlight fish with an egg plus extra young.
+    const cheap = FISH.find(
+      (c) => !c.forage && c.points >= 1 && c.points <= 3 && c.set === 'base',
+    )!;
+    let p1 = getPlayer(s, 'p1');
+    const slots = p1.ocean.slots.map((r) => r.map((x) => ({ ...x })));
+    slots[0]![0] = { stack: [cheap.id], eggs: 0, young: 0, school: false };
+    p1 = { ...p1, ocean: { ...p1.ocean, slots } };
+    p1 = addEgg(p1, { row: 0, col: 0 });
+    p1 = addYoung(p1, { row: 0, col: 1 }, 4);
+    p1 = { ...p1, diversUsed: DIVERS_PER_WEEK };
+    s = setPlayer(s, p1);
+    const p2 = getPlayer(s, 'p2');
+    s = setPlayer(s, { ...p2, diversUsed: DIVERS_PER_WEEK });
+    // It is p2's turn with the week's action already taken.
+    s = { ...s, currentPlayerIndex: 1, turnTookAction: true };
+
+    const ach = s.achievements[0]!;
+    const pts1 = scoreAchievement(getPlayer(s, 'p1'), ach);
+    const pts2 = scoreAchievement(getPlayer(s, 'p2'), ach);
+    expect(pts1).toBeGreaterThan(pts2);
+
+    s = applyAction(s, { type: 'endTurn', playerId: 'p2' });
+    expect(getPlayer(s, 'p1').achievementPoints).toBe(pts1 + 3);
+    expect(getPlayer(s, 'p2').achievementPoints).toBe(pts2);
+    expect(s.week).toBe(1);
+    expect(s.log.some((l) => l.msg.includes('leader bonus'))).toBe(true);
   });
 });
 

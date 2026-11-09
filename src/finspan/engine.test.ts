@@ -3,12 +3,22 @@
 
 import { describe, expect, it } from 'vitest';
 import { parseAbility } from './abilities';
+import { grantBenefit } from './actions';
 import { chooseAction } from './ai/chooseAction';
-import { FISH } from './cards';
+import { ACHIEVEMENTS, FISH } from './cards';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
-import { addYoung, allSlots, applyMove, buildInitialOcean, getPlayer, setPlayer, slotAt } from './helpers';
-import { gameEndWavePoints } from './scoring';
+import {
+  addYoung,
+  allSlots,
+  applyMove,
+  buildInitialOcean,
+  getPlayer,
+  removeSchool,
+  setPlayer,
+  slotAt,
+} from './helpers';
+import { gameEndWavePoints, scoreAchievement } from './scoring';
 import type { PlayerState } from './types';
 
 function newGame(seed: number, players = 2, sets = ['base']) {
@@ -138,6 +148,21 @@ describe('token mechanics', () => {
     p = addYoung(p, { row: 0, col: 1 }, 3);
     expect(() => applyMove(p, { row: 0, col: 0 }, { row: 0, col: 2 }, 'school')).toThrow();
   });
+
+  it('re-forms a school when the school token leaves a slot with 3+ young', () => {
+    // Rulebook: "if you have 3 or more young in a slot with a school and then
+    // move that school, 3 of those young immediately form another school" —
+    // the same applies when the school is discarded as a cost.
+    let p = playerWithOcean();
+    p = addYoung(p, { row: 0, col: 0 }, 6); // school + 3 leftover young
+    let s = slotAt(p.ocean, { row: 0, col: 0 });
+    expect(s.school).toBe(true);
+    expect(s.young).toBe(3);
+    p = removeSchool(p, { row: 0, col: 0 });
+    s = slotAt(p.ocean, { row: 0, col: 0 });
+    expect(s.school).toBe(true); // leftover young instantly re-form
+    expect(s.young).toBe(0);
+  });
 });
 
 describe('setup', () => {
@@ -154,7 +179,122 @@ describe('setup', () => {
   });
 });
 
+describe('payment validation', () => {
+  // Clown Anemonefish (id 30): sunlight fish, costs 2 cards, no other costs.
+  it('rejects duplicate card ids in a playFish payment', () => {
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    p = { ...p, hand: [30, 5, 6] };
+    s = setPlayer(s, p);
+    expect(() =>
+      applyAction(s, {
+        type: 'playFish',
+        playerId: 'p1',
+        cardId: 30,
+        row: 0,
+        col: 0,
+        discardCardIds: [5, 5],
+      }),
+    ).toThrow(/duplicate/i);
+    // The same payment with two distinct cards is legal.
+    const s2 = applyAction(s, {
+      type: 'playFish',
+      playerId: 'p1',
+      cardId: 30,
+      row: 0,
+      col: 0,
+      discardCardIds: [5, 6],
+    });
+    expect(getPlayer(s2, 'p1').hand).toEqual([]);
+    expect(getPlayer(s2, 'p1').discard.sort()).toEqual([5, 6]);
+  });
+
+  it('rejects duplicate card ids in a pending hand discard', () => {
+    let s = newGame(1);
+    const hand = getPlayer(s, 'p1').hand;
+    s = { ...s, pending: [{ kind: 'chooseHandDiscard', playerId: 'p1', count: 2 }] };
+    expect(() =>
+      applyAction(s, {
+        type: 'resolveChoice',
+        playerId: 'p1',
+        choice: { kind: 'handCards', cardIds: [hand[0]!, hand[0]!] },
+      }),
+    ).toThrow(/duplicate/i);
+    // Distinct cards still work.
+    const s2 = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'handCards', cardIds: [hand[0]!, hand[1]!] },
+    });
+    expect(getPlayer(s2, 'p1').discard.length).toBe(2);
+  });
+
+  it('rejects duplicate card ids in a consume choice (no phantom fish)', () => {
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    const slots = p.ocean.slots.map((r) => r.map((x) => ({ ...x })));
+    slots[0]![0] = { stack: [7], eggs: 0, young: 0, school: false }; // 450cm tuna
+    p = { ...p, ocean: { ...p.ocean, slots }, hand: [1, 2] }; // 12cm + 90cm
+    s = setPlayer(s, p);
+    s = {
+      ...s,
+      pending: [
+        { kind: 'chooseConsume', playerId: 'p1', count: 2, onto: { row: 0, col: 0 } },
+      ],
+    };
+    expect(() =>
+      applyAction(s, {
+        type: 'resolveChoice',
+        playerId: 'p1',
+        choice: { kind: 'consume', onto: { row: 0, col: 0 }, cardIds: [1, 1] },
+      }),
+    ).toThrow(/duplicate/i);
+    const s2 = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      choice: { kind: 'consume', onto: { row: 0, col: 0 }, cardIds: [1, 2] },
+    });
+    // Both fish really left the hand and are consumed beneath the tuna
+    // (consumed cards tuck below the visible top fish), and the step is done —
+    // no leftover count demanding a third card.
+    const p2 = getPlayer(s2, 'p1');
+    expect(p2.hand).toEqual([]);
+    expect(slotAt(p2.ocean, { row: 0, col: 0 }).stack).toEqual([1, 2, 7]);
+    expect(s2.pending.length).toBe(0);
+  });
+});
+
+describe('dive benefits', () => {
+  it('grantBenefit produces a step or effect for every benefit kind', () => {
+    const s = newGame(1);
+    expect(grantBenefit(s, 'p1', 'young').pending[0]!.kind).toBe('chooseYoungSlots');
+    expect(grantBenefit(s, 'p1', 'discardCard').pending[0]!.kind).toBe('chooseHandDiscard');
+    expect(grantBenefit(s, 'p1', 'consumeHand').pending[0]!.kind).toBe('chooseConsume');
+    expect(grantBenefit(s, 'p1', 'unSchool').pending[0]!.kind).toBe('chooseYoungSlots');
+    expect(grantBenefit(s, 'p1', 'coralAny').pending[0]!.kind).toBe('chooseCoralSite');
+    // Fixed-site coral applies immediately.
+    expect(getPlayer(grantBenefit(s, 'p1', 'coralGreen'), 'p1').ocean.corals[2]).toBe(1);
+  });
+
+  it('unSchool benefit offers the school scatter when a school exists', () => {
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    p = addYoung(p, { row: 0, col: 0 }, 3); // -> school
+    s = setPlayer(s, p);
+    expect(grantBenefit(s, 'p1', 'unSchool').pending[0]!.kind).toBe('chooseUnSchool');
+  });
+});
+
 describe('scoring', () => {
+  it('converts achievement units into points (units x per)', () => {
+    let s = newGame(1);
+    let p = getPlayer(s, 'p1');
+    p = addYoung(p, { row: 0, col: 0 }, 1);
+    // Initial ocean holds 2 eggs + 1 young; +1 young = 4 units on the
+    // week-1 side-A tile "Eggs and/or Young" (1 point each).
+    expect(scoreAchievement(p, ACHIEVEMENTS.sideA[0]!)).toBe(4);
+  });
+
   it('awards wave points when conditions are met', () => {
     let s = newGame(1);
     let p = getPlayer(s, 'p1');
@@ -204,6 +344,8 @@ describe('full games', () => {
     const { state } = runGame(7);
     for (const p of state.players) {
       expect(p.achievementPoints).toBeGreaterThanOrEqual(0);
+      // scorePlayer echoes the banked achievement points exactly.
+      expect(state.finalScores![p.id]!.achievementPoints).toBe(p.achievementPoints);
     }
     const scores = Object.values(state.finalScores!);
     expect(scores[0]!.achievementPoints).toBeGreaterThan(0);

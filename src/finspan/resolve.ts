@@ -1,7 +1,9 @@
 // Resolves the head PendingStep against a player's Choice. Steps that became
 // impossible are auto-dropped (feasible()). A resolved step pops; count>1
-// steps decrement and stay at the head so multiple moves/corals resolve one
-// choice at a time.
+// steps where each choice performs a single unit (moves, coral placements,
+// un-schools) decrement and stay at the head. Steps whose choice already
+// supplies all `count` items (egg targets, hatches, discards, consumes,
+// removals) pop immediately.
 
 import { fish } from './cards';
 import {
@@ -148,6 +150,9 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
     case 'chooseEggTargets': {
       if (choice.kind !== 'slots') break;
       if (choice.slots.length !== step.count) throw new Error(`pick ${step.count} fish`);
+      // A slot holds at most 1 egg; a duplicate slot can never be satisfied.
+      if (new Set(choice.slots.map((r) => `${r.row},${r.col}`)).size !== choice.slots.length)
+        throw new Error('duplicate egg target slot');
       for (const ref of choice.slots) {
         const slot = slotAt(p.ocean, ref);
         if (slot.stack.length === 0 || slot.eggs > 0) throw new Error('invalid egg target');
@@ -156,14 +161,16 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       }
       for (const ref of choice.slots) p = addEgg(p, ref);
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return pop(s); // the choice supplies all `count` targets at once
     }
     case 'chooseHatch': {
       if (choice.kind !== 'slots') break;
       if (choice.slots.length !== step.count) throw new Error(`pick ${step.count} egg(s)`);
+      if (new Set(choice.slots.map((r) => `${r.row},${r.col}`)).size !== choice.slots.length)
+        throw new Error('duplicate hatch slot');
       for (const ref of choice.slots) p = hatchAt(p, ref);
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return pop(s);
     }
     case 'chooseYoungSlots': {
       if (choice.kind !== 'slots') break;
@@ -172,13 +179,13 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         throw new Error('young must go to different slots');
       for (const ref of choice.slots) p = addYoung(p, ref);
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return pop(s);
     }
     case 'chooseMove': {
       if (choice.kind !== 'move') break;
       p = applyMove(p, choice.from, choice.to, choice.token);
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return decrement(s, step); // one move per choice
     }
     case 'chooseHandDiscard': {
       if (choice.kind !== 'handCards') break;
@@ -187,6 +194,8 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       } else if (choice.cardIds.length !== step.count) {
         throw new Error(`discard ${step.count} card(s)`);
       }
+      if (new Set(choice.cardIds).size !== choice.cardIds.length)
+        throw new Error('duplicate card ids');
       for (const id of choice.cardIds) {
         if (!p.hand.includes(id)) throw new Error('card not in hand');
       }
@@ -196,22 +205,34 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         discard: [...p.discard, ...choice.cardIds],
       };
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return pop(s);
     }
     case 'chooseEggRemoval': {
       if (choice.kind !== 'slots' || choice.slots.length !== step.count) break;
+      if (new Set(choice.slots.map((r) => `${r.row},${r.col}`)).size !== choice.slots.length)
+        throw new Error('duplicate egg slot');
       for (const ref of choice.slots) p = removeEgg(p, ref);
-      return decrement(setPlayer(s, p), step);
+      return pop(setPlayer(s, p));
     }
     case 'chooseYoungRemoval': {
       if (choice.kind !== 'slots' || choice.slots.length !== step.count) break;
+      // The same slot may legitimately appear twice only if it holds enough
+      // young — verify per-slot counts up front.
+      const need = new Map<string, number>();
+      for (const ref of choice.slots) {
+        const key = `${ref.row},${ref.col}`;
+        need.set(key, (need.get(key) ?? 0) + 1);
+        if (slotAt(p.ocean, ref).young < need.get(key)!) throw new Error('not enough young on that slot');
+      }
       for (const ref of choice.slots) p = removeYoung(p, ref);
-      return decrement(setPlayer(s, p), step);
+      return pop(setPlayer(s, p));
     }
     case 'chooseSchoolRemoval': {
       if (choice.kind !== 'slots' || choice.slots.length !== step.count) break;
+      if (new Set(choice.slots.map((r) => `${r.row},${r.col}`)).size !== choice.slots.length)
+        throw new Error('duplicate school slot');
       for (const ref of choice.slots) p = removeSchool(p, ref);
-      return decrement(setPlayer(s, p), step);
+      return pop(setPlayer(s, p));
     }
     case 'chooseConsume': {
       if (choice.kind !== 'consume') break;
@@ -220,6 +241,8 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       const slot = slotAt(p.ocean, choice.onto);
       const top = topFish(slot);
       if (!top) throw new Error('no fish there');
+      if (new Set(choice.cardIds).size !== choice.cardIds.length)
+        throw new Error('duplicate card ids');
       for (const id of choice.cardIds) {
         if (!p.hand.includes(id)) throw new Error('card not in hand');
         if (fish(id).length >= top.length) throw new Error('consumed fish must be shorter');
@@ -229,7 +252,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         p = { ...p, hand: p.hand.filter((x) => x !== id) };
       }
       s = setPlayer(s, p);
-      return decrement(s, step);
+      return pop(s); // the choice supplies all `count` consumed fish at once
     }
     case 'choosePlayFromHand': {
       if (choice.kind !== 'playFromHand') break;

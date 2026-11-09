@@ -13,9 +13,11 @@ import {
   applyPayments,
   drawFromDeck,
   getPlayer,
+  placeCoral,
   placeFish,
   placementError,
   setPlayer,
+  siteIndex,
   slotAt,
   topFish,
   validatePayments,
@@ -82,13 +84,19 @@ export function doPlayFish(state: GameState, a: PlayFishAction): GameState {
 
 // === dive =================================================================
 
-/** Grant a printed dive-site benefit to the diving player. */
-function grantBenefit(state: GameState, playerId: PlayerId, benefit: Benefit): GameState {
+/** Grant a printed dive-site bonus benefit to the diving player. Every
+ *  Benefit kind maps to either an immediate effect or a queued optional
+ *  PendingStep (infeasible steps are auto-dropped by resolve.dropInfeasible). */
+export function grantBenefit(state: GameState, playerId: PlayerId, benefit: Benefit): GameState {
   const p = getPlayer(state, playerId);
   const slots = [...allSlots(p.ocean)];
   switch (benefit) {
     case 'drawCard':
       return drawFromDeck(state, playerId, 1);
+    case 'discardCard': {
+      if (p.hand.length === 0) return state;
+      return pushStep(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional: true });
+    }
     case 'egg': {
       const hasTarget = slots.some(({ slot }) => slot.stack.length > 0 && slot.eggs === 0);
       if (!hasTarget) return state;
@@ -98,9 +106,15 @@ function grantBenefit(state: GameState, playerId: PlayerId, benefit: Benefit): G
       if (!slots.some(({ slot }) => slot.eggs > 0)) return state;
       return pushStep(state, { kind: 'chooseHatch', playerId, count: 1, optional: true });
     }
+    case 'young':
+      return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
     case 'move': {
       if (!slots.some(({ slot }) => slot.young > 0 || slot.school)) return state;
       return pushStep(state, { kind: 'chooseMove', playerId, count: 1, optional: true });
+    }
+    case 'consumeHand': {
+      if (p.hand.length === 0) return state;
+      return pushStep(state, { kind: 'chooseConsume', playerId, count: 1, optional: true });
     }
     case 'recoverCard': {
       if (p.discard.length === 0) {
@@ -109,8 +123,29 @@ function grantBenefit(state: GameState, playerId: PlayerId, benefit: Benefit): G
       }
       return pushStep(state, { kind: 'chooseRecover', playerId, count: 1, optional: true });
     }
-    default:
+    case 'unSchool': {
+      // "Discard a school token, then place 1 young in each of four different
+      //  slots. If you do not have a school token to discard, place 1 young."
+      if (slots.some(({ slot }) => slot.school)) {
+        return pushStep(state, { kind: 'chooseUnSchool', playerId, count: 1, optional: true });
+      }
+      return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
+    }
+    case 'coralBlue':
+    case 'coralPurple':
+    case 'coralGreen': {
+      const col = siteIndex(benefit === 'coralBlue' ? 'blue' : benefit === 'coralPurple' ? 'purple' : 'green');
+      if (p.ocean.corals[col]! >= MAX_CORAL) return state;
+      return setPlayer(state, placeCoral(p, col));
+    }
+    case 'coralAny': {
+      if (p.ocean.corals.every((c) => c >= MAX_CORAL)) return state;
+      return pushStep(state, { kind: 'chooseCoralSite', playerId, count: 1, optional: true });
+    }
+    default: {
+      console.warn(`finspan: unhandled benefit kind ${benefit as string} — benefit dropped`);
       return state;
+    }
   }
 }
 

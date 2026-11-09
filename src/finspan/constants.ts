@@ -1,15 +1,17 @@
 // Board layout and scoring constants for Finspan.
 //
 // NOTE on the ocean mat: the rulebook describes the dive-site bonus mechanic
-// but not the exact printed icon grid. The mapping below is a reconstruction
-// from the rulebook's sample dive turn (purple column: egg bonuses, bottom
-// bonus 1 egg), tutorial videos (blue column: card draws, bottom bonus =
+// but not the exact printed icon grid (it is artwork). The mapping below is a
+// reconstruction from the rulebook's sample dive turn (purple column: egg
+// bonuses at every zone checkpoint, bottom bonus 1 egg — verified against
+// fish.pdf), tutorial videos (blue column: card draws, bottom bonus =
 // recover a card from your discard pile), and each site's stated specialty
 // (blue = cards, purple = eggs, green = hatching/moving young & schools).
 // Forage positions: Showy Bristlemouth is confirmed in the purple twilight
 // slot by the sample dive; Catalina Goby (purple sunlight) and Glasshead
-// Grenadier (blue midnight) follow the printed-mat layout. Starting tokens:
-// eggs on Bristlemouth + Grenadier slots, young on Catalina Goby slot.
+// Grenadier (blue midnight) follow the printed-mat layout. Starting tokens
+// (verified): 1 egg on each of the 2 starting egg slots (Bristlemouth +
+// Grenadier) and 1 young on the starting young slot (Catalina Goby).
 
 import type { Benefit } from './types';
 
@@ -45,11 +47,16 @@ export const DIVE_BONUSES: { zones: [Benefit, Benefit, Benefit]; bottom: Benefit
 /** S&R: each dive site may hold at most 6 coral. */
 export const MAX_CORAL = 6;
 
-/** S&R: end-game bonus points for a complete reef (6 coral) per site. */
+/** S&R: end-game bonus points for a complete reef (6 coral) per site.
+ *  Confirmed by the S&R rulebook: "Score 6 points for blue (left), 8 points
+ *  for purple (center), and 5 points for green (right)." */
 export const REEF_COMPLETION_BONUS = [6, 8, 5]; // blue, purple, green
 
-/** S&R: the item each dive site's reef section asks you to discard to place
- *  1 coral during a dive — blue = egg, purple = young, green = card. */
+/** S&R reef overlays ask the diver to discard an indicated item (egg, young,
+ *  or card) per dive site to place 1 coral. The printed overlay sides are not
+ *  enumerated in the rulebook; createGame randomizes per-player overlays in
+ *  settings.reefCosts when unset. This constant is only the fallback used if
+ *  an sr game somehow lacks per-player costs. */
 export const REEF_DISCARD_ITEMS: ('egg' | 'young' | 'card')[] = ['egg', 'young', 'card'];
 
 /** Points each school token is worth at the end of the game. */

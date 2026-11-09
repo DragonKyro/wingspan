@@ -189,7 +189,10 @@ export function removeYoung(p: PlayerState, ref: SlotRef, n = 1): PlayerState {
 export function removeSchool(p: PlayerState, ref: SlotRef): PlayerState {
   const s = slotAt(p.ocean, ref);
   if (!s.school) throw new Error('no school on that slot');
-  return withOcean(p, setSlot(p.ocean, ref, { ...s, school: false }));
+  // If 3+ young were sharing the slot with the removed school, they instantly
+  // re-form a school ("if you have 3 or more young in a slot with a school and
+  // then move that school, 3 of those young immediately form another school").
+  return withOcean(p, formSchools(setSlot(p.ocean, ref, { ...s, school: false })));
 }
 
 /** Slots in a straight line strictly between `from` and `to` (exclusive). */
@@ -346,18 +349,33 @@ export function validatePayments(
 ): void {
   const discards = opts.discardCardIds ?? [];
   if (discards.length !== card.cost.cards) throw new Error(`must discard ${card.cost.cards} card(s)`);
+  if (new Set(discards).size !== discards.length) throw new Error('duplicate discard card ids');
   for (const id of discards) {
     if (id === card.id) throw new Error('cannot discard the card being played');
     if (!p.hand.includes(id)) throw new Error(`card ${id} not in hand`);
   }
   const eggs = opts.eggSlots ?? [];
   if (eggs.length !== card.cost.eggs) throw new Error(`must remove ${card.cost.eggs} egg(s)`);
+  // A slot holds at most 1 egg, so listing a slot twice would pay it only once.
+  if (new Set(eggs.map((r) => `${r.row},${r.col}`)).size !== eggs.length)
+    throw new Error('duplicate egg slot');
   for (const r of eggs) if (slotAt(p.ocean, r).eggs <= 0) throw new Error('no egg on that slot');
   const young = opts.youngSlots ?? [];
   if (young.length !== card.cost.young) throw new Error(`must remove ${card.cost.young} young`);
-  for (const r of young) if (slotAt(p.ocean, r).young <= 0) throw new Error('no young on that slot');
+  const youngNeeded = new Map<string, number>();
+  for (const r of young) {
+    const key = `${r.row},${r.col}`;
+    youngNeeded.set(key, (youngNeeded.get(key) ?? 0) + 1);
+  }
+  for (const r of young) {
+    if (slotAt(p.ocean, r).young < youngNeeded.get(`${r.row},${r.col}`)!)
+      throw new Error('not enough young on that slot');
+  }
   const schools = opts.schoolSlots ?? [];
   if (schools.length !== card.cost.schools) throw new Error(`must remove ${card.cost.schools} school token(s)`);
+  // A slot holds at most 1 school token; a duplicate would pay it only once.
+  if (new Set(schools.map((r) => `${r.row},${r.col}`)).size !== schools.length)
+    throw new Error('duplicate school slot');
   for (const r of schools) if (!slotAt(p.ocean, r).school) throw new Error('no school on that slot');
 }
 

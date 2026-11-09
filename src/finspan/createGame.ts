@@ -2,9 +2,9 @@
 // 3 main fish per player, place forage fish and starting tokens, and pick
 // the week's achievements (fixed side A, or 3 drawn tiles on side B).
 
-import { shuffle } from '../game/rng';
+import { rngInt, shuffle } from '../game/rng';
 import { ACHIEVEMENTS, fishIdsInSets, sideBTilePool } from './cards';
-import { SETUP_MAIN_CARDS, SETUP_STARTER_CARDS } from './constants';
+import { REEF_DISCARD_ITEMS, SETUP_MAIN_CARDS, SETUP_STARTER_CARDS } from './constants';
 import { buildInitialOcean } from './helpers';
 import type { Achievement, CreateGameOptions, GameSettings, GameState, PlayerId, PlayerState } from './types';
 
@@ -63,6 +63,25 @@ export function createGame(opts: CreateGameOptions): GameState {
       rng = rng2;
       achievements.push(drawn[0]!);
     }
+  }
+
+  // S&R: "each player places either side of any coral reef overlay on their
+  // ocean mat" — overlays differ per player/side. The printed discard-item
+  // combos aren't enumerated in the rulebook (they're artwork), so when the
+  // caller didn't supply explicit reefCosts we approximate by drawing each
+  // dive site's item independently from {egg, young, card} with the seeded
+  // RNG (kept after the deck/tile draws so base-game RNG use is unchanged).
+  if (settings.sets.includes('sr') && !settings.reefCosts) {
+    const items = REEF_DISCARD_ITEMS;
+    settings.reefCosts = playerOrder.map(() => {
+      const row: ('egg' | 'young' | 'card')[] = [];
+      for (let col = 0; col < items.length; col++) {
+        const [v, r] = rngInt(rng, items.length);
+        rng = r;
+        row.push(items[v]!);
+      }
+      return row;
+    });
   }
 
   return {
