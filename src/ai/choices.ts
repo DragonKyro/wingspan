@@ -2,6 +2,7 @@
 // to push through sub-choices without caring about quality.
 
 import { bird } from '@/game/cards';
+import { duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
 import {
   columnEggCost,
   eggStepTargets,
@@ -10,9 +11,12 @@ import {
   nestMatches,
   payFoodPlan,
   playedBirds,
+  playerToLeft,
+  playerToRight,
   totalEggs,
+  wingspanOf,
 } from '@/game/helpers';
-import { faceCovers } from '@/game/powers';
+import { faceCovers, hasPowerImpl } from '@/game/powers';
 import type { BirdRef, Choice, FoodType, GameState, PendingStep, PlayerId } from '@/game/types';
 import { FOOD_TYPES, HABITATS } from '@/game/types';
 
@@ -42,10 +46,21 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     }
     case 'chooseBirdForEgg': {
       const targets = eggStepTargets(state, step);
-      if (targets.length < step.count) {
-        return step.optional ? { kind: 'birds', birds: targets } : null;
+      // Each bird may take several eggs up to its (possibly over-) limit.
+      const expanded: BirdRef[] = [];
+      for (const t of targets) {
+        const b = p.board[t.habitat]?.[t.index];
+        if (!b) continue;
+        const room = Math.max(
+          0,
+          bird(b.cardId).eggLimit + (step.overLimit ?? 0) - b.eggs,
+        );
+        for (let i = 0; i < room; i++) expanded.push(t);
       }
-      return { kind: 'birds', birds: targets.slice(0, step.count) };
+      if (expanded.length === 0) {
+        return step.optional ? { kind: 'birds', birds: [] } : null;
+      }
+      return { kind: 'birds', birds: expanded.slice(0, step.count) };
     }
     case 'chooseBirdForEggDiscard': {
       const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
@@ -257,6 +272,103 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       const foods: FoodType[] = [];
       for (let i = 0; i < n; i++) foods.push(owned[i % owned.length]!);
       return { kind: 'supplyFood', foods };
+    }
+
+    // === asia / duet expansion steps ===
+    case 'chooseDuetSpace': {
+      if (!state.duet) return null;
+      const card = bird(step.cardId);
+      const eligible = duetEligibleSpaces(
+        state.duet.map,
+        card,
+        step.habitat,
+        duetFoodsFor(card, step.foods),
+      );
+      if (eligible.length === 0) return { kind: 'duetSpace', space: 'reset' };
+      return { kind: 'duetSpace', space: eligible[0]! };
+    }
+    case 'chooseResources': {
+      // Spend supply food first, then eggs, then hand cards.
+      const foods: FoodType[] = [];
+      const eggs: BirdRef[] = [];
+      const cards: number[] = [];
+      let need = step.count;
+      for (const f of FOOD_TYPES) {
+        while (need > 0 && p.food[f] > foods.filter((x) => x === f).length) {
+          foods.push(f);
+          need--;
+        }
+      }
+      for (const { ref, bird: b } of playedBirds(p)) {
+        while (need > 0 && b.eggs > eggs.filter((r) => r.habitat === ref.habitat && r.index === ref.index).length) {
+          eggs.push(ref);
+          need--;
+        }
+      }
+      for (const id of p.hand) {
+        if (need <= 0) break;
+        cards.push(id);
+        need--;
+      }
+      if (need > 0) {
+        return step.optional
+          ? { kind: 'resources', foods: [], eggs: [], cards: [] }
+          : null;
+      }
+      return { kind: 'resources', foods, eggs, cards };
+    }
+    case 'chooseTrayDiscard': {
+      // Discard the whole tray — maximises the chance of a match.
+      const ids = state.tray.filter((id): id is number => id != null);
+      return { kind: 'handCards', cardIds: ids };
+    }
+    case 'moveBirdToPlayer': {
+      const b = p.board[step.bird.habitat]?.[step.bird.index];
+      if (!b) return null;
+      const target = getPlayer(state, step.target);
+      const to = bird(b.cardId).habitats.find((h) => target.board[h].length < 5);
+      return to ? { kind: 'habitat', habitat: to } : null;
+    }
+    case 'confirm':
+      return { kind: 'boolean', yes: true };
+    case 'chooseHandPick': {
+      if (p.hand.length < step.count) {
+        return step.optional ? { kind: 'handCards', cardIds: [] } : null;
+      }
+      return { kind: 'handCards', cardIds: p.hand.slice(0, step.count) };
+    }
+    case 'choosePoolTuck': {
+      const n = Math.min(step.count, step.cardIds.length);
+      return { kind: 'handCards', cardIds: step.cardIds.slice(0, n) };
+    }
+    case 'chooseCopyPlayed': {
+      const neighbors = new Set<PlayerId>();
+      for (const n of [playerToLeft(state, step.playerId), playerToRight(state, step.playerId)]) {
+        if (n) neighbors.add(n);
+      }
+      for (const n of neighbors) {
+        for (const { ref, bird: b } of playedBirds(getPlayer(state, n))) {
+          const c = bird(b.cardId);
+          if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) {
+            return { kind: 'playedTarget', player: n, bird: ref };
+          }
+        }
+      }
+      return null;
+    }
+    case 'chooseReroll': {
+      // Reroll everything that isn't a rodent (the eagle's target face).
+      const picks = state.feederIn
+        .map((face, die) => ({ die, face }))
+        .filter(({ face }) => face !== 'rodent')
+        .map(({ die }) => ({ die }));
+      return { kind: 'dice', picks };
+    }
+    case 'drawUpTo': {
+      const cap = step.then?.n?.[0] ?? 0;
+      const total = step.pool.reduce((n, id) => n + wingspanOf(bird(id)), 0);
+      // Keep drawing while there's a comfortable margin under the cap.
+      return { kind: 'boolean', yes: step.left > 0 && total + 40 <= cap };
     }
   }
 }

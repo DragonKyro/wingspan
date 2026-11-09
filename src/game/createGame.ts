@@ -2,9 +2,11 @@
 
 import { birdsInSets, bonusCardsInSets, goalsForSets } from './cards';
 import { CUBES_PER_ROUND } from './constants';
+import { DUET_MAP, DUET_TILE_PAIRS } from './duetMap';
 import { rollBirdfeeder, rngInt, shuffle } from './rng';
 import type {
   CreateGameOptions,
+  GameMode,
   GameState,
   GoalTile,
   PlayerState,
@@ -14,10 +16,28 @@ import { BASE_DIE_FACES, OCEANIA_DIE_FACES } from './types';
 export function createGame(opts: CreateGameOptions): GameState {
   let rng = opts.seed >>> 0;
 
-  const sets = opts.settings?.sets ?? ['core'];
+  const mode: GameMode = opts.settings?.mode ?? 'standard';
+  let sets = opts.settings?.sets ?? ['core'];
+  // Duet/flock are Asia expansion modes — force the asia deck in.
+  if ((mode === 'duet' || mode === 'flock') && !sets.includes('asia')) {
+    sets = [...sets, 'asia'];
+  }
+
+  // Player-count validation per mode.
+  if (mode === 'duet' && opts.playerNames.length !== 2) {
+    throw new Error('duet mode requires exactly 2 players');
+  }
+  if (mode === 'flock' && (opts.playerNames.length < 6 || opts.playerNames.length > 7)) {
+    throw new Error('flock mode requires 6-7 players');
+  }
+  if (mode === 'standard' && (opts.playerNames.length < 1 || opts.playerNames.length > 5)) {
+    throw new Error('standard mode requires 1-5 players');
+  }
+
   const settings = {
     sets,
     goalSide: 'green' as const,
+    mode,
     aiLevel: opts.settings?.aiLevel,
   };
 
@@ -27,13 +47,27 @@ export function createGame(opts: CreateGameOptions): GameState {
   let bonusDeck: number[];
   [bonusDeck, rng] = shuffle(rng, bonusCardsInSets(sets));
 
-  // Goal tiles: 4 supported, non-blank tiles.
-  const goalPool = goalsForSets(sets).filter(
-    (g: GoalTile) => g.goal.kind !== 'noGoal',
-  );
-  let shuffledGoals: GoalTile[];
-  [shuffledGoals, rng] = shuffle(rng, goalPool);
-  const goalTiles = shuffledGoals.slice(0, 4).map((g) => g.id);
+  // Goal tiles: duet mode uses 4 of the 6 double-sided duet tiles (random
+  // side each); other modes draw 4 supported tiles from the included sets.
+  let goalTiles: number[];
+  if (mode === 'duet') {
+    const pairIdx = DUET_TILE_PAIRS.map((_, i) => i);
+    let order: number[];
+    [order, rng] = shuffle(rng, pairIdx);
+    goalTiles = [];
+    for (const i of order.slice(0, 4)) {
+      let side: number;
+      [side, rng] = rngInt(rng, 2);
+      goalTiles.push(DUET_TILE_PAIRS[i]![side]!);
+    }
+  } else {
+    const goalPool = goalsForSets(sets).filter(
+      (g: GoalTile) => g.goal.kind !== 'noGoal' && g.goal.kind !== 'unsupported',
+    );
+    let shuffledGoals: GoalTile[];
+    [shuffledGoals, rng] = shuffle(rng, goalPool);
+    goalTiles = shuffledGoals.slice(0, 4).map((g) => g.id);
+  }
 
   const oceania = sets.includes('oceania');
 
@@ -70,6 +104,8 @@ export function createGame(opts: CreateGameOptions): GameState {
       endOfTurnDiscards: 0,
       cubesOnPlayBird: 0,
       nectarSpent: { forest: 0, grassland: 0, wetland: 0 },
+      feederGainedThisTurn: [],
+      copiedBonus: [],
     };
   });
 
@@ -83,6 +119,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     rngState: rng,
     playerOrder,
     currentPlayerIndex: startIdx,
+    firstPlayerIndex: startIdx,
     round: 0,
     players,
     deck,
@@ -93,6 +130,10 @@ export function createGame(opts: CreateGameOptions): GameState {
     bonusDeck,
     bonusDiscard: [],
     goalTiles,
+    duet:
+      mode === 'duet'
+        ? { map: DUET_MAP.map(() => null), reset: [] }
+        : undefined,
     goalScores: [],
     pending: [],
     activation: null,

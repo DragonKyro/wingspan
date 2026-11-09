@@ -3,6 +3,7 @@
 
 import { bird, BIRD_BY_ID } from './cards';
 import { finishEndOfTurnDiscards } from './actions';
+import { DUET_MAP, duetEligibleSpaces, duetFoodsFor } from './duetMap';
 import {
   addEggs,
   addFood,
@@ -16,6 +17,8 @@ import {
   nestMatches,
   payFoodPlan,
   playedBirds,
+  playerToLeft,
+  playerToRight,
   recordFoodGain,
   sameRef,
   spendFood,
@@ -26,6 +29,7 @@ import {
 import {
   cacheOnBird,
   drawFromDeck,
+  drawToPool,
   faceCovers,
   firePinkTriggers,
   grantSupplyFood,
@@ -34,6 +38,7 @@ import {
   pushPending,
   refillFeeder,
   refillTray,
+  rollDice,
   runPower,
   setPlayer,
   takeDieFromFeeder,
@@ -41,6 +46,7 @@ import {
   tuckCardOnBird,
   tuckFromDeck,
 } from './powers';
+import { bonusCardVp } from './scoring';
 import type {
   BirdRef,
   Choice,
@@ -71,7 +77,13 @@ function feasible(state: GameState, step: PendingStep): number {
     case 'chooseBirdForEgg': {
       const targets = eggStepTargets(state, step);
       if (targets.length === 0) return 0;
-      return Math.min(step.count, targets.length);
+      // Capacity counts repeats: a bird may take several eggs up to its limit.
+      let room = 0;
+      for (const t of targets) {
+        const b = p.board[t.habitat]?.[t.index];
+        if (b) room += Math.max(0, bird(b.cardId).eggLimit + (step.overLimit ?? 0) - b.eggs);
+      }
+      return Math.min(step.count, room);
     }
     case 'chooseBirdForEggDiscard': {
       const eggs = playedBirds(p).filter(
@@ -215,6 +227,54 @@ function feasible(state: GameState, step: PendingStep): number {
       const avail = step.food === 'any' ? totalFood(p) : p.food[step.food];
       return Math.min(step.count, avail);
     }
+
+    // === asia expansion steps ===
+    case 'chooseDuetSpace':
+      // The reset space is always a legal placement.
+      return 1;
+    case 'chooseResources': {
+      // All-or-nothing: either the full count can be paid, or the step (and
+      // its "if you do" continuation) drops — same as declining.
+      const total = totalFood(p) + totalEggs(p) + p.hand.length;
+      return total >= step.count ? step.count : 0;
+    }
+    case 'chooseTrayDiscard':
+      return state.tray.some((id) => id != null) ? 1 : 0;
+    case 'moveBirdToPlayer': {
+      const b = p.board[step.bird.habitat]?.[step.bird.index];
+      if (!b || b.ghost) return 0;
+      const row = p.board[step.bird.habitat];
+      if (row.slice(step.bird.index + 1).some((x) => !x.ghost)) return 0;
+      const target = getPlayer(state, step.target);
+      const card = bird(b.cardId);
+      return card.habitats.some((h) => target.board[h].length < 5) ? 1 : 0;
+    }
+    case 'confirm':
+      return 1;
+    case 'chooseHandPick':
+      return Math.max(step.optional ? 1 : 0, Math.min(step.count, p.hand.length));
+    case 'choosePoolTuck': {
+      const b = p.board[step.bird.habitat]?.[step.bird.index];
+      if (!b || b.ghost || step.cardIds.length === 0) return 0;
+      return Math.min(step.count, step.cardIds.length);
+    }
+    case 'chooseCopyPlayed': {
+      const neighbors = new Set<PlayerId>();
+      for (const n of [playerToLeft(state, step.playerId), playerToRight(state, step.playerId)]) {
+        if (n) neighbors.add(n);
+      }
+      for (const n of neighbors) {
+        for (const { bird: b } of playedBirds(getPlayer(state, n))) {
+          const c = bird(b.cardId);
+          if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) return 1;
+        }
+      }
+      return 0;
+    }
+    case 'chooseReroll':
+      return state.feederIn.length > 0 ? 1 : 0;
+    case 'drawUpTo':
+      return 1;
   }
 }
 
@@ -396,6 +456,15 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
           ...setPlayer(s, { ...p, bonusHand: [...p.bonusHand, ...choice.cardIds] }),
           bonusDiscard: s.bonusDiscard.filter((id) => !kept.has(id)),
         };
+      } else if (step.copyFrom) {
+        // Asia Adjutants: the picked card is recorded as a copy — the
+        // neighbour's hand is untouched and the copy scores at game end.
+        const p = getPlayer(s, playerId);
+        s = setPlayer(s, { ...p, copiedBonus: [...p.copiedBonus, ...choice.cardIds] });
+      } else if (step.fromHand) {
+        // Asia "score a bonus card now": the pick stays in the hand (it is
+        // identified via the continuation, not by hand membership).
+        break;
       } else {
         const discarded = step.cardIds.filter((id) => !choice.cardIds.includes(id));
         const p = getPlayer(s, playerId);
@@ -694,6 +763,41 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         const ref = step.then?.bird;
         if (!ref) throw new Error('missing source bird');
         s = setPlayer(s, addEggs(getPlayer(s, playerId), ref, 2));
+      } else if (choice.option === 'trayCard') {
+        s = pushPending(s, { kind: 'chooseTrayCard', playerId });
+      } else if (choice.option === 'gainSeed') {
+        s = grantSupplyFood(s, playerId, 'seed');
+      } else if (choice.option === 'tuckDeckCard') {
+        const ref = step.then?.bird;
+        if (ref) {
+          s = tuckFromDeck(s, playerId, ref, 1);
+          s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+        }
+      } else if (choice.option === 'asiaCacheWild') {
+        // House Crow: cache a wild food here, then tuck a deck card.
+        const ref = step.then?.bird;
+        if (ref) {
+          s = pushPending(s, {
+            kind: 'chooseCacheFromSupply',
+            playerId,
+            bird: ref,
+            count: 1,
+            food: 'any',
+            then: { effect: 'asiaDeckTuck', bird: ref },
+          });
+        }
+      } else if (choice.option === 'asiaTuckHand') {
+        // House Crow: tuck a hand card here, then tuck a deck card.
+        const ref = step.then?.bird;
+        if (ref) {
+          s = pushPending(s, {
+            kind: 'chooseHandTuck',
+            playerId,
+            bird: ref,
+            optional: true,
+            then: { effect: 'asiaDeckTuck', bird: ref },
+          });
+        }
       } else {
         // 'gain2Dice'
         s = pushPending(s, { kind: 'pickDie', playerId, count: 2 });
@@ -776,6 +880,214 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       s = setPlayer(s, pl);
       for (const f of choice.foods) s = cacheOnBird(s, playerId, step.bird, f);
       break;
+    }
+
+    // === asia / duet expansion steps ===
+    case 'chooseDuetSpace': {
+      if (choice.kind !== 'duetSpace') throw new Error('expected duetSpace');
+      const duet = s.duet;
+      if (!duet) throw new Error('not a duet game');
+      if (choice.space === 'reset') {
+        s = { ...s, duet: { ...duet, reset: [...duet.reset, playerId] } };
+        break;
+      }
+      const card = bird(step.cardId);
+      const eligible = duetEligibleSpaces(
+        duet.map,
+        card,
+        step.habitat,
+        duetFoodsFor(card, step.foods),
+      );
+      if (!eligible.includes(choice.space)) throw new Error('that space does not match');
+      const map = [...duet.map];
+      map[choice.space] = playerId;
+      s = { ...s, duet: { ...duet, map } };
+      const bonus = DUET_MAP[choice.space]!.bonus;
+      if (bonus === 'food') {
+        s = pushPending(s, { kind: 'pickDie', playerId, count: 1 });
+      } else if (bonus === 'egg') {
+        s = pushPending(s, { kind: 'chooseBirdForEgg', playerId, count: 1, nest: 'any' });
+      } else if (bonus === 'card') {
+        s = pushPending(s, { kind: 'chooseOption', playerId, options: ['trayCard', 'drawCard'] });
+      }
+      break;
+    }
+    case 'chooseResources': {
+      if (choice.kind !== 'resources') throw new Error('expected resources');
+      const n = choice.foods.length + choice.eggs.length + choice.cards.length;
+      if (n === 0 && step.optional) {
+        return dropImpossiblePending(s); // declined — the "if you do" fails
+      }
+      if (n !== step.count) throw new Error(`choose ${step.count} resources`);
+      let pl = getPlayer(s, playerId);
+      for (const f of choice.foods) {
+        if (pl.food[f] <= 0) throw new Error(`you don't have ${f}`);
+        pl = spendFood(pl, [f]);
+      }
+      for (const ref of choice.eggs) {
+        const b = pl.board[ref.habitat]?.[ref.index];
+        if (!b || b.ghost || b.eggs <= 0) throw new Error('no egg on that bird');
+      }
+      for (const ref of choice.eggs) {
+        const row = [...pl.board[ref.habitat]];
+        row[ref.index] = { ...row[ref.index]!, eggs: row[ref.index]!.eggs - 1 };
+        pl = { ...pl, board: { ...pl.board, [ref.habitat]: row } };
+      }
+      for (const id of choice.cards) {
+        if (!pl.hand.includes(id)) throw new Error('card not in hand');
+        pl = { ...pl, hand: pl.hand.filter((x) => x !== id) };
+      }
+      s = { ...setPlayer(s, pl), discard: [...s.discard, ...choice.cards] };
+      break;
+    }
+    case 'chooseTrayDiscard': {
+      if (choice.kind !== 'handCards') throw new Error('expected handCards');
+      const ids = [...new Set(choice.cardIds)];
+      for (const id of ids) {
+        if (!s.tray.includes(id)) throw new Error('that card is not on the tray');
+      }
+      s = {
+        ...s,
+        tray: s.tray.map((id) => (id != null && ids.includes(id) ? null : id)),
+        discard: [...s.discard, ...ids],
+      };
+      s = refillTray(s);
+      break;
+    }
+    case 'moveBirdToPlayer': {
+      if (choice.kind !== 'habitat') throw new Error('expected habitat');
+      const pl = getPlayer(s, playerId);
+      const row = pl.board[step.bird.habitat];
+      const me = row?.[step.bird.index];
+      if (!me || me.ghost) throw new Error('bird is gone');
+      if (row.slice(step.bird.index + 1).some((x) => !x.ghost)) {
+        throw new Error('there are birds to its right');
+      }
+      const target = getPlayer(s, step.target);
+      const card = bird(me.cardId);
+      if (!card.habitats.includes(choice.habitat)) throw new Error('cannot live there');
+      if (target.board[choice.habitat].length >= 5) throw new Error('row is full');
+      // Only the card moves — its eggs, caches and tucked cards are discarded.
+      const ghostAfter = row[step.bird.index + 1]?.ghost ? 1 : 0;
+      const newRow = row.filter(
+        (_, i) => i !== step.bird.index && i !== step.bird.index + ghostAfter,
+      );
+      s = setPlayer(s, { ...pl, board: { ...pl.board, [step.bird.habitat]: newRow } });
+      const t = getPlayer(s, step.target);
+      s = setPlayer(s, {
+        ...t,
+        board: {
+          ...t.board,
+          [choice.habitat]: [
+            ...t.board[choice.habitat],
+            { cardId: me.cardId, eggs: 0, tucked: [], cached: [] },
+          ],
+        },
+      });
+      s = { ...s, discard: [...s.discard, ...me.tucked] };
+      break;
+    }
+    case 'confirm': {
+      if (choice.kind !== 'boolean') throw new Error('expected boolean');
+      if (!choice.yes) {
+        return dropImpossiblePending(s); // declined — the "if you do" fails
+      }
+      break;
+    }
+    case 'chooseHandPick': {
+      if (choice.kind !== 'handCards') throw new Error('expected handCards');
+      if (choice.cardIds.length === 0 && step.optional) {
+        return dropImpossiblePending(s); // declined — the "if you do" fails
+      }
+      if (choice.cardIds.length !== step.count) throw new Error(`pick ${step.count} cards`);
+      const pl = getPlayer(s, playerId);
+      for (const id of choice.cardIds) {
+        if (!pl.hand.includes(id)) throw new Error('card not in hand');
+      }
+      break;
+    }
+    case 'choosePoolTuck': {
+      if (choice.kind !== 'handCards') throw new Error('expected handCards');
+      const n = Math.min(step.count, step.cardIds.length);
+      if (choice.cardIds.length !== n) throw new Error(`tuck ${n} cards`);
+      for (const id of choice.cardIds) {
+        if (!step.cardIds.includes(id)) throw new Error('not from the pool');
+      }
+      const rest = step.cardIds.filter((id) => !choice.cardIds.includes(id));
+      for (const id of choice.cardIds) s = tuckCardOnBird(s, playerId, step.bird, id);
+      if (choice.cardIds.length > 0) s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+      if (step.rest === 'hand') {
+        const pl = getPlayer(s, playerId);
+        s = setPlayer(s, { ...pl, hand: [...pl.hand, ...rest] });
+      } else {
+        s = { ...s, discard: [...s.discard, ...rest] };
+      }
+      break;
+    }
+    case 'chooseCopyPlayed': {
+      if (choice.kind !== 'playedTarget') throw new Error('expected playedTarget');
+      const left = playerToLeft(s, playerId);
+      const right = playerToRight(s, playerId);
+      if (choice.player !== left && choice.player !== right) {
+        throw new Error('not a neighbour');
+      }
+      const tp = getPlayer(s, choice.player);
+      const b = tp.board[choice.bird.habitat]?.[choice.bird.index];
+      if (!b || b.ghost) throw new Error('no bird at that space');
+      const card = bird(b.cardId);
+      if (card.powerColor !== 'white' || !card.powerText) throw new Error('not a white power');
+      const fn = POWER_IMPLS[card.powerText];
+      if (!fn) throw new Error('that power cannot be copied');
+      const source = step.then?.bird;
+      if (!source) throw new Error('missing copying bird');
+      s = fn(s, playerId, source);
+      break;
+    }
+    case 'chooseReroll': {
+      // Pick feeder dice to reroll (empty pick = stop), up to tag.n[0] times.
+      if (choice.kind !== 'dice') throw new Error('expected dice');
+      const rollsLeft = step.then?.n?.[0] ?? 0;
+      for (const pick of choice.picks) {
+        const face = s.feederIn[pick.die];
+        if (face == null) throw new Error('no such die');
+        const { s: s1, faces } = rollDice(s, 1);
+        s = s1;
+        const next = [...s.feederIn];
+        next[pick.die] = faces[0]!;
+        s = { ...s, feederIn: next, feederOut: [...s.feederOut, face] };
+      }
+      if (choice.picks.length > 0 && rollsLeft > 1) {
+        const tag = step.then!;
+        return dropImpossiblePending(
+          pushPending(s, { ...step, then: { ...tag, n: [rollsLeft - 1] } }),
+        );
+      }
+      break;
+    }
+    case 'drawUpTo': {
+      if (choice.kind !== 'boolean') throw new Error('expected boolean');
+      let pool = step.pool;
+      if (choice.yes && step.left > 0) {
+        const { s: s1, ids } = drawToPool(s, 1);
+        s = s1;
+        pool = [...pool, ...ids];
+        if (step.left - 1 > 0 && ids.length > 0) {
+          return dropImpossiblePending(
+            pushPending(s, { ...step, left: step.left - 1, pool }),
+          );
+        }
+      }
+      // Stop (yes exhausted or declined): under the cap → tuck them all,
+      // otherwise discard the drawn pool.
+      const total = pool.reduce((sum, id) => sum + wingspanOf(bird(id)), 0);
+      const cap = step.then?.n?.[0] ?? 0;
+      if (pool.length > 0 && total < cap) {
+        for (const id of pool) s = tuckCardOnBird(s, playerId, step.bird, id);
+        s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+      } else {
+        s = { ...s, discard: [...s.discard, ...pool] };
+      }
+      return dropImpossiblePending(s); // evaluated here — skip the tag
     }
   }
 
@@ -1255,6 +1567,255 @@ function continueEffect(
         (pid): PendingStep => ({ kind: 'chooseBirdForEgg', playerId: pid, count: 1, nest: 'any' }),
       );
       return { ...s, pending: [...steps, ...s.pending] };
+    }
+
+    // === asia continuations ===
+    case 'asiaRiskyRoll': {
+      // Roll n[0] dice (roll n[1]+1 of 3); a hit caches 1 of the matching food
+      // and offers another roll; a miss returns the n[2] food cached by this
+      // power chain.
+      if (!tag.bird) return s;
+      const dice = tag.n?.[0] ?? 1;
+      const wants = (tag.ids ?? []).map((i) => FOOD_TYPES[i]!).filter(Boolean);
+      if (wants.length === 0) return s;
+      const { s: s1, faces } = rollDice(s, dice);
+      s = appendLog(s1, `${playerId}: rolled ${faces.join(', ')}`);
+      const hit = wants.find((w) => faces.some((f) => faceCovers(f, w)));
+      const rolls = (tag.n?.[1] ?? 0) + 1;
+      if (hit) {
+        s = cacheOnBird(s, playerId, tag.bird, hit);
+        s = firePinkTriggers(s, playerId, { kind: 'predatorSuccess' });
+        if (rolls < 3) {
+          return pushPending(s, {
+            kind: 'confirm',
+            playerId,
+            then: { ...tag, n: [dice, rolls, (tag.n?.[2] ?? 0) + 1] },
+          });
+        }
+        return s;
+      }
+      const cached = tag.n?.[2] ?? 0;
+      if (cached > 0) {
+        const p = getPlayer(s, playerId);
+        const row = [...p.board[tag.bird.habitat]];
+        const b = row[tag.bird.index];
+        if (b) {
+          row[tag.bird.index] = {
+            ...b,
+            cached: b.cached.slice(0, Math.max(0, b.cached.length - cached)),
+          };
+          s = setPlayer(s, { ...p, board: { ...p.board, [tag.bird.habitat]: row } });
+        }
+      }
+      return s;
+    }
+    case 'asiaCacheSupplyOn': {
+      // Spend `food` from the supply to cache it on the picked bird.
+      if (choice.kind !== 'birds' || choice.birds.length === 0) return s;
+      const f = FOOD_TYPES[tag.ids?.[0] ?? -1];
+      if (!f) return s;
+      const p = getPlayer(s, playerId);
+      if (p.food[f] <= 0) return s;
+      s = setPlayer(s, spendFood(p, [f]));
+      return cacheOnBird(s, playerId, choice.birds[0]!, f);
+    }
+    case 'asiaTrayCheck': {
+      // Lay 1 egg if a discarded tray bird matched (0 = grassland, 1 = predator).
+      if (!tag.bird || choice.kind !== 'handCards') return s;
+      const mode = tag.n?.[0] ?? 0;
+      const hit = choice.cardIds.some((id) => {
+        const c = bird(id);
+        return mode === 0 ? c.habitats.includes('grassland') : c.predator;
+      });
+      if (!hit) return s;
+      return setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, 1));
+    }
+    case 'asiaPool5': {
+      // Pool of 5: 1 went to hand via chooseDrawnCard; now tuck 1 of the rest.
+      if (choice.kind !== 'handCards' || !tag.ids || !tag.bird) return s;
+      const kept = choice.cardIds[0];
+      const rest = tag.ids.filter((id) => id !== kept);
+      if (rest.length === 0) return s;
+      return pushPending(s, {
+        kind: 'chooseDrawnCard',
+        playerId,
+        cardIds: rest,
+        then: { effect: 'asiaPool5Tuck', ids: rest, bird: tag.bird, n: tag.n },
+      });
+    }
+    case 'asiaPool5Tuck': {
+      // Tuck the pick (it's in hand now); then give 1 away or discard the rest.
+      if (choice.kind !== 'handCards' || !tag.bird || !tag.ids) return s;
+      const id = choice.cardIds[0];
+      if (id == null) return s;
+      const rest = tag.ids.filter((x) => x !== id);
+      const p = getPlayer(s, playerId);
+      s = setPlayer(s, { ...p, hand: p.hand.filter((x) => x !== id) });
+      s = tuckCardOnBird(s, playerId, tag.bird, id);
+      s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+      if (rest.length === 0) return s;
+      if ((tag.n?.[0] ?? 0) === 1) {
+        // Give 1 of the remaining cards to another player; discard the rest.
+        const give = rest[0]!;
+        s = { ...s, discard: [...s.discard, ...rest.slice(1)] };
+        return pushPending(s, {
+          kind: 'choosePlayer',
+          playerId,
+          other: true,
+          then: { effect: 'asiaGivePool', ids: [give] },
+        });
+      }
+      return { ...s, discard: [...s.discard, ...rest] };
+    }
+    case 'asiaGivePool': {
+      if (choice.kind !== 'player' || !tag.ids?.length) return s;
+      const v = getPlayer(s, choice.playerId);
+      return setPlayer(s, { ...v, hand: [...v.hand, ...tag.ids] });
+    }
+    case 'asiaGivePick': {
+      // "Give 1 hand card to another player" — the card was picked (still in
+      // hand); now pick the receiving player.
+      if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
+      return pushPending(s, {
+        kind: 'choosePlayer',
+        playerId,
+        other: true,
+        then: { effect: 'asiaGiveTo', ids: [choice.cardIds[0]!], bird: tag.bird, n: tag.n },
+      });
+    }
+    case 'asiaGiveTo': {
+      if (choice.kind !== 'player' || !tag.ids?.length) return s;
+      const id = tag.ids[0]!;
+      const p = getPlayer(s, playerId);
+      if (!p.hand.includes(id)) return s;
+      s = setPlayer(s, { ...p, hand: p.hand.filter((x) => x !== id) });
+      const v = getPlayer(s, choice.playerId);
+      s = setPlayer(s, { ...v, hand: [...v.hand, id] });
+      if ((tag.n?.[0] ?? 0) === 0) return drawFromDeck(s, playerId, 2);
+      return tag.bird ? setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, 2)) : s;
+    }
+    case 'asiaScoreBonusNow': {
+      // Score the picked hand bonus card now: cache 1 food per point on the
+      // bird. ids[0] = -1 → any food, else the fixed type. n[0] = 1 → the card
+      // is discarded and replaced (still scored once now, not at game end).
+      if (choice.kind !== 'bonusCards' || !tag.bird) return s;
+      const id = choice.cardIds[0];
+      if (id == null) return s;
+      const vp = bonusCardVp(getPlayer(s, playerId), id);
+      if ((tag.n?.[0] ?? 0) === 1) {
+        const p = getPlayer(s, playerId);
+        s = setPlayer(s, { ...p, bonusHand: p.bonusHand.filter((x) => x !== id) });
+        s = { ...s, bonusDiscard: [...s.bonusDiscard, id] };
+        if (s.bonusDeck.length > 0) {
+          const nb = s.bonusDeck[s.bonusDeck.length - 1]!;
+          s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
+          const p2 = getPlayer(s, playerId);
+          s = setPlayer(s, { ...p2, bonusHand: [...p2.bonusHand, nb] });
+        }
+      }
+      if (vp <= 0) return s;
+      const fIdx = tag.ids?.[0] ?? -1;
+      return pushPending(s, {
+        kind: 'chooseSupplyFood',
+        playerId,
+        count: vp,
+        options: fIdx >= 0 ? [FOOD_TYPES[fIdx]!] : 'any',
+        cache: tag.bird,
+      });
+    }
+    case 'asiaDrawBonus21': {
+      // Draw 2 bonus cards, keep 1 (queued for an "other players may" payer).
+      const pool: number[] = [];
+      for (let i = 0; i < 2 && s.bonusDeck.length > 0; i++) {
+        pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
+        s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
+      }
+      if (pool.length === 0) return s;
+      return pushPending(s, {
+        kind: 'chooseBonusCards',
+        playerId,
+        cardIds: pool,
+        keep: 1,
+      });
+    }
+    case 'asiaEagleEval': {
+      // After the reroll chain: ≥3 rodents in the feeder → draw 2 bonus keep 1;
+      // then reset the birdfeeder.
+      const n = s.feederIn.filter((f) => f === 'rodent').length;
+      if (n >= 3) {
+        const pool: number[] = [];
+        for (let i = 0; i < 2 && s.bonusDeck.length > 0; i++) {
+          pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
+          s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
+        }
+        if (pool.length > 0) {
+          s = pushPending(s, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+        }
+      }
+      s = { ...s, feederOut: [...s.feederOut, ...s.feederIn], feederIn: [] };
+      return refillFeeder(s);
+    }
+    case 'asiaCrowCache': {
+      // Cache 1 wild (own supply) on the picked bird, then may tuck a hand card.
+      if (choice.kind !== 'birds' || choice.birds.length === 0 || !tag.bird) return s;
+      return pushPending(s, {
+        kind: 'chooseCacheFromSupply',
+        playerId,
+        bird: choice.birds[0]!,
+        count: 1,
+        food: 'any',
+        then: { effect: 'asiaCrowTuck', bird: tag.bird },
+      });
+    }
+    case 'asiaCrowTuck': {
+      if (!tag.bird) return s;
+      return pushPending(s, { kind: 'chooseHandTuck', playerId, bird: tag.bird, optional: true });
+    }
+    case 'asiaTuckCacheForest': {
+      // On the picked forest bird: may tuck a hand card AND may cache a fruit.
+      if (choice.kind !== 'birds' || choice.birds.length === 0) return s;
+      const ref = choice.birds[0]!;
+      return pushPending(
+        s,
+        { kind: 'chooseHandTuck', playerId, bird: ref, optional: true },
+        {
+          kind: 'chooseCacheFromSupply',
+          playerId,
+          bird: ref,
+          count: 1,
+          food: 'fruit',
+          optional: true,
+        },
+      );
+    }
+    case 'asiaPickDieISF':
+      return pushPending(s, {
+        kind: 'pickDie',
+        playerId,
+        count: 1,
+        faces: ['invertebrate', 'seed', 'fruit'],
+      });
+    case 'selfEggIfTucked': {
+      const n = choice.kind === 'handCards' ? choice.cardIds.length : 0;
+      if (n <= 0 || !tag.bird) return s;
+      return setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, 1));
+    }
+    case 'asiaMoveCachedFish': {
+      // Cormorant: move 1 fish cached on this bird back to the supply.
+      if (!tag.bird) return s;
+      const p = getPlayer(s, playerId);
+      const b = p.board[tag.bird.habitat]?.[tag.bird.index];
+      if (!b || !b.cached.includes('fish')) return s;
+      const ci = b.cached.indexOf('fish');
+      const row = [...p.board[tag.bird.habitat]];
+      row[tag.bird.index] = { ...b, cached: b.cached.filter((_, i) => i !== ci) };
+      s = setPlayer(s, { ...p, board: { ...p.board, [tag.bird.habitat]: row } });
+      return grantSupplyFood(s, playerId, 'fish');
+    }
+    case 'asiaDeckTuck': {
+      if (!tag.bird) return s;
+      s = tuckFromDeck(s, playerId, tag.bird, 1);
+      return firePinkTriggers(s, playerId, { kind: 'tuck' });
     }
     default:
       return s;

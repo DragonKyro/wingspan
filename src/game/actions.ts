@@ -22,12 +22,16 @@ import {
 import {
   actingPlayerId,
   actionSlot,
+  addEggs,
   birdAt,
   canHoldEggs,
   columnEggCost,
   getPlayer,
   isCardCostBird,
   isCoverBird,
+  isDuet,
+  isFlock,
+  isGoalDouble,
   isOceania,
   isSideways,
   nextSlot,
@@ -35,6 +39,7 @@ import {
   rowFull,
   spendFood,
 } from './helpers';
+import { DUET_GOAL_POINTS, DUET_LOWER_IS_BETTER, FLOCK_GOAL_POINTS } from './duetMap';
 import { goalScore } from './scoring';
 import {
   drawFromDeck,
@@ -54,6 +59,7 @@ import type {
   CubeTrack,
   DieFace,
   DrawCardsAction,
+  DuetResetAction,
   FoodCost,
   FoodType,
   GainFoodAction,
@@ -256,8 +262,25 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
   };
   s = setPlayer(s, pl);
 
-  // When-played powers (white banner).
   const ref: BirdRef = { habitat: action.habitat, index: slot };
+  // Duet mode: a duet token is placed for every bird played — before the
+  // bird's when-played power runs. European "counts double" birds place 2.
+  if (isDuet(s)) {
+    const paidFoods = [
+      ...action.foodPayments,
+      ...cachedPayments.map((cp) => cp.food),
+    ];
+    for (let i = 0; i < (isGoalDouble(card) ? 2 : 1); i++) {
+      s = pushPending(s, {
+        kind: 'chooseDuetSpace',
+        playerId: action.playerId,
+        cardId: card.id,
+        habitat: action.habitat,
+        foods: paidFoods,
+      });
+    }
+  }
+  // When-played powers (white banner).
   if (card.powerColor === 'white' && card.powerText) {
     s = runPower(s, action.playerId, ref);
   }
@@ -300,6 +323,16 @@ function playOnTop(
     cubesOnPlayBird: pl.cubesOnPlayBird + 1,
   };
   s = setPlayer(s, pl);
+  // Duet mode: a cover play still counts as playing a bird (no food was spent).
+  if (isDuet(s)) {
+    s = pushPending(s, {
+      kind: 'chooseDuetSpace',
+      playerId: action.playerId,
+      cardId: card.id,
+      habitat: ref.habitat,
+      foods: [],
+    });
+  }
   // Counts as a tuck and a predator succeeding; the covered slot still counts
   // as playing a bird in that habitat for pink triggers.
   s = firePinkTriggers(s, action.playerId, { kind: 'tuck' });
@@ -441,10 +474,7 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
     }
   }
   for (const ref of action.placements) {
-    const pl = getPlayer(s, action.playerId);
-    const row = [...pl.board[ref.habitat]];
-    row[ref.index] = { ...row[ref.index]!, eggs: row[ref.index]!.eggs + 1 };
-    s = setPlayer(s, { ...pl, board: { ...pl.board, [ref.habitat]: row } });
+    s = setPlayer(s, addEggs(getPlayer(s, action.playerId), ref, 1));
   }
   s = firePinkTriggers(s, action.playerId, { kind: 'layEggs' });
   return startActivation(s, action.playerId, 'grassland');
@@ -593,6 +623,32 @@ export function finishEndOfTurnDiscards(state: GameState, playerId: PlayerId): G
   return setPlayer(state, { ...p, endOfTurnDiscards: 0 });
 }
 
+// === duet reset token ===
+
+/** Duet mode: remove a token from the reset space to reset the birdfeeder or
+ *  the tray. Usable at any time on the player's turn. */
+export function duetReset(state: GameState, action: DuetResetAction): GameState {
+  if (!state.duet) throw new Error('not a duet game');
+  if (state.phase !== 'main') throw new Error('not the main phase');
+  if (actingPlayerId(state) !== action.playerId) throw new Error('not your turn');
+  if (state.pending.length > 0) throw new Error('resolve the pending choice first');
+  const at = state.duet.reset.indexOf(action.playerId);
+  if (at < 0) throw new Error('you have no token on the reset space');
+  const reset = state.duet.reset.filter((_, i) => i !== at);
+  let s: GameState = { ...state, duet: { ...state.duet, reset } };
+  if (action.target === 'feeder') {
+    s = refillFeeder(s);
+  } else {
+    s = {
+      ...s,
+      discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
+      tray: [null, null, null],
+    };
+    s = refillTray(s);
+  }
+  return s;
+}
+
 // === round / game end ===
 
 function endRound(state: GameState): GameState {
@@ -633,27 +689,56 @@ export function finishRound(state: GameState): GameState {
   // Score this round's goal tile (green side: ranked).
   const tile = s.goalTiles[s.round];
   if (tile != null) {
-    const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
-    const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
-    // Ranks with tie-split (floor of summed rank points). Players with 0
-    // units place their cube on the 0 space — they don't rank.
-    const order = s.playerOrder
-      .map((pid, i) => ({ pid, units: units[i]! }))
-      .filter((x) => x.units > 0)
-      .sort((a, b) => b.units - a.units);
-    const scores = new Array<number>(s.playerOrder.length).fill(0);
-    let i = 0;
-    while (i < order.length) {
-      let j = i;
-      while (j + 1 < order.length && order[j + 1]!.units === order[i]!.units) j++;
-      const rankPoints = points.slice(i, j + 1).reduce((a, b) => a + b, 0);
-      const share = Math.floor(rankPoints / (j - i + 1));
-      for (let k = i; k <= j; k++) scores[s.playerOrder.indexOf(order[k]!.pid)] = share;
-      i = j + 1;
+    if (isDuet(s)) {
+      // Duet board: the winner takes the round's points, ties are friendly
+      // (both score). The loser takes the first-player token; on a tie it
+      // passes to the player who did not hold it this round.
+      const pts = DUET_GOAL_POINTS[s.round] ?? DUET_GOAL_POINTS[3]!;
+      const lower = DUET_LOWER_IS_BETTER.has(tile);
+      const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
+      const best = lower ? Math.min(...units) : Math.max(...units);
+      const scores = units.map((u) => (u === best ? pts : 0));
+      const goalScores = [...s.goalScores];
+      goalScores[s.round] = scores;
+      const winnerIdxs = units
+        .map((u, i) => (u === best ? i : -1))
+        .filter((i) => i >= 0);
+      const nextFirst =
+        winnerIdxs.length === 1 ? 1 - winnerIdxs[0]! : 1 - s.firstPlayerIndex;
+      s = { ...s, goalScores, firstPlayerIndex: nextFirst };
+    } else if (isFlock(s)) {
+      // Flock goal board: 1st-5th ranks with friendly ties — tied players
+      // share the full rank value and the next rank is still awarded.
+      const table = FLOCK_GOAL_POINTS[s.round] ?? FLOCK_GOAL_POINTS[3]!;
+      const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
+      const values = [...new Set(units.filter((u) => u > 0))].sort((a, b) => b - a);
+      const scores = units.map((u) => (u > 0 ? (table[values.indexOf(u)] ?? 0) : 0));
+      const goalScores = [...s.goalScores];
+      goalScores[s.round] = scores;
+      s = { ...s, goalScores };
+    } else {
+      const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
+      const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
+      // Ranks with tie-split (floor of summed rank points). Players with 0
+      // units place their cube on the 0 space — they don't rank.
+      const order = s.playerOrder
+        .map((pid, i) => ({ pid, units: units[i]! }))
+        .filter((x) => x.units > 0)
+        .sort((a, b) => b.units - a.units);
+      const scores = new Array<number>(s.playerOrder.length).fill(0);
+      let i = 0;
+      while (i < order.length) {
+        let j = i;
+        while (j + 1 < order.length && order[j + 1]!.units === order[i]!.units) j++;
+        const rankPoints = points.slice(i, j + 1).reduce((a, b) => a + b, 0);
+        const share = Math.floor(rankPoints / (j - i + 1));
+        for (let k = i; k <= j; k++) scores[s.playerOrder.indexOf(order[k]!.pid)] = share;
+        i = j + 1;
+      }
+      const goalScores = [...s.goalScores];
+      goalScores[s.round] = scores;
+      s = { ...s, goalScores };
     }
-    const goalScores = [...s.goalScores];
-    goalScores[s.round] = scores;
-    s = { ...s, goalScores };
   }
   // Discard the face-up tray cards and restock from the deck.
   s = {
@@ -665,12 +750,16 @@ export function finishRound(state: GameState): GameState {
 
   const nextRound = s.round + 1;
   if (nextRound < 4) {
-    // Reset cubes for the new round; the NEXT player in order starts it
-    // (first-player marker passes clockwise).
+    // First player of the new round: duet gives the token to the round-goal
+    // loser (set during goal scoring); other modes pass it clockwise.
+    const nextFirst = isDuet(s)
+      ? s.firstPlayerIndex
+      : (s.firstPlayerIndex + 1) % s.playerOrder.length;
     s = {
       ...s,
       round: nextRound,
-      currentPlayerIndex: (s.currentPlayerIndex + 1) % s.playerOrder.length,
+      currentPlayerIndex: nextFirst,
+      firstPlayerIndex: nextFirst,
       turnTookAction: false,
       phase: 'main',
       players: s.players.map((pl) => ({

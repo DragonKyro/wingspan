@@ -5,6 +5,7 @@
 import {
   activatePower,
   drawCards,
+  duetReset,
   endTurn,
   finishRound,
   gainFood,
@@ -49,6 +50,9 @@ export function applyAction(state: GameState, action: Action): GameState {
       break;
     case 'endTurn':
       s = endTurn(state, action.playerId);
+      break;
+    case 'duetReset':
+      s = duetReset(state, action);
       break;
     default:
       return state;

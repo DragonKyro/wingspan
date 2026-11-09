@@ -126,6 +126,7 @@ export function eggStepTargets(
     onlyBird?: BirdRef;
     adjacentTo?: BirdRef;
     wingspanLt?: number;
+    columnOf?: BirdRef;
   },
 ): BirdRef[] {
   const p = getPlayer(state, step.playerId);
@@ -147,6 +148,12 @@ export function eggStepTargets(
       const b = p.board[r.habitat]?.[r.index];
       return b != null && wingspanOf(bird(b.cardId)) < step.wingspanLt!;
     });
+  }
+  if (step.columnOf) {
+    // "Another bird in this column": same index, any other habitat.
+    refs = refs.filter(
+      (r) => r.index === step.columnOf!.index && r.habitat !== step.columnOf!.habitat,
+    );
   }
   return refs;
 }
@@ -295,7 +302,12 @@ export function addEggs(p: PlayerState, ref: BirdRef, n: number, overLimit = 0):
   const row = [...p.board[ref.habitat]];
   const b = row[ref.index];
   if (!b) throw new Error('no bird at ref');
-  row[ref.index] = { ...b, eggs: Math.min(b.eggs + n, bird(b.cardId).eggLimit + overLimit) };
+  const laid = Math.min(b.eggs + n, bird(b.cardId).eggLimit + overLimit) - b.eggs;
+  row[ref.index] = {
+    ...b,
+    eggs: Math.min(b.eggs + n, bird(b.cardId).eggLimit + overLimit),
+    eggsGainedThisTurn: (b.eggsGainedThisTurn ?? 0) + laid,
+  };
   return { ...p, board: { ...p.board, [ref.habitat]: row } };
 }
 
@@ -312,6 +324,16 @@ export function actionSlot(p: PlayerState, habitat: Habitat, oceania = false): n
 /** Does this game use the Oceania expansion (mat, nectar, cards)? */
 export function isOceania(state: GameState): boolean {
   return state.settings.sets.includes('oceania');
+}
+
+/** Asia 2-player duet mode (duet map + duet goal tiles). */
+export function isDuet(state: GameState): boolean {
+  return state.settings.mode === 'duet';
+}
+
+/** Asia flock mode (6-7 players, flock goal board). */
+export function isFlock(state: GameState): boolean {
+  return state.settings.mode === 'flock';
 }
 
 /** Wingspan as a number for power/bonus comparisons. Flightless birds are

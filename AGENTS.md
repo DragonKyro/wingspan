@@ -148,11 +148,49 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   playerId/ref; "play another bird" powers can fire the played bird's
   yellow (game-end) power immediately per the card text.
 
+## Asia expansion (`set: 'asia'`, 90 birds)
+
+- All 88 distinct asia power texts are implemented (86 in POWER_IMPLS,
+  2 pinks: Asian Koel + Violet Cuckoo over-limit egg lays).
+- New PendingStep kinds: chooseDuetSpace, chooseResources (mixed
+  food+eggs+cards payment), chooseTrayDiscard, moveBirdToPlayer, confirm
+  (yes/no gate for "you may"), chooseHandPick (inspect-only pick),
+  choosePoolTuck (tuck some of a drawn pool), chooseCopyPlayed (white-power
+  copy on a neighbour), chooseReroll (feeder dice), drawUpTo (draw-or-stop).
+- New Choice kinds: resources, duetSpace, playedTarget. New PowerOptions:
+  trayCard/gainSeed/tuckDeckCard/asiaCacheWild/asiaTuckHand.
+- chooseBirdForEgg gained `columnOf`; chooseBonusCards gained `fromHand`
+  (score-now powers) and `copyFrom` (Adjutants → `p.copiedBonus`, scored at
+  game end against the copier's own birds).
+- Tracked state: `p.feederGainedThisTurn` (dice-only gains, reset per turn),
+  `b.eggsGainedThisTurn`/`b.cachedGainedThisTurn` (per-bird, reset per turn),
+  `p.copiedBonus`.
+- "feasible()" returns deliverable capacity (not a boolean) — count-bearing
+  steps get clamped to it, so return `min(count, realCapacity)`.
+
+### Duet mode (`settings.mode: 'duet'`, exactly 2 players)
+
+- `state.duet` = 36-space fixed map (`duetMap.ts` DUET_MAP: 3 habitat regions
+  × 12 spaces, each with a nest/food/wingspan/beak criterion, 9 bonus spaces)
+  + an unbounded reset space. Every played bird queues a chooseDuetSpace
+  (2 steps for "counts double" birds); bonus spaces grant a die/egg/card.
+- Reset-space tokens fund `duetReset` actions (reset feeder or tray, any time
+  on your turn). Goal scoring: winner takes DUET_GOAL_POINTS[r] (ties share),
+  loser gets next round's first-player token. End game: +1 pt per token in
+  the largest contiguous group (duetLargestGroup, hex-grid neighbours).
+- Duet goal tiles are ids 2034–2045 (6 double-sided tiles, random 4 sides).
+
+### Flock mode (`settings.mode: 'flock'`, 6–7 players)
+
+- Standard tiles, FLOCK_GOAL_POINTS table (friendly ties share a rank).
+
 ## Known gaps (future work)
 
-- `POWER_IMPLS` covers all distinct core + european + oceania texts; other
-  expansion texts warn once and no-op (`hasPowerImpl` is the check). The
-  Amazonian Parrotlet (promo) has no implementation.
+- `POWER_IMPLS` covers all distinct core + european + oceania + asia texts;
+  other expansion texts warn once and no-op (`hasPowerImpl` is the check).
+  The Amazonian Parrotlet (promo) has no implementation.
+- The printed duet map layout is approximated (region criterion counts are
+  official; exact space positions are not public data).
 - Blue (per-item) goal side unimplemented.
 - Oceania mat trades/reset options exist in the actions but the UI draft
   flow doesn't expose them yet (AI skips them too — always optional).

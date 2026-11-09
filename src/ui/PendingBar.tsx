@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { bird } from '@/game/cards';
-import { eggStepTargets, getPlayer, nestMatches, wingspanOf } from '@/game/helpers';
-import { faceCovers } from '@/game/powers';
+import { DUET_MAP, duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
+import {
+  eggStepTargets,
+  getPlayer,
+  nestMatches,
+  playedBirds,
+  wingspanOf,
+} from '@/game/helpers';
+import { faceCovers, hasPowerImpl } from '@/game/powers';
 import type {
+  BirdRef,
   Choice,
   FoodType,
   GameState,
   PendingStep,
+  PlayerState,
 } from '@/game/types';
 import { FOOD_TYPES, HABITATS } from '@/game/types';
 import { BirdCardView, BonusCardView } from './BirdCardView';
@@ -413,6 +422,11 @@ function StepPicker({
         gainFruit: 'gain 1 fruit',
         fruitToNectar: 'discard 1 fruit → gain 1 nectar',
         selfEggs2: 'lay 2 eggs on this bird',
+        trayCard: 'take a tray card',
+        gainSeed: 'gain 1 seed',
+        tuckDeckCard: 'tuck a deck card',
+        asiaCacheWild: 'cache 1 wild food',
+        asiaTuckHand: 'tuck a hand card',
       };
       return (
         <div className="row">
@@ -525,6 +539,156 @@ function StepPicker({
         />
       );
     }
+
+    // === asia / duet expansion steps ===
+    case 'chooseDuetSpace': {
+      if (!game.duet) return <span>place a duet token</span>;
+      const card = bird(step.cardId);
+      const eligible = duetEligibleSpaces(
+        game.duet.map,
+        card,
+        step.habitat,
+        duetFoodsFor(card, step.foods),
+      );
+      return (
+        <div className="row">
+          <span>place a duet token:</span>
+          {eligible.map((i) => (
+            <button key={i} onClick={() => send({ kind: 'duetSpace', space: i })}>
+              #{i + 1}
+              {DUET_MAP[i]!.bonus ? ` (+${DUET_MAP[i]!.bonus})` : ''}
+            </button>
+          ))}
+          <button onClick={() => send({ kind: 'duetSpace', space: 'reset' })}>reset space</button>
+        </div>
+      );
+    }
+    case 'chooseResources':
+      return (
+        <ResourcePicker
+          p={p}
+          count={step.count}
+          optional={step.optional}
+          onDone={(resources) => send({ kind: 'resources', ...resources })}
+        />
+      );
+    case 'chooseTrayDiscard': {
+      return (
+        <TrayDiscardPicker
+          tray={game.tray}
+          onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+        />
+      );
+    }
+    case 'moveBirdToPlayer': {
+      const b = p.board[step.bird.habitat]?.[step.bird.index];
+      if (!b) return <span>bird is gone</span>;
+      const target = getPlayer(game, step.target);
+      const card = bird(b.cardId);
+      return (
+        <div className="row">
+          <span>move {card.name} to {target.name}'s:</span>
+          {HABITATS.filter(
+            (h) => card.habitats.includes(h) && target.board[h].length < 5,
+          ).map((h) => (
+            <button key={h} onClick={() => send({ kind: 'habitat', habitat: h })}>
+              {h}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    case 'confirm':
+      return (
+        <div className="row">
+          <span>continue?</span>
+          <button className="primary" onClick={() => send({ kind: 'boolean', yes: true })}>Yes</button>
+          <button onClick={() => send({ kind: 'boolean', yes: false })}>No</button>
+        </div>
+      );
+    case 'chooseHandPick':
+      return (
+        <div>
+          <HandPicker
+            hand={p.hand}
+            count={step.count}
+            label={`pick ${step.count} card${step.count > 1 ? 's' : ''}`}
+            onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+          />
+          {step.optional && (
+            <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>decline</button>
+          )}
+        </div>
+      );
+    case 'choosePoolTuck': {
+      const n = Math.min(step.count, step.cardIds.length);
+      return (
+        <HandPicker
+          hand={step.cardIds}
+          count={n}
+          label={`tuck ${n} of the drawn cards${step.rest === 'hand' ? ' (rest to hand)' : ' (rest discarded)'}`}
+          onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+        />
+      );
+    }
+    case 'chooseCopyPlayed': {
+      const targets: { player: (typeof game.playerOrder)[number]; ref: { habitat: (typeof HABITATS)[number]; index: number }; name: string }[] = [];
+      const seen = new Set<string>();
+      for (const pid of game.playerOrder) {
+        if (pid === step.playerId) continue;
+        const tp = getPlayer(game, pid);
+        for (const { ref, bird: b } of playedBirds(tp)) {
+          const c = bird(b.cardId);
+          if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) {
+            const key = `${pid}:${ref.habitat}:${ref.index}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              targets.push({ player: pid, ref, name: `${c.name} (${tp.name})` });
+            }
+          }
+        }
+      }
+      return (
+        <div className="row">
+          <span>copy a neighbour's played power:</span>
+          {targets.map((t) => (
+            <button
+              key={`${t.player}:${t.ref.habitat}:${t.ref.index}`}
+              onClick={() => send({ kind: 'playedTarget', player: t.player, bird: t.ref })}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    case 'chooseReroll':
+      return (
+        <RerollPicker
+          game={game}
+          onDone={(picks) => send({ kind: 'dice', picks })}
+        />
+      );
+    case 'drawUpTo': {
+      const cap = step.then?.n?.[0] ?? 0;
+      const total = step.pool.reduce((n, id) => n + wingspanOf(bird(id)), 0);
+      return (
+        <div className="row">
+          <span>
+            drawn {step.pool.length} card{step.pool.length === 1 ? '' : 's'} (wingspan {total}/{cap})
+            — draw another?
+          </span>
+          <button
+            className="primary"
+            disabled={step.left <= 0}
+            onClick={() => send({ kind: 'boolean', yes: true })}
+          >
+            Draw
+          </button>
+          <button onClick={() => send({ kind: 'boolean', yes: false })}>Stop</button>
+        </div>
+      );
+    }
     default:
       return <span>…</span>;
   }
@@ -564,6 +728,16 @@ function PromptText({ step }: { step: PendingStep }) {
     chooseTrayCardEx: 'take a tray card',
     chooseTuckOrHand: 'tuck or keep',
     chooseCacheFromSupply: 'cache food',
+    chooseDuetSpace: 'place a duet token',
+    chooseResources: `discard ${count} resources`,
+    chooseTrayDiscard: 'discard tray cards',
+    moveBirdToPlayer: 'move a bird',
+    confirm: 'confirm',
+    chooseHandPick: `pick ${count} cards`,
+    choosePoolTuck: 'tuck drawn cards',
+    chooseCopyPlayed: 'copy a power',
+    chooseReroll: 'reroll dice',
+    drawUpTo: 'draw or stop',
   };
   return <span>{text[step.kind]}</span>;
 }
@@ -813,6 +987,141 @@ function CacheAssignPicker({
         onClick={() => onDone(items)}
       >
         Confirm
+      </button>
+    </div>
+  );
+}
+
+/** Asia "any resources" payment: mix supply food, bird eggs and hand cards. */
+function ResourcePicker({
+  p,
+  count,
+  optional,
+  onDone,
+}: {
+  p: PlayerState;
+  count: number;
+  optional?: boolean;
+  onDone: (r: { foods: FoodType[]; eggs: BirdRef[]; cards: number[] }) => void;
+}) {
+  const [foods, setFoods] = useState<FoodType[]>([]);
+  const [eggs, setEggs] = useState<BirdRef[]>([]);
+  const [cards, setCards] = useState<number[]>([]);
+  const total = foods.length + eggs.length + cards.length;
+  const eggCount = (ref: BirdRef) =>
+    eggs.filter((r) => r.habitat === ref.habitat && r.index === ref.index).length;
+  return (
+    <div>
+      <div className="row">
+        <span>
+          discard {count} resources ({total}/{count}):
+        </span>
+        {FOOD_TYPES.filter((f) => p.food[f] > foods.filter((x) => x === f).length).map((f) => (
+          <button key={f} disabled={total >= count} onClick={() => setFoods((c) => [...c, f])}>
+            {f}
+          </button>
+        ))}
+        {playedBirds(p).map(({ ref, bird: b }) =>
+          b.eggs > eggCount(ref) ? (
+            <button
+              key={`${ref.habitat}:${ref.index}`}
+              disabled={total >= count}
+              onClick={() => setEggs((c) => [...c, ref])}
+            >
+              egg {ref.habitat} #{ref.index + 1}
+            </button>
+          ) : null,
+        )}
+        {p.hand.map((id) =>
+          !cards.includes(id) ? (
+            <BirdCardView
+              key={id}
+              cardId={id}
+              selectable
+              onClick={() => total < count && setCards((c) => [...c, id])}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="row">
+        <button className="primary" disabled={total !== count} onClick={() => onDone({ foods, eggs, cards })}>
+          Confirm
+        </button>
+        <button
+          onClick={() => {
+            setFoods([]);
+            setEggs([]);
+            setCards([]);
+          }}
+        >
+          Clear
+        </button>
+        {optional && (
+          <button onClick={() => onDone({ foods: [], eggs: [], cards: [] })}>decline</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Asia tray-discard powers: toggle any number of tray cards, then refill. */
+function TrayDiscardPicker({
+  tray,
+  onDone,
+}: {
+  tray: (number | null)[];
+  onDone: (cardIds: number[]) => void;
+}) {
+  const [picked, setPicked] = useState<number[]>([]);
+  return (
+    <div className="row">
+      <span>discard tray cards:</span>
+      {tray.map(
+        (id, i) =>
+          id != null && (
+            <BirdCardView
+              key={i}
+              cardId={id}
+              selectable
+              selected={picked.includes(id)}
+              onClick={() =>
+                setPicked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
+              }
+            />
+          ),
+      )}
+      <button className="primary" onClick={() => onDone(picked)}>
+        Discard {picked.length || 'none'} + refill
+      </button>
+    </div>
+  );
+}
+
+/** Asia eagle power: pick any number of feeder dice to reroll (none = stop). */
+function RerollPicker({
+  game,
+  onDone,
+}: {
+  game: GameState;
+  onDone: (picks: { die: number }[]) => void;
+}) {
+  const [picks, setPicks] = useState<number[]>([]);
+  return (
+    <div className="row">
+      <span>reroll any dice:</span>
+      {game.feederIn.map((f, i) => (
+        <span
+          key={i}
+          className={`die selectable${picks.includes(i) ? ' picked' : ''}`}
+          onClick={() =>
+            setPicks((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))
+          }
+        >
+          {f === 'split' ? 'inv/seed' : f === 'invertebrate' ? 'inv' : f}
+        </span>
+      ))}
+      <button className="primary" onClick={() => onDone(picks.map((die) => ({ die })))}>
+        {picks.length > 0 ? `Reroll ${picks.length}` : 'Stop'}
       </button>
     </div>
   );

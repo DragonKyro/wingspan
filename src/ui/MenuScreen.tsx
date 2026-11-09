@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore, warmUpNetwork } from '@/store/networkStore';
 import { SETS } from '@/game/cards';
-import type { PlayerColor } from '@/game/types';
+import type { GameMode, PlayerColor } from '@/game/types';
 
-const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple'];
+const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'];
 const OFFICIAL_SETS = ['core', 'european', 'oceania', 'asia', 'americas'];
+
+/** Valid total seat counts per mode (asia duet = 2, flock = 6-7). */
+const MODE_SEATS: Record<GameMode, number[]> = {
+  standard: [1, 2, 3, 4, 5],
+  duet: [2],
+  flock: [6, 7],
+};
 
 export function MenuScreen() {
   const startLocalGame = useGameStore((s) => s.startLocalGame);
@@ -14,8 +21,11 @@ export function MenuScreen() {
   const [humans, setHumans] = useState(1);
   const [ais, setAis] = useState(1);
   const [sets, setSets] = useState<string[]>(['core']);
+  const [mode, setMode] = useState<GameMode>('standard');
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState(myDisplayName);
+
+  const seatsOk = MODE_SEATS[mode].includes(humans + ais);
 
   const startLocal = () => {
     const names = [...Array.from({ length: humans }, (_, i) => `Player ${i + 1}`), ...Array.from({ length: ais }, (_, i) => `AI ${i + 1}`)];
@@ -28,7 +38,7 @@ export function MenuScreen() {
       playerTypes: types,
       playerColors: COLORS.slice(0, names.length),
       seed: Math.floor(Math.random() * 0xffffffff),
-      settings: { sets, goalSide: 'blue' },
+      settings: { sets, goalSide: 'blue', mode },
     });
   };
 
@@ -44,13 +54,19 @@ export function MenuScreen() {
       <div className="card">
         <h2>New local game</h2>
         <div className="row">
+          <label>Mode:</label>
+          <select value={mode} onChange={(e) => setMode(e.target.value as GameMode)}>
+            <option value="standard">Standard (1-5)</option>
+            <option value="duet">Asia Duet (2)</option>
+            <option value="flock">Asia Flock (6-7)</option>
+          </select>
           <label>Humans:</label>
           <select value={humans} onChange={(e) => setHumans(Number(e.target.value))}>
-            {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
           <label>AI:</label>
           <select value={ais} onChange={(e) => setAis(Number(e.target.value))}>
-            {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+            {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="row">
@@ -62,9 +78,14 @@ export function MenuScreen() {
           ))}
         </div>
         <div>
-          <button className="primary" onClick={startLocal} disabled={humans + ais < 1 || humans + ais > 5}>
+          <button className="primary" onClick={startLocal} disabled={!seatsOk}>
             Start game
           </button>
+          {!seatsOk && (
+            <span className="muted" style={{ fontSize: '0.8rem', marginLeft: 8 }}>
+              {mode === 'duet' ? 'Duet needs exactly 2 players.' : 'Flock needs 6-7 players.'}
+            </span>
+          )}
         </div>
         <div className="muted" style={{ fontSize: '0.8rem' }}>
           Hot-seat: humans share this device; AI seats play themselves.

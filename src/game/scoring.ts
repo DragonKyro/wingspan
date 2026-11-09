@@ -2,6 +2,7 @@
 
 import { bonusCard, BIRD_BY_ID, goalTile } from './cards';
 import { NECTAR_POINTS } from './constants';
+import { DUET_MAP, DUET_TILE_PAIRS, duetIsEdge, duetNeighbors } from './duetMap';
 import {
   isGoalDouble,
   isOceania,
@@ -11,7 +12,7 @@ import {
   totalFood,
   totalTucked,
 } from './helpers';
-import type { GameState, PlayedBird, PlayerId, PlayerState, ScoreBreakdown } from './types';
+import type { GameState, Habitat, PlayedBird, PlayerId, PlayerState, ScoreBreakdown } from './types';
 import { HABITATS } from './types';
 
 /** Goal-unit weight of a played bird: european "counts double toward the
@@ -27,11 +28,119 @@ function powerColorsOf(birds: PlayedBird[]): Set<string> {
   return colors;
 }
 
+// === asia duet goals ===
+
+/** All duet tile ids (both sides of the six tiles). */
+const DUET_TILE_IDS = new Set(DUET_TILE_PAIRS.flat());
+
+/** Tokens `playerId` has on duet-map spaces matching `f`. */
+function duetTokens(state: GameState, playerId: PlayerId, f: (i: number) => boolean): number {
+  const map = state.duet?.map ?? [];
+  let n = 0;
+  for (let i = 0; i < map.length; i++) if (map[i] === playerId && f(i)) n++;
+  return n;
+}
+
+/** Units for a duet goal tile (the "winner takes the round points" tiles). */
+function duetGoalUnits(state: GameState, playerId: PlayerId, tileId: number): number {
+  const spacesOf = (habitat: Habitat) => DUET_MAP.map((s, i) => ({ s, i })).filter(({ s }) => s.habitat === habitat).map(({ i }) => i);
+  switch (tileId) {
+    case 2034:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.habitat === 'forest');
+    case 2035:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.habitat === 'grassland');
+    case 2036:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.habitat === 'wetland');
+    case 2037: {
+      // Most tokens in any one horizontal row.
+      let best = 0;
+      for (let r = 0; r < 6; r++) {
+        const inRow = new Set(Array.from({ length: 6 }, (_, c) => r * 6 + c));
+        best = Math.max(best, duetTokens(state, playerId, (i) => inRow.has(i)));
+      }
+      return best;
+    }
+    case 2038:
+      return duetTokens(state, playerId, (i) => !duetIsEdge(i));
+    case 2039:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.criterion.type === 'nest');
+    case 2040:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.criterion.type === 'food');
+    case 2041:
+      return duetTokens(state, playerId, (i) => duetIsEdge(i));
+    case 2042: {
+      // Tokens on a pair of matching symbols: each token counts once, and a
+      // token qualifies when its symbol appears on ≥2 of the player's spaces.
+      const map = state.duet?.map ?? [];
+      const seen = new Map<string, number>();
+      const keyOf = (i: number) => {
+        const c = DUET_MAP[i]!.criterion;
+        return `${c.type}:${'nest' in c ? c.nest : 'food' in c ? c.food : 'lt50' in c ? c.lt50 : c.left}`;
+      };
+      for (let i = 0; i < map.length; i++) {
+        if (map[i] !== playerId) continue;
+        const k = keyOf(i);
+        seen.set(k, (seen.get(k) ?? 0) + 1);
+      }
+      let n = 0;
+      for (let i = 0; i < map.length; i++) {
+        if (map[i] === playerId && (seen.get(keyOf(i)) ?? 0) >= 2) n++;
+      }
+      return n;
+    }
+    case 2043:
+      return duetTokens(state, playerId, (i) => DUET_MAP[i]!.bonus != null);
+    case 2044: {
+      // Rows (of 6) containing at least one of the player's tokens.
+      let n = 0;
+      for (let r = 0; r < 6; r++) {
+        const inRow = new Set(Array.from({ length: 6 }, (_, c) => r * 6 + c));
+        if (duetTokens(state, playerId, (i) => inRow.has(i)) > 0) n++;
+      }
+      return n;
+    }
+    case 2045:
+      return duetTokens(state, playerId, () => true);
+    default:
+      void spacesOf;
+      return 0;
+  }
+}
+
+/** Largest contiguous group of `playerId`'s duet tokens (end-game points). */
+export function duetLargestGroup(state: GameState, playerId: PlayerId): number {
+  const map = state.duet?.map ?? [];
+  const seen = new Set<number>();
+  let best = 0;
+  for (let i = 0; i < map.length; i++) {
+    if (map[i] !== playerId || seen.has(i)) continue;
+    // Flood-fill this connected component.
+    let size = 0;
+    const stack = [i];
+    seen.add(i);
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      size++;
+      for (const n of duetNeighbors(cur)) {
+        if (!seen.has(n) && map[n] === playerId) {
+          seen.add(n);
+          stack.push(n);
+        }
+      }
+    }
+    best = Math.max(best, size);
+  }
+  return best;
+}
+
 /** Units a player has for a goal tile (ranked comparison happens in actions.ts). */
 export function goalScore(state: GameState, playerId: PlayerId, tileId: number): number {
   const tile = goalTile(tileId);
   const p = state.players.find((x) => x.id === playerId)!;
   const g = tile.goal;
+  if (state.duet && DUET_TILE_IDS.has(tileId)) {
+    return duetGoalUnits(state, playerId, tileId);
+  }
   switch (g.kind) {
     case 'birdsInHabitat':
       return playedBirds(p)
@@ -133,8 +242,9 @@ function costTotal(cost: { kind: string; items?: { count: number }[]; count?: nu
   return (cost.items ?? []).reduce((n, i) => n + i.count, 0);
 }
 
-/** Units for a bonus card's scoring condition. */
-function bonusUnits(p: PlayerState, name: string): number {
+/** Units for a bonus card's scoring condition. Exported for the asia
+ *  "score a bonus card now" powers. */
+export function bonusUnits(p: PlayerState, name: string): number {
   switch (name) {
     case 'Breeding Manager':
       return playedBirds(p).filter(({ bird: b }) => b.eggs >= 4).length;
@@ -177,6 +287,63 @@ function bonusUnits(p: PlayerState, name: string): number {
       }
       return n;
     }
+    // === asia bonus cards ===
+    case 'Avian Theriogenologist':
+      // Birds whose nests are completely full (as many eggs as the egg limit).
+      return playedBirds(p).filter(({ bird: b }) => {
+        const c = BIRD_BY_ID.get(b.cardId)!;
+        return c.eggLimit > 0 && b.eggs >= c.eggLimit;
+      }).length;
+    case 'Endangered Species Protector':
+      // Birds with powers that score or draw bonus cards.
+      return playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.bonusPower).length;
+    case 'Forest Population Monitor':
+    case 'Grassland Population Monitor':
+    case 'Wetland Population Monitor': {
+      const habitat: Habitat = name.split(' ')[0]!.toLowerCase() as Habitat;
+      const nests = new Set<string>();
+      for (const { ref, bird: b } of playedBirds(p)) {
+        if (ref.habitat !== habitat) continue;
+        const nest = BIRD_BY_ID.get(b.cardId)!.nest;
+        if (nest !== 'none') nests.add(nest);
+      }
+      return nests.size;
+    }
+    case 'Forest Ranger':
+    case 'Grassland Ranger':
+    case 'Wetland Ranger': {
+      const habitat: Habitat = name.split(' ')[0]!.toLowerCase() as Habitat;
+      const pts = p.board[habitat]
+        .filter((b) => !b.ghost)
+        .map((b) => BIRD_BY_ID.get(b.cardId)!.points);
+      // Longest run of consecutive birds with strictly ascending or
+      // strictly descending printed scores.
+      let best = pts.length > 0 ? 1 : 0;
+      let run = 1;
+      let dir = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const d = Math.sign(pts[i]! - pts[i - 1]!);
+        if (d === 0) {
+          run = 1;
+          dir = 0;
+        } else if (dir === 0 || d === dir) {
+          run++;
+          dir = d;
+        } else {
+          run = 2;
+          dir = d;
+        }
+        best = Math.max(best, run);
+      }
+      return best;
+    }
+    case 'Pellet Dissector':
+      return playedBirds(p).reduce(
+        (n, { bird: b }) => n + b.cached.filter((f) => f === 'fish' || f === 'rodent').length,
+        0,
+      );
+    case 'Winter Feeder':
+      return totalFood(p);
     default:
       return playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.bonusFlags.includes(name)).length;
   }
@@ -220,11 +387,18 @@ export function nectarPoints(state: GameState, playerId: PlayerId): number {
   return total;
 }
 
+/** VP a bonus card is currently worth for `p` (used by asia "score now" powers). */
+export function bonusCardVp(p: PlayerState, id: number): number {
+  const card = bonusCard(id);
+  return unitsToVp(card.vp, bonusUnits(p, card.name));
+}
+
 export function bonusPoints(p: PlayerState): number {
   let total = 0;
-  for (const id of p.bonusHand) {
-    const card = bonusCard(id);
-    total += unitsToVp(card.vp, bonusUnits(p, card.name));
+  // Hand cards plus bonus cards copied from neighbours by game-end powers
+  // (asia Adjutants — scored against this player's birds).
+  for (const id of [...p.bonusHand, ...p.copiedBonus]) {
+    total += bonusCardVp(p, id);
   }
   return total;
 }
@@ -240,6 +414,8 @@ export function finalScore(state: GameState, playerId: PlayerId): ScoreBreakdown
   const idx = state.playerOrder.indexOf(playerId);
   const goalPoints = state.goalScores.reduce((n, round) => n + (round[idx] ?? 0), 0);
   const nectar = nectarPoints(state, playerId);
-  const total = birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar;
-  return { birdPoints, bonusPoints: bonus, eggs, cached, tucked, nectar, goalPoints, total };
+  // Duet mode: 1 pt per token in the largest contiguous group on the map.
+  const duetTokens = state.duet ? duetLargestGroup(state, playerId) : 0;
+  const total = birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar + duetTokens;
+  return { birdPoints, bonusPoints: bonus, eggs, cached, tucked, nectar, duetTokens, goalPoints, total };
 }

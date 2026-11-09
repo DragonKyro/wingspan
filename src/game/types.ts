@@ -27,6 +27,29 @@ export const BASE_DIE_FACES: DieFace[] = ['invertebrate', 'seed', 'fish', 'fruit
 export const OCEANIA_DIE_FACES: DieFace[] = ['invertebrate', 'seed', 'fish', 'fruit', 'rodent', 'nectar'];
 
 export type NestType = 'bowl' | 'cavity' | 'ground' | 'platform' | 'wild' | 'none';
+export const NEST_TYPES: NestType[] = ['bowl', 'cavity', 'ground', 'platform'];
+
+/** Asia duet mode: the symbol on a Duet-map space. */
+export type DuetCriterion =
+  | { type: 'nest'; nest: 'bowl' | 'cavity' | 'ground' | 'platform' }
+  | { type: 'food'; food: 'invertebrate' | 'seed' | 'fish' | 'fruit' | 'rodent' }
+  | { type: 'wingspan'; lt50: boolean }
+  | { type: 'beak'; left: boolean };
+
+export interface DuetSpace {
+  habitat: Habitat;
+  criterion: DuetCriterion;
+  /** Bonus printed on the space ('food' = pick a die, 'card' = tray or deck). */
+  bonus: 'food' | 'egg' | 'card' | null;
+}
+
+/** Asia duet mode board: 36 spaces + an unbounded reset space. */
+export interface DuetState {
+  /** Owner of the token on each map space (null = unclaimed). */
+  map: (PlayerId | null)[];
+  /** Tokens parked in the reset space (each may be spent to reset feeder/tray). */
+  reset: PlayerId[];
+}
 
 /** Power banner color. brown=when activated, pink=once between turns,
  *  teal=end of round, yellow/white-with-text=when played. */
@@ -115,6 +138,12 @@ export interface PlayedBird {
    *  action-row slot position and the filled-columns goal. `cardId` mirrors
    *  the covering bird for display purposes. */
   ghost?: boolean;
+  /** Asia: eggs laid on this bird during the current turn (teal/brown powers
+   *  that check "if you laid an egg on this bird this turn"). Reset each turn. */
+  eggsGainedThisTurn?: number;
+  /** Asia: food cached on this bird during the current turn (risky-roll
+   *  predators return "all food cached here this turn"). Reset each turn. */
+  cachedGainedThisTurn?: number;
 }
 
 /** Identifies a played bird: habitat + slot index. */
@@ -135,9 +164,12 @@ export type PendingStep =
    *  `onlyBird` pins every egg to that one bird (the same ref may repeat);
    *  `adjacentTo` restricts to the birds in the neighbouring slots;
    *  `wingspanLt` restricts to birds whose wingspan is below the threshold. */
-  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; onlyBird?: BirdRef; adjacentTo?: BirdRef; wingspanLt?: number; then?: PendingTag }
+  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; onlyBird?: BirdRef; adjacentTo?: BirdRef; wingspanLt?: number; columnOf?: BirdRef; then?: PendingTag }
   /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. `habitat` restricts to one row. */
   | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; habitat?: Habitat; optional?: boolean; then?: PendingTag }
+  /** Discard `count` resources of any mix: food tokens, eggs (from birds),
+   *  and/or hand cards (asia "any 2 resources" powers). `optional` declines `then`. */
+  | { kind: 'chooseResources'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Discard a card from hand (e.g. end-of-turn discard powers). `optional`: declining skips `then`. */
   | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`. */
@@ -161,8 +193,9 @@ export type PendingStep =
   /** Tuck hand cards behind `targets`: card i goes behind targets[i]; 0..len may be picked. */
   | { kind: 'assignHandTucks'; playerId: PlayerId; targets: BirdRef[]; then?: PendingTag }
   /** Cache `count` food (`food`) from the supply on any of your birds (stackable).
-   *  'any' = the chooser picks which types. */
-  | { kind: 'chooseCacheOnBirds'; playerId: PlayerId; count: number; food: FoodType | 'any'; then?: PendingTag }
+   *  'any' = the chooser picks which types. `habitat` restricts targets to a row;
+   *  `optional` allows fewer/none; `maxPerBird` caps caches per bird. */
+  | { kind: 'chooseCacheOnBirds'; playerId: PlayerId; count: number; food: FoodType | 'any'; habitat?: Habitat; optional?: boolean; maxPerBird?: number; then?: PendingTag }
   /** Name a food type (e.g. "all players gain 1 of the chosen food"). */
   | { kind: 'chooseFoodType'; playerId: PlayerId; then?: PendingTag }
   /** Pick one of several mutually exclusive effects. */
@@ -172,7 +205,7 @@ export type PendingStep =
   /** Keep `keep` of `cardIds` bonus cards, discard the rest. `fromDiscard`: the
    *  pool is the discarded-bonus-cards pile and unchosen cards return there
    *  (Wrybill). */
-  | { kind: 'chooseBonusCards'; playerId: PlayerId; cardIds: number[]; keep: number; fromDiscard?: boolean; then?: PendingTag }
+  | { kind: 'chooseBonusCards'; playerId: PlayerId; cardIds: number[]; keep: number; fromDiscard?: boolean; fromHand?: boolean; copyFrom?: PlayerId; then?: PendingTag }
   /** Discard `count` bonus cards from hand. `optional`: a 0-length answer declines. */
   | { kind: 'discardBonusCards'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Move `bird` to another habitat (rightmost-bird powers). */
@@ -182,7 +215,7 @@ export type PendingStep =
   /** Pick another bird in `habitat` whose brown/predator power to repeat. */
   | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; then?: PendingTag }
   /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. `eggDiscount` reduces the column egg cost (Oceania powers). */
-  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; eggDiscount?: number; then?: PendingTag }
+  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; eggDiscount?: number; foodDiscount?: FoodType; then?: PendingTag }
   /** Cache up to `count` food from the supply onto `bird` (choose which types). */
   | { kind: 'chooseCacheFood'; playerId: PlayerId; bird: BirdRef; count: number; optional?: boolean; then?: PendingTag }
   /** Spend a wild food for any other type from the supply.
@@ -196,11 +229,32 @@ export type PendingStep =
   /** Oceania: take a face-up tray card matching `nests`/`wingspanLt`;
    *  `mayResetTray` allows discarding+refilling the tray first.
    *  `destination` 'hand' or 'tuck' (onto `bird`). */
-  | { kind: 'chooseTrayCardEx'; playerId: PlayerId; nests?: NestType[]; wingspanLt?: number; mayResetTray?: boolean; destination: 'hand' | 'tuck'; bird?: BirdRef; then?: PendingTag }
+  | { kind: 'chooseTrayCardEx'; playerId: PlayerId; nests?: NestType[]; wingspanLt?: number; costFoods?: FoodType[]; mayResetTray?: boolean; destination: 'hand' | 'tuck'; bird?: BirdRef; then?: PendingTag }
   /** Oceania: a card the player just drew — tuck it behind `bird` or keep it in hand. */
   | { kind: 'chooseTuckOrHand'; playerId: PlayerId; bird: BirdRef; cardId: number; then?: PendingTag }
   /** Oceania: cache up to `count` food from the player's own supply on `bird`. */
-  | { kind: 'chooseCacheFromSupply'; playerId: PlayerId; bird: BirdRef; count: number; food: FoodType | 'any'; optional?: boolean; then?: PendingTag };
+  | { kind: 'chooseCacheFromSupply'; playerId: PlayerId; bird: BirdRef; count: number; food: FoodType | 'any'; options?: FoodType[]; habitat?: Habitat; optional?: boolean; then?: PendingTag }
+
+  // === asia expansion steps ===
+  /** Duet mode: place a duet token on a matching unclaimed map space, or the
+   *  reset space. `cardId`/`foods` describe the just-played bird. */
+  | { kind: 'chooseDuetSpace'; playerId: PlayerId; cardId: number; habitat: Habitat; foods: FoodType[]; then?: PendingTag }
+  /** Asia: discard any number of tray cards (0..3), then refill the tray. */
+  | { kind: 'chooseTrayDiscard'; playerId: PlayerId; then?: PendingTag }
+  /** Asia: move `bird` (the card only) to another player's mat; you pick its habitat. */
+  | { kind: 'moveBirdToPlayer'; playerId: PlayerId; bird: BirdRef; target: PlayerId; then?: PendingTag }
+  /** Generic yes/no gate for "you may" sub-effects. */
+  | { kind: 'confirm'; playerId: PlayerId; then?: PendingTag }
+  /** Pick hand cards without spending them (the continuation decides their use). */
+  | { kind: 'chooseHandPick'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
+  /** Pick `count` cards of a drawn pool to tuck behind `bird`; the rest go to hand or the discard pile. */
+  | { kind: 'choosePoolTuck'; playerId: PlayerId; cardIds: number[]; count: number; bird: BirdRef; rest: 'hand' | 'discard'; then?: PendingTag }
+  /** Asia: copy a white "when played" power on a bird of a neighbouring player. */
+  | { kind: 'chooseCopyPlayed'; playerId: PlayerId; then?: PendingTag }
+  /** Asia: pick feeder dice to reroll (empty pick = stop), up to `then.n` times. */
+  | { kind: 'chooseReroll'; playerId: PlayerId; then?: PendingTag }
+  /** Asia: "up to N times, draw 1 card" — answer yes to draw another, no to stop. */
+  | { kind: 'drawUpTo'; playerId: PlayerId; left: number; bird: BirdRef; pool: number[]; then?: PendingTag };
 
 /** Bookkeeping tag so a resolved pending step can continue the effect that
  *  created it. Encoded as a plain string + optional numeric params. */
@@ -248,7 +302,14 @@ export type PowerOption =
   | 'fruitToNectar'
   /** Oceania Red-Winged Parrot follow-up (2 eggs on the source bird, or 2 dice). */
   | 'selfEggs2'
-  | 'gain2Dice';
+  | 'gain2Dice'
+  /** Asia: take a face-up card from the tray (duet card bonus). */
+  | 'trayCard'
+  /** Asia: "gain 1 seed or tuck a deck card" and "cache wild or tuck hand" choices. */
+  | 'gainSeed'
+  | 'tuckDeckCard'
+  | 'asiaCacheWild'
+  | 'asiaTuckHand';
 
 export interface PlayerState {
   id: PlayerId;
@@ -272,6 +333,12 @@ export interface PlayerState {
   cubesOnPlayBird: number;
   /** Nectar spent (Oceania end-game scoring). */
   nectarSpent: Record<Habitat, number>;
+  /** Food types gained from the BIRDFEEDER this turn (asia "gained an X from
+   *  the birdfeeder on this turn" powers). Reset when a turn starts. */
+  feederGainedThisTurn: FoodType[];
+  /** Bonus cards copied from neighbours by game-end powers (asia Adjutant etc.)
+   *  — scored against this player's birds as extra hand bonus cards. */
+  copiedBonus: number[];
 }
 
 export interface ScoreBreakdown {
@@ -281,15 +348,24 @@ export interface ScoreBreakdown {
   cached: number;
   tucked: number;
   nectar: number;
+  /** Duet mode: 1 pt per token in the largest contiguous group on the duet map. */
+  duetTokens: number;
   goalPoints: number;
   total: number;
 }
+
+/** Player-count / rules variant: standard (1-5), asia duet (2, duet map),
+ *  asia flock (6-7, flock goal board). */
+export type GameMode = 'standard' | 'duet' | 'flock';
 
 export interface GameSettings {
   /** Expansion set ids included in the deck, e.g. ['core'] or ['core','oceania']. */
   sets: string[];
   /** Goal board side: 'green' = ranked competitive scoring, 'blue' = 1 pt per item (max 5). */
   goalSide: 'green' | 'blue';
+  /** 'duet' = asia 2-player mode with the duet map + duet goal tiles;
+   *  'flock' = 6-7 player rules (flock goal board). */
+  mode?: GameMode;
   aiLevel?: number;
 }
 
@@ -298,6 +374,9 @@ export interface GameState {
   rngState: number;
   playerOrder: PlayerId[];
   currentPlayerIndex: number;
+  /** Index into playerOrder of the player holding the first-player token
+   *  this round (duet: passed to the round-goal loser). */
+  firstPlayerIndex: number;
   /** 0..3 */
   round: number;
   players: PlayerState[];
@@ -310,6 +389,8 @@ export interface GameState {
   /** Discarded bonus cards (Oceania Wrybill looks through this pile). */
   bonusDiscard: number[];
   goalTiles: number[];
+  /** Duet mode board (asia), null in other modes. */
+  duet?: DuetState;
   /** Goal scores per round: [round][playerOrder index] = points awarded. */
   goalScores: number[][];
   /** Pending required choices, resolved in order (only head is answerable). */
@@ -435,10 +516,22 @@ export type Choice =
   | { kind: 'wildTrade'; give: FoodType; to: FoodType }
   /** Answer to chooseTrayCardEx: take `cardId`, or 'reset'/'refill' the tray
    *  first (the step then re-queues so a card can be picked). */
-  | { kind: 'trayPick'; cardId?: number; mode?: 'reset' | 'refill' };
+  | { kind: 'trayPick'; cardId?: number; mode?: 'reset' | 'refill' }
+  /** Duet mode: place a token on map space N, or in the reset space. */
+  | { kind: 'duetSpace'; space: number | 'reset' }
+  /** Asia "any resources" discards: a mix of supply food, eggs, and hand cards. */
+  | { kind: 'resources'; foods: FoodType[]; eggs: BirdRef[]; cards: number[] }
+  /** Copy target naming another player's bird (asia white-power copy). */
+  | { kind: 'playedTarget'; player: PlayerId; bird: BirdRef };
 
 export interface EndTurnAction extends BaseAction {
   type: 'endTurn';
+}
+
+/** Duet mode: spend a token from the reset space to reset the feeder or tray. */
+export interface DuetResetAction extends BaseAction {
+  type: 'duetReset';
+  target: 'feeder' | 'tray';
 }
 
 /** During setup, players may look (no-op) — reserved. */
@@ -451,7 +544,8 @@ export type Action =
   | ActivatePowerAction
   | SkipPowerAction
   | ResolveChoiceAction
-  | EndTurnAction;
+  | EndTurnAction
+  | DuetResetAction;
 
 export interface CreateGameOptions {
   playerNames: string[];

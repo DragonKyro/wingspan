@@ -628,6 +628,19 @@ function ActionsPanel({
           </button>
         </div>
       )}
+      {/* Duet mode: a token on the reset space resets the feeder or tray,
+          usable at any point during the player's turn. */}
+      {!draft && mine && game.phase === 'main' && !inActivation && game.duet?.reset.includes(acting) && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <span className="muted">Duet reset token:</span>
+          <button onClick={() => dispatch({ type: 'duetReset', playerId: acting, target: 'feeder' })}>
+            Reset feeder
+          </button>
+          <button onClick={() => dispatch({ type: 'duetReset', playerId: acting, target: 'tray' })}>
+            Reset tray
+          </button>
+        </div>
+      )}
       {inActivation && mine && (
         <div className="row" style={{ marginTop: 8 }}>
           <span>
