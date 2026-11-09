@@ -316,9 +316,10 @@ export interface GameSettings {
   sets: string[];
   /** Achievement board side: 'A' = printed goals, 'B' = drawn tiles. */
   achievementSide: 'A' | 'B';
-  /** S&R: the discard item shown on each player's reef overlay
-   *  (egg | young | card). Index aligned with playerOrder. */
-  reefCosts?: ('egg' | 'young' | 'card')[];
+  /** S&R: the discard item shown on each player's reef overlay, per dive
+   *  site — reefCosts[playerIndex][col] = 'egg' | 'young' | 'card'.
+   *  Defaults to REEF_DISCARD_ITEMS for every site/player when unset. */
+  reefCosts?: ('egg' | 'young' | 'card')[][];
   aiLevel?: number;
 }
 

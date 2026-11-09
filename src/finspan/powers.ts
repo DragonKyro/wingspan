@@ -172,10 +172,12 @@ export function fireAbility(
   }
 
   // Two-part IfActivated: gated on >=count coral of `site` in THIS dive site.
+  // The colored icon literally means "this dive site is the <site> site AND
+  // it holds >= count coral" — a fish in the wrong site can never satisfy it.
   if (parsed.alsoIf && ref) {
     const p = getPlayer(s, playerId);
     const coralCol = siteIndex(parsed.alsoIf.site);
-    if (p.ocean.corals[coralCol]! >= parsed.alsoIf.count) {
+    if (ref.col === coralCol && p.ocean.corals[coralCol]! >= parsed.alsoIf.count) {
       s = appendLog(s, `coral-gated part activates (${parsed.alsoIf.count} ${parsed.alsoIf.site} coral)`);
       for (const e of parsed.alsoIf.effects) {
         s = applyEffect(s, playerId, ref, e, true);

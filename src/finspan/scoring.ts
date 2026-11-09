@@ -61,12 +61,26 @@ export function achievementUnits(p: PlayerState, kind: AchievementKind): number 
         return c != null && !c.forage && c.points >= 1 && c.points <= 3;
       }).length;
     case 'uniqueTags': {
+      // S&R tile: count unique tag TYPES across visible fish. Über predator
+      // "counts for all predator achievements" so it contributes both
+      // 'predator' and 'über predator'; likewise electric discharge
+      // contributes 'active electrolocation' + 'electric discharge'.
       const tags = new Set<string>();
       for (const { slot } of slots) {
         const c = topFish(slot);
         if (!c || c.forage) continue;
-        for (const t of ['bioluminescent', 'camouflage', 'electric', 'predator', 'venomous'] as const) {
-          if (c.tags[t] > 0) tags.add(t);
+        if (c.tags.bioluminescent > 0) tags.add('bioluminescent');
+        if (c.tags.camouflage > 0) tags.add('camouflage');
+        if (c.tags.venomous > 0) tags.add('venomous');
+        if (c.tags.electric === 1) tags.add('electrolocation');
+        if (c.tags.electric >= 2) {
+          tags.add('electrolocation');
+          tags.add('electricDischarge');
+        }
+        if (c.tags.predator === 1) tags.add('predator');
+        if (c.tags.predator >= 2) {
+          tags.add('predator');
+          tags.add('uberPredator');
         }
       }
       return tags.size;

@@ -48,6 +48,10 @@ export const MAX_CORAL = 6;
 /** S&R: end-game bonus points for a complete reef (6 coral) per site. */
 export const REEF_COMPLETION_BONUS = [6, 8, 5]; // blue, purple, green
 
+/** S&R: the item each dive site's reef section asks you to discard to place
+ *  1 coral during a dive — blue = egg, purple = young, green = card. */
+export const REEF_DISCARD_ITEMS: ('egg' | 'young' | 'card')[] = ['egg', 'young', 'card'];
+
 /** Points each school token is worth at the end of the game. */
 export const SCHOOL_POINTS = 6;
 /** Points per consumed fish (cards and forage). */

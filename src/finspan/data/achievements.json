@@ -101,7 +101,7 @@
     },
     {
       "id": "s3",
-      "week": 2,
+      "week": 1,
       "name": "Fish in the Sunlight Zone",
       "kind": "fishSunlight",
       "per": 1,
@@ -109,7 +109,7 @@
     },
     {
       "id": "s4",
-      "week": 3,
+      "week": 2,
       "name": "Coral",
       "kind": "coral",
       "per": 1,

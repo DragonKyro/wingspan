@@ -6,7 +6,7 @@
 
 import { parseAbility } from './abilities';
 import { fish } from './cards';
-import { DIVE_BONUSES, MAX_CORAL } from './constants';
+import { DIVE_BONUSES, MAX_CORAL, REEF_DISCARD_ITEMS } from './constants';
 import {
   allSlots,
   appendLog,
@@ -133,7 +133,9 @@ export function doDive(state: GameState, a: DiveAction): GameState {
       // Reef overlay replaces the printed twilight bonus: optionally discard
       // the indicated item to place 1 coral (no fish requirement).
       if (p.ocean.corals[col]! < MAX_CORAL) {
-        const item = s.settings.reefCosts?.[s.playerOrder.indexOf(a.playerId)] ?? 'egg';
+        const item =
+          s.settings.reefCosts?.[s.playerOrder.indexOf(a.playerId)]?.[col] ??
+          REEF_DISCARD_ITEMS[col]!;
         const pl = [...allSlots(p.ocean)];
         const feasible =
           (item === 'egg' && pl.some((x) => x.slot.eggs > 0)) ||

@@ -114,11 +114,13 @@ const achievements = {
     { id: 'b7', week: 3, name: 'Schools', kind: 'schools', per: 2 },
     { id: 'b8', week: 3, name: 'Fish with Tokens', kind: 'fishWithTokens', per: 1 },
     { id: 'b9', week: 3, name: 'Consumed Fish', kind: 'consumedFish', per: 1 },
-    // --- Sharks & Reefs tiles ---
+    // --- Sharks & Reefs tiles (week-number lines per the S&R rulebook ---
+    // components page: <4 fish and sunlight-zone are week-1 lines; unique
+    // tags and coral are week-2 lines).
     { id: 's1', week: 1, name: 'Fish Between 1-3 Points', kind: 'fishPoints1to3', per: 1, set: 'sr' },
     { id: 's2', week: 2, name: 'Unique Tags Among Fish', kind: 'uniqueTags', per: 1, set: 'sr' },
-    { id: 's3', week: 2, name: 'Fish in the Sunlight Zone', kind: 'fishSunlight', per: 1, set: 'sr' },
-    { id: 's4', week: 3, name: 'Coral', kind: 'coral', per: 1, set: 'sr' },
+    { id: 's3', week: 1, name: 'Fish in the Sunlight Zone', kind: 'fishSunlight', per: 1, set: 'sr' },
+    { id: 's4', week: 2, name: 'Coral', kind: 'coral', per: 1, set: 'sr' },
   ],
   /** Side-B bonus: player(s) with the most points from the tile that week. */
   sideBLeaderBonus: 3,

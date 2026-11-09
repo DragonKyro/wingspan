@@ -179,7 +179,10 @@ export function chooseForPending(state: GameState, step: PendingStep): Choice {
         return r ? { kind: 'reefDiscard', use: true, eggSlot: r } : { kind: 'reefDiscard', use: false };
       }
       if (step.item === 'young') {
-        const r = slots.find(({ slot }) => slot.young > 0)?.ref;
+        // Prefer the fewest-young slot so 2-young pairs keep their school.
+        const r = slots
+          .filter(({ slot }) => slot.young > 0)
+          .sort((a, b) => a.slot.young - b.slot.young)[0]?.ref;
         return r ? { kind: 'reefDiscard', use: true, youngSlot: r } : { kind: 'reefDiscard', use: false };
       }
       const id = cheapestCards(p, 1)[0];
