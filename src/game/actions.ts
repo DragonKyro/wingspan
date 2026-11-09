@@ -151,7 +151,8 @@ export function keepSetup(state: GameState, action: KeepSetupAction): GameState 
   let s: GameState = {
     ...state,
     discard: [...state.discard, ...unkept],
-    bonusDeck: [...state.bonusDeck, ...unkeptBonus],
+    // The bonus card not kept is discarded (it never returns to the deck).
+    bonusDiscard: [...state.bonusDiscard, ...unkeptBonus],
     setupRemaining: state.setupRemaining.filter((id) => id !== action.playerId),
     players: state.players.map((x) =>
       x.id === action.playerId
@@ -398,13 +399,15 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
       discard: [...s.discard, action.bonusTradeCardId],
     };
   }
+  if (action.reroll) {
+    // Free reroll: checked against the feeder as the player saw it — before
+    // any paid mat reset — so a reroll flag can't roll fresh dice.
+    if (!allSameFace(s.feederIn)) throw new Error('can only reroll when all dice show the same face');
+    s = feederReset(s, action.playerId);
+  }
   if (action.rerollCost != null) {
     const pl = getPlayer(s, action.playerId);
     s = setPlayer(s, spendNectarAware(pl, action.rerollCost, 'forest'));
-    s = feederReset(s, action.playerId);
-  }
-  if (action.reroll) {
-    if (!allSameFace(s.feederIn)) throw new Error('can only reroll when all dice show the same face');
     s = feederReset(s, action.playerId);
   }
   if (action.picks.length !== diceToTake) throw new Error(`take ${diceToTake} dice`);
@@ -615,21 +618,24 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
   if (state.pending.length > 0) throw new Error('resolve the pending choice first');
   if (state.activation) throw new Error('finish activating powers first');
   const p = getPlayer(state, playerId);
-  // End-of-turn discard powers trigger first. When the hand is empty there
-  // is nothing to discard — clear the flag inline (a 0-count pending step
-  // would be dropped without running its continuation).
-  if (p.endOfTurnDiscards > 0 && p.hand.length > 0) {
-    return pushPending(state, {
-      kind: 'chooseHandDiscard',
-      playerId,
-      count: Math.min(p.endOfTurnDiscards, p.hand.length),
-      then: { effect: 'endTurnDiscardsDone' },
-    });
+  // End-of-turn discard powers trigger first. The pending step's
+  // continuation re-enters this function to finish the turn. When the hand
+  // is empty there is nothing to discard — clear the flag inline (a 0-count
+  // pending step would be dropped without running its continuation).
+  if (p.endOfTurnDiscards > 0) {
+    if (p.hand.length > 0) {
+      return pushPending(state, {
+        kind: 'chooseHandDiscard',
+        playerId,
+        count: Math.min(p.endOfTurnDiscards, p.hand.length),
+        then: { effect: 'endTurnDiscardsDone' },
+      });
+    }
+    state = setPlayer(state, { ...p, endOfTurnDiscards: 0 });
   }
   let s = refillTray(state);
   // Americas: empty hummingbird-garden slots refill at the end of each turn.
   if (isAmericas(s)) s = refillHumGarden(s);
-  if (p.endOfTurnDiscards > 0) s = finishEndOfTurnDiscards(s, playerId);
   // Advance to the next player with cubes left.
   let next = state.currentPlayerIndex;
   let guard = 0;
@@ -646,10 +652,13 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
   return s;
 }
 
-/** Called by the pending resolver when the queued end-of-turn discard is done. */
+/** Called by the pending resolver when the queued end-of-turn discard is
+ *  done: clear the flag, then finish the interrupted endTurn (tray/garden
+ *  refill, player advancement, pink-flag reset). */
 export function finishEndOfTurnDiscards(state: GameState, playerId: PlayerId): GameState {
   const p = getPlayer(state, playerId);
-  return setPlayer(state, { ...p, endOfTurnDiscards: 0 });
+  const s = setPlayer(state, { ...p, endOfTurnDiscards: 0 });
+  return endTurn(s, playerId);
 }
 
 // === duet reset token ===
@@ -680,13 +689,21 @@ export function duetReset(state: GameState, action: DuetResetAction): GameState 
 
 // === round / game end ===
 
+/** Turn order starting at the first-player marker (used to sequence the
+ *  round-end teal and game-end yellow power queues). */
+function turnOrderFromFirst(state: GameState): PlayerId[] {
+  return state.playerOrder.map(
+    (_, i) => state.playerOrder[(state.firstPlayerIndex + i) % state.playerOrder.length]!,
+  );
+}
+
 function endRound(state: GameState): GameState {
   // End-of-round order (EE reference tile): 1. round-end (teal) bird powers,
   // 2. score the end-of-round goal, 3. remove action cubes, 4. discard and
   // replace the tray cards, 5. rotate the first-player marker. The teal
   // powers therefore run BEFORE goal scoring — they can change it.
   const tealQueue: { playerId: PlayerId; bird: BirdRef }[] = [];
-  for (const pid of state.playerOrder) {
+  for (const pid of turnOrderFromFirst(state)) {
     const p = getPlayer(state, pid);
     for (const h of HABITATS) {
       p.board[h].forEach((b, index) => {
@@ -725,8 +742,16 @@ export function finishRound(state: GameState): GameState {
       const pts = DUET_GOAL_POINTS[s.round] ?? DUET_GOAL_POINTS[3]!;
       const lower = DUET_LOWER_IS_BETTER.has(tile);
       const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
-      const best = lower ? Math.min(...units) : Math.max(...units);
-      const scores = units.map((u) => (u === best ? pts : 0));
+      // "You must have at least 1 of the targeted items to score points for
+      // a goal" — a 0-unit player can't win, even on a 'fewest' tile.
+      const qualified = units.filter((u) => u > 0);
+      const best =
+        qualified.length === 0
+          ? null
+          : lower
+            ? Math.min(...qualified)
+            : Math.max(...qualified);
+      const scores = units.map((u) => (best != null && u === best ? pts : 0));
       const goalScores = [...s.goalScores];
       goalScores[s.round] = scores;
       const winnerIdxs = units
@@ -817,9 +842,10 @@ export function finishRound(state: GameState): GameState {
 }
 
 export function beginGameEnd(state: GameState): GameState {
-  // Queue every yellow-powered bird, in player order then board order.
+  // Queue every yellow-powered bird, in turn order from the first-player
+  // marker then board order.
   const queue: { playerId: PlayerId; bird: BirdRef }[] = [];
-  for (const pid of state.playerOrder) {
+  for (const pid of turnOrderFromFirst(state)) {
     const p = getPlayer(state, pid);
     for (const h of HABITATS) {
       p.board[h].forEach((b, index) => {

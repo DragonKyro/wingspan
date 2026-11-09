@@ -156,14 +156,15 @@ describe('asia powers', () => {
 
   it('Eurasian Eagle-Owl: draws up to 3 and tucks/discards the pool', () => {
     let s = mainGame();
-    const discardBefore = s.discard.length;
+    // Seed the deck with tiny birds: 3 drawn hummingbirds (8cm each) total
+    // 24cm < 110, so the whole pool tucks behind the owl.
+    s = { ...s, deck: [36, 36, 36] };
     s = edit(s, 'p1', { board: { forest: [mkBird(EURASIAN_EAGLE_OWL)], grassland: [], wetland: [] } });
     s = runPower(s, 'p1', ref('forest', 0));
     expect(s.pending[0]?.kind).toBe('drawUpTo');
     s = autoResolve(s);
     const b = getPlayer(s, 'p1').board.forest[0]!;
-    // Either the pool was tucked (total < 110) or discarded.
-    expect(b.tucked.length + (s.discard.length - discardBefore)).toBeGreaterThanOrEqual(0);
+    expect(b.tucked).toEqual([36, 36, 36]);
     expect(s.pending.length).toBe(0);
   });
 

@@ -314,8 +314,8 @@ function lookTuck(maxWingspan: number): PowerFn {
 function rollOutDice(want: FoodType): PowerFn {
   return (state, playerId, ref) => {
     if (state.feederOut.length === 0) return appendLog(state, `${playerId}: no dice outside feeder`);
-    const [rolled, rng] = rollBirdfeeder(state.rngState, BASE_DIE_FACES, state.feederOut.length);
-    let s: GameState = { ...state, feederOut: rolled, rngState: rng };
+    const { s: s0, faces: rolled } = rollDice(state, state.feederOut.length);
+    let s: GameState = { ...s0, feederOut: rolled };
     const hit = rolled.some((f) => faceCovers(f, want));
     if (hit) {
       s = cacheOnBird(s, playerId, ref, want);
@@ -587,8 +587,8 @@ function rollOutDiceEuropean(
 ): PowerFn {
   return (state, playerId, ref) => {
     if (state.feederOut.length === 0) return appendLog(state, `${playerId}: no dice outside feeder`);
-    const [rolled, rng] = rollBirdfeeder(state.rngState, BASE_DIE_FACES, state.feederOut.length);
-    let s: GameState = { ...state, feederOut: rolled, rngState: rng };
+    const { s: s0, faces: rolled } = rollDice(state, state.feederOut.length);
+    let s: GameState = { ...s0, feederOut: rolled };
     const hits = rolled.filter((f) => faceCovers(f, want)).length;
     if (hits > 0) {
       s = perHit(s, playerId, ref, hits);
@@ -2770,8 +2770,6 @@ export const POWER_IMPLS: Record<string, PowerFn> = {
     resetCacheChoice(['fish', 'rodent']),
   'Reset the birdfeeder. Cache 1 [invertebrate] or [fish] from the birdfeeder on this bird, if available.':
     resetCacheChoice(['invertebrate', 'fish']),
-  'Reset the birdfeeder. Cache 1 [invertebrate] or [rodent] from the birdfeeder on this bird, if available.':
-    resetCacheChoice(['invertebrate', 'rodent']),
   'Reset the birdfeeder. Cache 1 [invertebrate], [fish], or [rodent] from the birdfeeder on this bird, if available.':
     resetCacheChoice(['invertebrate', 'fish', 'rodent']),
   'Reset the birdfeeder. Cache 1 [invertebrate] or [rodent] from the birdfeeder on this bird, if available. If you do, all players gain 1 of that food from the supply.':
