@@ -9,7 +9,7 @@ import type {
   GoalTile,
   PlayerState,
 } from './types';
-import { BASE_DIE_FACES } from './types';
+import { BASE_DIE_FACES, OCEANIA_DIE_FACES } from './types';
 
 export function createGame(opts: CreateGameOptions): GameState {
   let rng = opts.seed >>> 0;
@@ -35,9 +35,11 @@ export function createGame(opts: CreateGameOptions): GameState {
   [shuffledGoals, rng] = shuffle(rng, goalPool);
   const goalTiles = shuffledGoals.slice(0, 4).map((g) => g.id);
 
-  // Feeder: roll 5 dice.
+  const oceania = sets.includes('oceania');
+
+  // Feeder: roll 5 dice (Oceania dice replace the split face with nectar).
   let feederIn;
-  [feederIn, rng] = rollBirdfeeder(rng, BASE_DIE_FACES, 5);
+  [feederIn, rng] = rollBirdfeeder(rng, oceania ? OCEANIA_DIE_FACES : BASE_DIE_FACES, 5);
 
   // Tray: 3 face-up cards (top of deck = end of array).
   const tray = [deck.pop()!, deck.pop()!, deck.pop()!];
@@ -52,7 +54,15 @@ export function createGame(opts: CreateGameOptions): GameState {
       isAI: opts.playerTypes[i] === 'ai',
       hand,
       bonusHand,
-      food: { invertebrate: 1, seed: 1, fish: 1, fruit: 1, rodent: 1, nectar: 0 },
+      // Oceania: each player also starts with 1 nectar (gained after setup).
+      food: {
+        invertebrate: 1,
+        seed: 1,
+        fish: 1,
+        fruit: 1,
+        rodent: 1,
+        nectar: oceania ? 1 : 0,
+      },
       board: { forest: [], grassland: [], wetland: [] },
       actionCubes: CUBES_PER_ROUND[0]!,
       roundCubes: { forest: 0, grassland: 0, wetland: 0, playBird: 0 },
@@ -81,6 +91,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     feederIn,
     feederOut: [],
     bonusDeck,
+    bonusDiscard: [],
     goalTiles,
     goalScores: [],
     pending: [],

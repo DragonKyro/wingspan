@@ -131,28 +131,33 @@ export type PendingStep =
   | { kind: 'pickDie'; playerId: PlayerId; count: number; faces?: DieFace[]; then?: PendingTag }
   /** From the supply: choose which food types to take (optionally cache on `cache`). */
   | { kind: 'chooseSupplyFood'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; cache?: BirdRef | null; then?: PendingTag }
-  /** Lay an egg on a chosen bird; `nest` = filter, 'any' or 'other' (array = any listed type). */
-  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; then?: PendingTag }
-  /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. */
-  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Lay an egg on a chosen bird; `nest` = filter, 'any' or 'other' (array = any listed type).
+   *  `onlyBird` pins every egg to that one bird (the same ref may repeat);
+   *  `adjacentTo` restricts to the birds in the neighbouring slots;
+   *  `wingspanLt` restricts to birds whose wingspan is below the threshold. */
+  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; onlyBird?: BirdRef; adjacentTo?: BirdRef; wingspanLt?: number; then?: PendingTag }
+  /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. `habitat` restricts to one row. */
+  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; habitat?: Habitat; optional?: boolean; then?: PendingTag }
   /** Discard a card from hand (e.g. end-of-turn discard powers). `optional`: declining skips `then`. */
   | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`. */
   | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; optional?: boolean; then?: PendingTag }
-  /** Pick a player; `other` excludes the chooser. */
-  | { kind: 'choosePlayer'; playerId: PlayerId; other?: boolean; then?: PendingTag }
+  /** Pick a player; `other` excludes the chooser. `optional`: a {boolean,no} answer declines. */
+  | { kind: 'choosePlayer'; playerId: PlayerId; other?: boolean; optional?: boolean; then?: PendingTag }
   /** Pick a habitat; `noEggs` restricts to habitats with zero eggs (any owner's birds). */
   | { kind: 'chooseHabitat'; playerId: PlayerId; noEggs?: boolean; then?: PendingTag }
-  /** Discard food from the supply (up to `count` when `optional`). */
-  | { kind: 'chooseFoodDiscard'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; optional?: boolean; then?: PendingTag }
+  /** Discard food from the supply (up to `count` when `optional`).
+   *  `spentHabitat`: nectar discarded counts toward that habitat's end-game nectar. */
+  | { kind: 'chooseFoodDiscard'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; optional?: boolean; spentHabitat?: Habitat; then?: PendingTag }
   /** Steal 1 food of `food` type ('any' = chooser picks a type the victim has) from `from`. */
   | { kind: 'chooseFoodSteal'; playerId: PlayerId; from: PlayerId; food: FoodType | 'any'; then?: PendingTag }
   /** Take a face-up tray card (`habitat` restricts to cards that can live there). */
   | { kind: 'chooseTrayCard'; playerId: PlayerId; habitat?: Habitat; then?: PendingTag }
   /** Remove `count` dice from the feeder without gaining their food. */
   | { kind: 'chooseDieRemove'; playerId: PlayerId; count: number; then?: PendingTag }
-  /** Pick `min`..`max` own birds (optionally within one habitat). */
-  | { kind: 'chooseBirds'; playerId: PlayerId; min: number; max: number; habitat?: Habitat; then?: PendingTag }
+  /** Pick `min`..`max` own birds (optionally within one habitat).
+   *  `exclude`/`nest`/`eggsMin` filter the eligible birds. */
+  | { kind: 'chooseBirds'; playerId: PlayerId; min: number; max: number; habitat?: Habitat; exclude?: BirdRef; nest?: NestType; eggsMin?: number; then?: PendingTag }
   /** Tuck hand cards behind `targets`: card i goes behind targets[i]; 0..len may be picked. */
   | { kind: 'assignHandTucks'; playerId: PlayerId; targets: BirdRef[]; then?: PendingTag }
   /** Cache `count` food (`food`) from the supply on any of your birds (stackable).
@@ -164,24 +169,38 @@ export type PendingStep =
   | { kind: 'chooseOption'; playerId: PlayerId; options: PowerOption[]; then?: PendingTag }
   /** Drew cards face-down to distribute: this player picks one of `cardIds`. */
   | { kind: 'chooseDrawnCard'; playerId: PlayerId; cardIds: number[]; then?: PendingTag }
-  /** Keep `keep` of `cardIds` bonus cards, discard the rest. */
-  | { kind: 'chooseBonusCards'; playerId: PlayerId; cardIds: number[]; keep: number; then?: PendingTag }
-  /** Discard `count` bonus cards from hand. */
-  | { kind: 'discardBonusCards'; playerId: PlayerId; count: number; then?: PendingTag }
+  /** Keep `keep` of `cardIds` bonus cards, discard the rest. `fromDiscard`: the
+   *  pool is the discarded-bonus-cards pile and unchosen cards return there
+   *  (Wrybill). */
+  | { kind: 'chooseBonusCards'; playerId: PlayerId; cardIds: number[]; keep: number; fromDiscard?: boolean; then?: PendingTag }
+  /** Discard `count` bonus cards from hand. `optional`: a 0-length answer declines. */
+  | { kind: 'discardBonusCards'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Move `bird` to another habitat (rightmost-bird powers). */
   | { kind: 'moveBirdHabitat'; playerId: PlayerId; bird: BirdRef; then?: PendingTag }
   /** Pick which player goes first in an everyone-gains effect. */
   | { kind: 'chooseFirstPlayer'; playerId: PlayerId; effect: 'gainDie'; then?: PendingTag }
   /** Pick another bird in `habitat` whose brown/predator power to repeat. */
   | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; then?: PendingTag }
-  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. */
-  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. `eggDiscount` reduces the column egg cost (Oceania powers). */
+  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; eggDiscount?: number; then?: PendingTag }
   /** Cache up to `count` food from the supply onto `bird` (choose which types). */
   | { kind: 'chooseCacheFood'; playerId: PlayerId; bird: BirdRef; count: number; optional?: boolean; then?: PendingTag }
-  /** Spend a wild food for any other type from the supply. */
-  | { kind: 'chooseWildTrade'; playerId: PlayerId; from: FoodType | 'any'; then?: PendingTag }
+  /** Spend a wild food for any other type from the supply.
+   *  `spentHabitat`: a nectar given counts toward that habitat's end-game nectar. */
+  | { kind: 'chooseWildTrade'; playerId: PlayerId; from: FoodType | 'any'; spentHabitat?: Habitat; then?: PendingTag }
   /** Cache-or-keep for food just gained with a "may cache" power. */
-  | { kind: 'chooseCacheGained'; playerId: PlayerId; bird: BirdRef; food: FoodType; then?: PendingTag };
+  | { kind: 'chooseCacheGained'; playerId: PlayerId; bird: BirdRef; food: FoodType; then?: PendingTag }
+  /** Oceania: copy a brown power on a bird in `target`'s `habitat` row; the
+   *  effect runs for `playerId` as the copying bird's own power. */
+  | { kind: 'chooseCopyPower'; playerId: PlayerId; target: PlayerId; habitat: Habitat; then?: PendingTag }
+  /** Oceania: take a face-up tray card matching `nests`/`wingspanLt`;
+   *  `mayResetTray` allows discarding+refilling the tray first.
+   *  `destination` 'hand' or 'tuck' (onto `bird`). */
+  | { kind: 'chooseTrayCardEx'; playerId: PlayerId; nests?: NestType[]; wingspanLt?: number; mayResetTray?: boolean; destination: 'hand' | 'tuck'; bird?: BirdRef; then?: PendingTag }
+  /** Oceania: a card the player just drew — tuck it behind `bird` or keep it in hand. */
+  | { kind: 'chooseTuckOrHand'; playerId: PlayerId; bird: BirdRef; cardId: number; then?: PendingTag }
+  /** Oceania: cache up to `count` food from the player's own supply on `bird`. */
+  | { kind: 'chooseCacheFromSupply'; playerId: PlayerId; bird: BirdRef; count: number; food: FoodType | 'any'; optional?: boolean; then?: PendingTag };
 
 /** Bookkeeping tag so a resolved pending step can continue the effect that
  *  created it. Encoded as a plain string + optional numeric params. */
@@ -219,8 +238,17 @@ export type Phase =
 export type CubeTrack = Habitat | 'playBird';
 export const CUBE_TRACKS: CubeTrack[] = ['forest', 'grassland', 'wetland', 'playBird'];
 
-/** Options offered by european "choose one effect" powers. */
-export type PowerOption = 'gainDie' | 'drawCard' | 'layEgg';
+/** Options offered by "choose one effect" powers. */
+export type PowerOption =
+  | 'gainDie'
+  | 'drawCard'
+  | 'layEgg'
+  /** Oceania Mistletoebird. */
+  | 'gainFruit'
+  | 'fruitToNectar'
+  /** Oceania Red-Winged Parrot follow-up (2 eggs on the source bird, or 2 dice). */
+  | 'selfEggs2'
+  | 'gain2Dice';
 
 export interface PlayerState {
   id: PlayerId;
@@ -279,6 +307,8 @@ export interface GameState {
   feederIn: DieFace[];
   feederOut: DieFace[];
   bonusDeck: number[];
+  /** Discarded bonus cards (Oceania Wrybill looks through this pile). */
+  bonusDiscard: number[];
   goalTiles: number[];
   /** Goal scores per round: [round][playerOrder index] = points awarded. */
   goalScores: number[][];
@@ -350,18 +380,24 @@ export interface GainFoodAction extends BaseAction {
 
 export interface LayEggsAction extends BaseAction {
   type: 'layEggs';
-  /** Where each gained egg goes (count = slot eggs + optional trade egg). */
+  /** Where each gained egg goes (count = slot eggs + optional trade eggs). */
   placements: BirdRef[];
-  /** Food token paid for +1 egg (slots 4/5). */
+  /** Food token paid for +1 egg (base mat slots 4/5). */
   tradeFood?: FoodType;
+  /** Oceania mat: each entry is a hand card or a food paid for +1 egg (max 2 at the double-trade slot). */
+  extraTrades?: ({ card: number } | { food: FoodType })[];
 }
 
 export interface DrawCardsAction extends BaseAction {
   type: 'drawCards';
   /** Each pick: 'deck' or a tray index (0-2). Count = slot cards + optional trade card. */
   picks: ('deck' | number)[];
-  /** Egg discarded for +1 card (slots 4/5). */
+  /** Egg discarded for +1 card (base mat slots 4/5, or the oceania trade). */
   tradeEgg?: BirdRef;
+  /** Oceania mat: nectar discarded for +1 card (alternative to tradeEgg). */
+  tradeNectar?: boolean;
+  /** Oceania mat: food discarded to reset the tray before drawing. */
+  resetTrayCost?: FoodType;
 }
 
 /** Activate the next brown power in the current row (or answer an option the power offered). */
@@ -396,7 +432,10 @@ export type Choice =
   | { kind: 'repeatTarget'; bird: BirdRef }
   | { kind: 'option'; option: PowerOption }
   | { kind: 'cacheAssign'; items: { bird: BirdRef; food: FoodType }[] }
-  | { kind: 'wildTrade'; give: FoodType; to: FoodType };
+  | { kind: 'wildTrade'; give: FoodType; to: FoodType }
+  /** Answer to chooseTrayCardEx: take `cardId`, or 'reset'/'refill' the tray
+   *  first (the step then re-queues so a card can be picked). */
+  | { kind: 'trayPick'; cardId?: number; mode?: 'reset' | 'refill' };
 
 export interface EndTurnAction extends BaseAction {
   type: 'endTurn';

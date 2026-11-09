@@ -6,6 +6,9 @@ import { bird, bonusCard } from '@/game/cards';
 import {
   FOREST_DICE,
   GRASSLAND_EGGS,
+  OCEANIA_FOREST_DICE,
+  OCEANIA_GRASSLAND_EGGS,
+  OCEANIA_WETLAND_CARDS,
   WETLAND_CARDS,
 } from '@/game/constants';
 import {
@@ -15,6 +18,7 @@ import {
   canPayFood,
   columnEggCost,
   getPlayer,
+  isOceania,
   payFoodPlan,
   playedBirds,
   rowFull,
@@ -218,8 +222,9 @@ function mainAction(state: GameState, playerId: PlayerId): Action | null {
 }
 
 function gainFoodAction(state: GameState, playerId: PlayerId, p: PlayerState): Action {
-  const slot = actionSlot(p, 'forest');
-  const count = FOREST_DICE[slot]!;
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'forest', oceania);
+  const count = (oceania ? OCEANIA_FOREST_DICE[slot]! : FOREST_DICE[slot]!);
   const allSame =
     state.feederIn.length > 0 && state.feederIn.every((f) => f === state.feederIn[0]);
   // Indices into the live feeder shrink as dice are taken: die 0 every time
@@ -230,9 +235,10 @@ function gainFoodAction(state: GameState, playerId: PlayerId, p: PlayerState): A
   return { type: 'gainFood', playerId, reroll: allSame || undefined, picks };
 }
 
-function layEggsAction(_state: GameState, playerId: PlayerId, p: PlayerState): Action {
-  const slot = actionSlot(p, 'grassland');
-  const count = GRASSLAND_EGGS[slot]!;
+function layEggsAction(state: GameState, playerId: PlayerId, p: PlayerState): Action {
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'grassland', oceania);
+  const count = (oceania ? OCEANIA_GRASSLAND_EGGS[slot]! : GRASSLAND_EGGS[slot]!);
   // Spread eggs toward the goal tile when it cares about nests.
   const placements: { habitat: Habitat; index: number }[] = [];
   const candidates = playedBirds(p)
@@ -249,8 +255,9 @@ function layEggsAction(_state: GameState, playerId: PlayerId, p: PlayerState): A
 }
 
 function drawCardsAction(state: GameState, playerId: PlayerId, p: PlayerState): Action {
-  const slot = actionSlot(p, 'wetland');
-  const count = WETLAND_CARDS[slot]!;
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'wetland', oceania);
+  const count = (oceania ? OCEANIA_WETLAND_CARDS[slot]! : WETLAND_CARDS[slot]!);
   const picks: ('deck' | number)[] = [];
   const trayRanked = state.tray
     .map((id, i) => ({ id, i }))

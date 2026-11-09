@@ -11,14 +11,20 @@ import {
   appendLog,
   getPlayer,
   playedBirds,
+  playerToLeft,
+  playerToRight,
   recordFoodGain,
+  spendFood,
+  wingspanOf,
 } from './helpers';
 import type {
+  BirdCard,
   BirdRef,
   DieFace,
   FoodType,
   GameState,
   Habitat,
+  NestType,
   PendingStep,
   PendingTag,
   PlayerId,
@@ -108,6 +114,8 @@ export function takeDieFromFeeder(
     players: state.players.map((x) => (x.id === playerId ? recordFoodGain(addFood(x, food), food) : x)),
   };
   if (s.feederIn.length === 0) s = refillFeeder(s);
+  // Oceania pink: "when another player gains nectar" watches all nectar gains.
+  if (food === 'nectar') s = firePinkTriggers(s, playerId, { kind: 'gainNectar' });
   return s;
 }
 
@@ -118,6 +126,23 @@ export function refillFeeder(state: GameState): GameState {
     : [...BASE_DIE_FACES];
   const [rolled, rng] = rollBirdfeeder(state.rngState, faces, 5);
   return { ...state, feederIn: rolled, feederOut: [], rngState: rng };
+}
+
+/** Gain `n` of `food` from the supply into `playerId`'s supply — the single
+ *  entry point for supply gains (records the gain and fires the Oceania
+ *  "another player gains nectar" pink watch when `food` is nectar). */
+export function grantSupplyFood(
+  state: GameState,
+  playerId: PlayerId,
+  food: FoodType,
+  n = 1,
+): GameState {
+  let p = getPlayer(state, playerId);
+  p = addFood(p, food, n);
+  for (let i = 0; i < n; i++) p = recordFoodGain(p, food);
+  let s = setPlayer(state, p);
+  if (food === 'nectar' && n > 0) s = firePinkTriggers(s, playerId, { kind: 'gainNectar' });
+  return s;
 }
 
 /** Cache `food` on the bird at `ref` (counts as "gained" for the player's turn tracker). */
@@ -281,10 +306,11 @@ function rollOutDice(want: FoodType): PowerFn {
 
 /** Every player gains `food` from supply. */
 function allGainSupply(food: FoodType): PowerFn {
-  return (state) => ({
-    ...state,
-    players: state.players.map((p) => recordFoodGain(addFood(p, food), food)),
-  });
+  return (state) => {
+    let s = state;
+    for (const pid of s.playerOrder) s = grantSupplyFood(s, pid, food);
+    return s;
+  };
 }
 
 /** Every player draws `count` cards from the deck. */
@@ -426,8 +452,13 @@ function playAdditional(habitat: 'forest' | 'grassland' | 'wetland' | 'same'): P
 
 /** Trade 1 food (any) for 1 food of choice from supply. */
 function tradeWild(): PowerFn {
-  return (state, playerId) =>
-    pushPending(state, { kind: 'chooseWildTrade', playerId, from: 'any' });
+  return (state, playerId, ref) =>
+    pushPending(state, {
+      kind: 'chooseWildTrade',
+      playerId,
+      from: 'any',
+      spentHabitat: ref.habitat,
+    });
 }
 
 // === european expansion building blocks ===
@@ -575,15 +606,17 @@ function playIfAllFourActions(): PowerFn {
   };
 }
 
-/** Queue an optional discard of food from the supply, with a follow-up. */
+/** Queue an optional discard of food from the supply, with a follow-up.
+ *  Nectar spent here counts toward the power-bird's habitat row (Oceania). */
 function discardFoodFor(options: FoodType[] | 'any', count: number, then: PendingTag): PowerFn {
-  return (state, playerId) =>
+  return (state, playerId, ref) =>
     pushPending(state, {
       kind: 'chooseFoodDiscard',
       playerId,
       count,
       options,
       optional: true,
+      spentHabitat: ref.habitat,
       then,
     });
 }
@@ -597,6 +630,7 @@ function discardFoodToTuckUpTo(food: FoodType | 'any', count: number): PowerFn {
       count,
       options: food === 'any' ? 'any' : [food],
       optional: true,
+      spentHabitat: ref.habitat,
       then: { effect: 'tuckDeckPerFood', bird: ref },
     });
 }
@@ -636,6 +670,202 @@ function oystercatcher(): PowerFn {
       cardIds: drawn,
       then: { effect: 'oystercatcher', ids: drawn, n: [1] },
     });
+  };
+}
+
+// === oceania expansion building blocks ===
+
+/** "Choose 1 other player", then run `effect` with the chosen player as the answer. */
+function chooseOther(effect: string, extra: Partial<PendingTag> = {}): PowerFn {
+  return (state, playerId) =>
+    pushPending(state, {
+      kind: 'choosePlayer',
+      playerId,
+      other: true,
+      then: { effect, ...extra } as PendingTag,
+    });
+}
+
+/** Optional "discard up to `count` food" then an effect keyed to this bird.
+ *  Nectar spent counts toward the bird's habitat. */
+function discardUpTo(options: FoodType[] | 'any', count: number, effect: string): PowerFn {
+  return (state, playerId, ref) =>
+    pushPending(state, {
+      kind: 'chooseFoodDiscard',
+      playerId,
+      count,
+      options,
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect, bird: ref },
+    });
+}
+
+/** Tūī / Superb Lyrebird: copy a brown power from a neighbour's forest. */
+function copyPower(dir: 'left' | 'right'): PowerFn {
+  return (state, playerId, ref) => {
+    const target = dir === 'left' ? playerToLeft(state, playerId) : playerToRight(state, playerId);
+    if (!target) return appendLog(state, `${playerId}: no player to the ${dir}`);
+    return pushPending(state, {
+      kind: 'chooseCopyPower',
+      playerId,
+      target,
+      habitat: 'forest',
+      then: { effect: 'copyPower', bird: ref },
+    });
+  };
+}
+
+/** "If the player to your left/right has X in supply" conditional powers. */
+function neighborHas(
+  dirs: ('left' | 'right')[],
+  food: FoodType,
+  effect: 'gain' | 'cache' | 'tuck',
+): PowerFn {
+  return (state, playerId, ref) => {
+    const has = dirs.some((dir) => {
+      const pid = dir === 'left' ? playerToLeft(state, playerId) : playerToRight(state, playerId);
+      return pid != null && getPlayer(state, pid).food[food] > 0;
+    });
+    if (!has) return appendLog(state, `${playerId}: neighbour has no ${food}`);
+    let s = state;
+    if (effect === 'gain') s = grantSupplyFood(s, playerId, food);
+    else if (effect === 'cache') s = cacheOnBird(s, playerId, ref, food);
+    else {
+      s = tuckFromDeck(s, playerId, ref, 1);
+      s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+    }
+    return s;
+  };
+}
+
+/** Lay 1 egg on each real bird in a habitat ('same' = the power bird's row). */
+function eggsEachIn(habitat: Habitat | 'same'): PowerFn {
+  return (state, playerId, ref) => {
+    const h = habitat === 'same' ? ref.habitat : habitat;
+    let p = getPlayer(state, playerId);
+    for (const { ref: r } of playedBirds(p)) {
+      if (r.habitat !== h) continue;
+      const b = p.board[r.habitat][r.index]!;
+      if (b.eggs < bird(b.cardId).eggLimit) p = addEggs(p, r, 1);
+    }
+    return setPlayer(state, p);
+  };
+}
+
+/** Lay 1 egg on each own bird matching a wingspan predicate (incl. source). */
+function eggsEachWingspan(pred: (w: number) => boolean): PowerFn {
+  return (state, playerId) => {
+    let p = getPlayer(state, playerId);
+    for (const { ref, bird: b } of playedBirds(p)) {
+      if (pred(wingspanOf(bird(b.cardId))) && b.eggs < bird(b.cardId).eggLimit) {
+        p = addEggs(p, ref, 1);
+      }
+    }
+    return setPlayer(state, p);
+  };
+}
+
+/** "Draw 1 face-up [card] with [nest] or [star] nest; may reset/refill tray." */
+function trayDrawNest(nest: NestType): PowerFn {
+  return (state, playerId) =>
+    pushPending(state, {
+      kind: 'chooseTrayCardEx',
+      playerId,
+      nests: [nest, 'wild'],
+      mayResetTray: true,
+      destination: 'hand',
+    });
+}
+
+/** Oceania "look at the top card" predator: tuck on a matching card, else
+ *  discard; on success optionally cache a food on this bird. */
+function lookIf(pred: (c: BirdCard) => boolean, cache?: FoodType): PowerFn {
+  return (state, playerId, ref) => {
+    let s = state;
+    if (s.deck.length === 0 && s.discard.length > 0) {
+      const [deck, rng] = shuffle(s.rngState, s.discard);
+      s = { ...s, deck, discard: [], rngState: rng };
+    }
+    if (s.deck.length === 0) return s;
+    const id = s.deck[s.deck.length - 1]!;
+    s = { ...s, deck: s.deck.slice(0, -1) };
+    const success = pred(bird(id));
+    if (success) {
+      s = tuckCardOnBird(s, playerId, ref, id);
+      if (cache) s = cacheOnBird(s, playerId, ref, cache);
+      s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+      s = firePinkTriggers(s, playerId, { kind: 'predatorSuccess' });
+    } else {
+      s = { ...s, discard: [...s.discard, id] };
+    }
+    return appendLog(s, `${playerId}: predator ${success ? 'succeeded' : 'failed'} (${bird(id).name})`);
+  };
+}
+
+/** Does `c`'s food cost show any of `foods`? ('any' costs have no listed food.) */
+function costHasFood(c: BirdCard, foods: FoodType[]): boolean {
+  if (c.cost.kind === 'and') {
+    return c.cost.items.some((i) => i.food !== 'any' && foods.includes(i.food));
+  }
+  if (c.cost.kind === 'or') return c.cost.foods.some((f) => foods.includes(f));
+  return false;
+}
+
+/** Count of `food` icons in `c`'s printed food cost (Little Penguin). */
+function foodIconsInCost(c: BirdCard, food: FoodType): number {
+  if (c.cost.kind === 'and') {
+    return c.cost.items.reduce((n, i) => n + (i.food === food ? i.count : 0), 0);
+  }
+  if (c.cost.kind === 'or') return c.cost.foods.filter((f) => f === food).length;
+  return 0;
+}
+
+/** "Reset the birdfeeder and gain all X; may cache any or all on this bird." */
+function resetGainAllCache(food: FoodType): PowerFn {
+  return (state, playerId, ref) => {
+    let s = appendLog(refillFeeder(state), `${playerId}: reset the birdfeeder`);
+    const before = getPlayer(s, playerId).food[food];
+    s = takeAllMatching(s, playerId, food, true);
+    const gained = getPlayer(s, playerId).food[food] - before;
+    if (gained <= 0) return s;
+    return pushPending(s, {
+      kind: 'chooseCacheFromSupply',
+      playerId,
+      bird: ref,
+      count: gained,
+      food,
+      optional: true,
+    });
+  };
+}
+
+/** "Reset the birdfeeder. Gain/cache 1 die of `faces` on this bird." */
+function resetCacheDie(faces: DieFace[]): PowerFn {
+  return (state, playerId, ref) => {
+    let s = appendLog(refillFeeder(state), `${playerId}: reset the birdfeeder`);
+    const available = s.feederIn.some((f) => faces.some((w) => faceCovers(f, w)));
+    if (!available) return appendLog(s, `${playerId}: no matching die in feeder`);
+    return pushPending(s, {
+      kind: 'pickDie',
+      playerId,
+      count: 1,
+      faces,
+      then: { effect: 'cacheLastGained', bird: ref },
+    });
+  };
+}
+
+/** Tuck 1 deck card behind each real bird in a habitat ('same' = own row). */
+function tuckDeckEachIn(habitat: Habitat | 'same'): PowerFn {
+  return (state, playerId, ref) => {
+    const h = habitat === 'same' ? ref.habitat : habitat;
+    const p = getPlayer(state, playerId);
+    const refs = playedBirds(p).filter(({ ref: r }) => r.habitat === h).map(({ ref: r }) => r);
+    let s = state;
+    for (const r of refs) s = tuckFromDeck(s, playerId, r, 1);
+    if (refs.length > 0) s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+    return s;
   };
 }
 
@@ -884,6 +1114,440 @@ export const POWER_IMPLS: Record<string, PowerFn> = {
     drawBonusCardThen({ kind: 'chooseOption', playerId: pid, options: ['gainDie', 'layEgg', 'drawCard'] })(s, pid, ref),
   'Draw 1 new bonus card. Then gain 1 [card] or lay 1 [egg] on any bird.': (s, pid, ref) =>
     drawBonusCardThen({ kind: 'chooseOption', playerId: pid, options: ['drawCard', 'layEgg'] })(s, pid, ref),
+
+  // === oceania expansion ===
+
+  // --- gain food ---
+  'All players gain 1 [fruit] from the supply. You gain 1 additional [fruit] from the supply.': (s, pid) => {
+    let out = s;
+    for (const o of out.playerOrder) out = grantSupplyFood(out, o, 'fruit');
+    return grantSupplyFood(out, pid, 'fruit');
+  },
+  'All players gain 1 [nectar] from the supply. You also gain 1 [seed] from the supply.': (s, pid) => {
+    let out = s;
+    for (const o of out.playerOrder) out = grantSupplyFood(out, o, 'nectar');
+    return grantSupplyFood(out, pid, 'seed');
+  },
+  'All players gain 1 [nectar] from the supply.': (s) => {
+    let out = s;
+    for (const o of out.playerOrder) out = grantSupplyFood(out, o, 'nectar');
+    return out;
+  },
+  'All players may discard 1 [egg] from a [wetland] bird. Each player that discards an [egg] gains 1 [wild] from the supply.': (s) =>
+    pushPending(
+      s,
+      ...s.playerOrder.map((pid) => ({
+        kind: 'chooseBirdForEggDiscard' as const,
+        playerId: pid,
+        count: 1,
+        habitat: 'wetland' as const,
+        optional: true,
+        then: { effect: 'supplyWild', n: [1] },
+      })),
+    ),
+  'If the player to your left has a [nectar] in their personal supply, gain 1 [nectar] from the general supply.':
+    neighborHas(['left'], 'nectar', 'gain'),
+  'If the player to your left has an [invertebrate] in their personal supply, gain 1 [invertebrate] from the general supply.':
+    neighborHas(['left'], 'invertebrate', 'gain'),
+  'If the player to your left or right has an [invertebrate] in their personal supply, gain 1 [invertebrate] from the general supply.':
+    neighborHas(['left', 'right'], 'invertebrate', 'gain'),
+  'If the player to your right has a [nectar] in their personal supply, gain 1 [nectar] from the general supply.':
+    neighborHas(['right'], 'nectar', 'gain'),
+  'If the player to your right has a [seed] in their personal supply, tuck a [card] from the deck behind this bird.':
+    neighborHas(['right'], 'seed', 'tuck'),
+  'If the player to your right has an [invertebrate] in their supply, cache 1 [invertebrate] from the general supply on this bird.':
+    neighborHas(['right'], 'invertebrate', 'cache'),
+  'Gain 1 [nectar] from the birdfeeder, if there is one.': gainDice(1, { faces: ['nectar'] }),
+  'Gain 1 [nectar] from the supply for each bird with a wingspan less than 49cm in your [forest].': (s, pid) => {
+    const p = getPlayer(s, pid);
+    const n = p.board.forest.filter((b) => !b.ghost && wingspanOf(bird(b.cardId)) < 49).length;
+    return grantSupplyFood(s, pid, 'nectar', n);
+  },
+  'Gain all [seed] that are in the birdfeeder. Keep half (rounded up), then choose how to distribute the remainder among the other player(s).': (s, pid) => {
+    const before = getPlayer(s, pid).food.seed;
+    let out = takeAllMatching(s, pid, 'seed');
+    const kept = getPlayer(out, pid).food.seed - before;
+    const give = Math.floor(kept / 2);
+    if (give <= 0 || out.playerOrder.length < 2) return out;
+    return pushPending(
+      out,
+      ...Array.from({ length: give }, () => ({
+        kind: 'choosePlayer' as const,
+        playerId: pid,
+        other: true,
+        then: { effect: 'giveSupplyFood', ids: [1] },
+      })),
+    );
+  },
+  'Reset the birdfeeder and gain 1 [rodent], if there is one. You may give it to another player; if you do, lay up to 3 [egg] on this bird.': (s, pid, ref) => {
+    let out = appendLog(refillFeeder(s), `${pid}: reset the birdfeeder`);
+    const idx = out.feederIn.findIndex((f) => f === 'rodent');
+    if (idx < 0) return out;
+    out = takeDieFromFeeder(out, pid, idx, undefined);
+    return pushPending(out, {
+      kind: 'choosePlayer',
+      playerId: pid,
+      other: true,
+      optional: true,
+      then: { effect: 'giveRodentLayEggs', bird: ref },
+    });
+  },
+  'Reset the birdfeeder and gain all [fish], if there are any. You may cache any or all of them on this bird.':
+    resetGainAllCache('fish'),
+  'Reset the birdfeeder and gain all [fish], if there are any. You may discard any of these [fish] to tuck that many [card] from the deck behind this bird instead.': (s, pid, ref) => {
+    let out = appendLog(refillFeeder(s), `${pid}: reset the birdfeeder`);
+    const before = getPlayer(out, pid).food.fish;
+    out = takeAllMatching(out, pid, 'fish', true);
+    const n = getPlayer(out, pid).food.fish - before;
+    if (n <= 0) return out;
+    return pushPending(out, {
+      kind: 'chooseFoodDiscard',
+      playerId: pid,
+      count: n,
+      options: ['fish'],
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect: 'tuckDeckPerFood', bird: ref },
+    });
+  },
+  'Reset the birdfeeder and gain all [rodent], if there are any. You may cache any or all of them on this bird.':
+    resetGainAllCache('rodent'),
+  'Reset the birdfeeder, then, for each type of food in the birdfeeder, gain 1 of that type.': (s, pid) => {
+    let out = appendLog(refillFeeder(s), `${pid}: reset the birdfeeder`);
+    const types = new Set(out.feederIn.filter((f): f is FoodType => f !== 'split'));
+    for (const f of types) out = grantSupplyFood(out, pid, f);
+    return out;
+  },
+  'Reset the birdfeeder. Cache 1 [invertebrate] or [rodent] from the birdfeeder (if available) on this bird.':
+    resetCacheDie(['invertebrate', 'rodent']),
+  'Reset the birdfeeder. Gain 1 [fish] or 1 [rodent] from the birdfeeder, if there is one, and cache it on this bird.':
+    resetCacheDie(['fish', 'rodent']),
+  'Reset the birdfeeder. If you do, gain 1 [invertebrate], [fish], or [rodent], if there is one.':
+    resetThenGain(['invertebrate', 'fish', 'rodent']),
+  'Give 1 [nectar] from your supply to another player. If you do, lay 2 [egg] on this bird or gain 2 [die] from the birdfeeder.': (s, pid, ref) => {
+    const p = getPlayer(s, pid);
+    if (p.food.nectar <= 0) return appendLog(s, `${pid}: no nectar to give`);
+    return pushPending(s, {
+      kind: 'choosePlayer',
+      playerId: pid,
+      other: true,
+      then: { effect: 'giveNectar', bird: ref },
+    });
+  },
+  'Gain 1 [fruit] from the supply, or discard 1 [fruit] to gain 1 [nectar] from the supply.': (s, pid) => {
+    const p = getPlayer(s, pid);
+    const options = p.food.fruit > 0 ? (['gainFruit', 'fruitToNectar'] as const) : (['gainFruit'] as const);
+    return pushPending(s, { kind: 'chooseOption', playerId: pid, options: [...options] });
+  },
+  'Choose 1 other player. They lay 1 [egg]; you draw 2 [card].': chooseOther('theyLayYouDraw', { n: [2] }),
+  'Choose 1 other player. They reset the birdfeeder and gain a [seed], if there is one. You tuck 2 [card] from the deck behind this bird.':
+    (s, pid, ref) =>
+      pushPending(s, {
+        kind: 'choosePlayer',
+        playerId: pid,
+        other: true,
+        then: { effect: 'galahReset', bird: ref },
+      }),
+  'Choose 1 other player. You both draw 1 [card] from the deck.': chooseOther('bothDraw', { n: [1] }),
+  'Choose 1 other player. You both gain 1 [fruit] from the supply.': chooseOther('bothGainSupply', { ids: [3] }),
+  'Choose 1 other player. You both gain 1 [invertebrate] from the supply.': chooseOther('bothGainSupply', { ids: [0] }),
+  'Choose 1 other player. You both gain 1 [nectar] from the supply.': chooseOther('bothGainSupply', { ids: [5] }),
+  'Choose 1 other player. You both gain 1 [seed] from the supply.': chooseOther('bothGainSupply', { ids: [1] }),
+  'Choose 1 other player. You both lay 1 [egg].': chooseOther('bothLayEgg'),
+  'Copy a brown power on one bird in the [forest] of the player to your left.': copyPower('left'),
+  'Copy a brown power on one bird in the [forest] of the player to your right.': copyPower('right'),
+
+  // --- discard / gain ---
+  'Discard 1 [invertebrate]. If you do, gain 1 [nectar] from the supply.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseFoodDiscard',
+      playerId: pid,
+      count: 1,
+      options: ['invertebrate'],
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect: 'supplyFood', ids: [5] },
+    }),
+  'Discard 1 [nectar] to the “spent nectar” space for your [forest]. If you do, gain 2 [die] from the birdfeeder.': (s, pid, ref) => {
+    const p = getPlayer(s, pid);
+    if (p.food.nectar <= 0) return appendLog(s, `${pid}: no nectar`);
+    const out = setPlayer(s, {
+      ...spendFood(p, ['nectar']),
+      nectarSpent: { ...p.nectarSpent, forest: p.nectarSpent.forest + 1 },
+    });
+    return gainDice(2, {})(out, pid, ref);
+  },
+  'Discard 1 [seed] to choose a [card] from the tray and tuck it behind this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseFoodDiscard',
+      playerId: pid,
+      count: 1,
+      options: ['seed'],
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect: 'trayTuck', bird: ref },
+    }),
+  'Discard 1 [seed]. If you do, lay up to 2 [egg] on this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseFoodDiscard',
+      playerId: pid,
+      count: 1,
+      options: ['seed'],
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect: 'selfEggsUpTo', n: [2], bird: ref },
+    }),
+  'Discard 1 [wild] to tuck 1 [card] from the deck behind this bird.': discardUpTo('any', 1, 'tuckDeckPerFood'),
+  'Discard any number of [rodent] to gain that many [nectar] from the supply.':
+    discardUpTo(['rodent'], 99, 'gainPerFood'),
+  'Discard any number of [seed]. Lay 1 [egg] on this bird for each discarded [seed].':
+    discardUpTo(['seed'], 99, 'selfEggsPerFood'),
+  'Discard any number of [wild] to draw that many [card].': discardUpTo('any', 99, 'drawPerFood'),
+  'Discard up to 6 [wild]. Lay 1 [egg] on this bird for each discarded food.':
+    discardUpTo('any', 6, 'selfEggsPerFood'),
+  'Discard a bonus card. If you do, draw 4 bonus cards, keep 2, and discard the other 2.': (s, pid) =>
+    pushPending(s, {
+      kind: 'discardBonusCards',
+      playerId: pid,
+      count: 1,
+      optional: true,
+      then: { effect: 'kiwiDraw' },
+    }),
+  'Discard all [egg] from 1 of your birds with a [cavity] nest. Tuck twice that many [card] from the deck behind this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseBirds',
+      playerId: pid,
+      min: 0,
+      max: 1,
+      nest: 'cavity',
+      eggsMin: 1,
+      then: { effect: 'hornbillTuck', bird: ref },
+    }),
+  'Discard a bird from your [forest] and put this bird in its place (do not pay an egg cost). If you do, lay 4 [egg] on this bird and gain 2 [fruit] from the supply.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseBirds',
+      playerId: pid,
+      min: 0,
+      max: 1,
+      habitat: 'forest',
+      exclude: ref,
+      then: { effect: 'cassowarySwap', bird: ref },
+    }),
+  'Discard 1 [egg] from each bird in this row and column that has an [egg] on it, excluding this bird. For each discarded [egg], cache 2 [seed] from the supply on this bird.': (s, pid, ref) => {
+    let out = s;
+    const p = getPlayer(out, pid);
+    const targets: BirdRef[] = [];
+    // Same row: every other bird with an egg.
+    p.board[ref.habitat].forEach((b, index) => {
+      if (index !== ref.index && !b.ghost && b.eggs > 0) {
+        targets.push({ habitat: ref.habitat, index });
+      }
+    });
+    // Same column in the other two rows.
+    for (const h of HABITATS) {
+      if (h === ref.habitat) continue;
+      const b = p.board[h][ref.index];
+      if (b && !b.ghost && b.eggs > 0) targets.push({ habitat: h, index: ref.index });
+    }
+    for (const t of targets) {
+      const pl = getPlayer(out, pid);
+      const row = [...pl.board[t.habitat]];
+      row[t.index] = { ...row[t.index]!, eggs: row[t.index]!.eggs - 1 };
+      out = setPlayer(out, { ...pl, board: { ...pl.board, [t.habitat]: row } });
+      out = cacheOnBird(out, pid, ref, 'seed');
+      out = cacheOnBird(out, pid, ref, 'seed');
+    }
+    return out;
+  },
+
+  // --- draw / tuck ---
+  'Draw 1 face-up [card] from the tray with a [bowl] or [star] nest. You may reset or refill the tray before doing so.':
+    trayDrawNest('bowl'),
+  'Draw 1 face-up [card] from the tray with a [cavity] or [star] nest. You may reset or refill the tray before doing so.':
+    trayDrawNest('cavity'),
+  'Draw 1 face-up [card] from the tray with a [ground] or [star] nest. You may reset or refill the tray before doing so.':
+    trayDrawNest('ground'),
+  'Draw 1 face-up [card] from the tray with a [platform] or [star] nest. You may reset or refill the tray before doing so.':
+    trayDrawNest('platform'),
+  'Draw 1 face-up [card] from the tray with a wingspan less than 75cm and tuck it behind this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseTrayCardEx',
+      playerId: pid,
+      wingspanLt: 75,
+      destination: 'tuck',
+      bird: ref,
+    }),
+  'Draw 2 [card] from the deck. Keep 1 and give the other to another player.': (s, pid) => {
+    const { s: out, ids } = drawToPool(s, 2);
+    if (ids.length === 0) return appendLog(out, `${pid}: deck is empty`);
+    return pushPending(out, {
+      kind: 'chooseDrawnCard',
+      playerId: pid,
+      cardIds: ids,
+      then: { effect: 'giveOtherCard', ids },
+    });
+  },
+  'Draw and discard 5 [card] from the deck. For each [fish] in their food costs, cache 1 [fish] from the supply on this bird.': (s, pid, ref) => {
+    const { s: out, ids } = drawToPool(s, 5);
+    let n = 0;
+    for (const id of ids) n += foodIconsInCost(bird(id), 'fish');
+    let o: GameState = { ...out, discard: [...out.discard, ...ids] };
+    for (let i = 0; i < n; i++) o = cacheOnBird(o, pid, ref, 'fish');
+    return o;
+  },
+  'Look at 3 [card] from the deck. Keep 1 [wetland] bird, if there is one. You may add it to your hand or tuck it behind this bird. Discard the other cards.': (s, pid, ref) => {
+    const { s: out, ids } = drawToPool(s, 3);
+    const wetlands = ids.filter((id) => bird(id).habitats.includes('wetland'));
+    if (wetlands.length === 0) return { ...out, discard: [...out.discard, ...ids] };
+    return pushPending(out, {
+      kind: 'chooseDrawnCard',
+      playerId: pid,
+      cardIds: wetlands,
+      then: { effect: 'poolTuckOrHand', ids, bird: ref },
+    });
+  },
+  'Look at a [card] from the deck. If it can live in [wetland], tuck it behind this bird. If not, discard it.':
+    lookIf((c) => c.habitats.includes('wetland')),
+  'Look at a [card] from the deck. If its food cost includes an [invertebrate] or a [rodent], tuck it behind this bird. If not, discard it.':
+    lookIf((c) => costHasFood(c, ['invertebrate', 'rodent'])),
+  'Look at a [card] from the deck. If its wingspan is less than 40cm, tuck it behind this bird and cache 1 [rodent] from the supply on this bird. If not, discard it.':
+    lookIf((c) => wingspanOf(c) < 40, 'rodent'),
+  'Look at a [card] from the deck. If its wingspan is over 65cm, tuck it behind this bird and cache 1 [rodent] from the supply on this bird. If not, discard it.':
+    lookIf((c) => wingspanOf(c) > 65, 'rodent'),
+  'Look through all discarded bonus cards. Keep 1 of them.': (s, pid) => {
+    if (s.bonusDiscard.length === 0) return appendLog(s, `${pid}: no discarded bonus cards`);
+    return pushPending(s, {
+      kind: 'chooseBonusCards',
+      playerId: pid,
+      cardIds: s.bonusDiscard.slice(),
+      keep: 1,
+      fromDiscard: true,
+    });
+  },
+  'Draw 1 bonus card for each bird in your [grassland]. Keep 1 and discard the rest.': (s, pid, ref) =>
+    drawBonus(Math.max(1, getPlayer(s, pid).board.grassland.filter((b) => !b.ghost).length), 1)(s, pid, ref),
+  'Draw 1 bonus card. You may discard any number of [wild] to draw that many additional bonus cards. Keep 1 of the cards you drew and discard the rest.': (s, pid, ref) => {
+    let out = s;
+    const pool: number[] = [];
+    if (out.bonusDeck.length > 0) {
+      pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
+      out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
+    }
+    return pushPending(out, {
+      kind: 'chooseFoodDiscard',
+      playerId: pid,
+      count: 99,
+      options: 'any',
+      optional: true,
+      spentHabitat: ref.habitat,
+      then: { effect: 'keaDraw', ids: pool },
+    });
+  },
+  'Draw 3 bonus cards, then discard 2. You may discard bonus cards you did not draw this turn.': drawBonus(3, 1),
+  'Draw 4 bonus cards, keep 1, and discard the other 3.': drawBonus(4, 1),
+  'Shuffle the discard pile, then draw 2 [card] from it. Choose 1 and tuck it behind this bird or add it to your hand. Discard the other.': (s, pid, ref) => {
+    if (s.discard.length === 0) return appendLog(s, `${pid}: discard pile is empty`);
+    const [pile, rng] = shuffle(s.rngState, s.discard);
+    const drawn = pile.slice(-2);
+    const out: GameState = { ...s, discard: pile.slice(0, -drawn.length), rngState: rng };
+    return pushPending(out, {
+      kind: 'chooseDrawnCard',
+      playerId: pid,
+      cardIds: drawn,
+      then: { effect: 'poolTuckOrHand', ids: drawn, bird: ref },
+    });
+  },
+  'Tuck 1 [card] from the deck behind each bird in this habitat, including this bird.': tuckDeckEachIn('same'),
+  'Tuck 1 [card] from the deck behind each bird in your [grassland], including this one.': tuckDeckEachIn('grassland'),
+  'Tuck 1 [card] from your hand behind this bird. If you do, all players gain 1 [nectar] from the supply.':
+    tuckHand({ effect: 'allGainFoodType', ids: [5] }),
+  'Tuck 1 [card] from your hand behind this bird. If you do, all players gain 1 [seed] from the supply.':
+    tuckHand({ effect: 'allGainFoodType', ids: [1] }),
+  'Tuck 1 [card] from your hand behind this bird. If you do, lay up to 2 [egg] on this bird. All other players may lay 1 [egg].':
+    tuckHand({ effect: 'noisyMiner' }),
+  'Tuck the smallest bird in the tray behind this bird.': (s, pid, ref) => {
+    const candidates = s.tray
+      .map((id, i) => ({ id, i }))
+      .filter((x): x is { id: number; i: number } => x.id != null);
+    if (candidates.length === 0) return s;
+    const min = candidates.reduce((a, b) =>
+      wingspanOf(bird(a.id)) <= wingspanOf(bird(b.id)) ? a : b,
+    );
+    let out: GameState = { ...s, tray: s.tray.map((t, i) => (i === min.i ? null : t)) };
+    out = tuckCardOnBird(out, pid, ref, min.id);
+    return firePinkTriggers(out, pid, { kind: 'tuck' });
+  },
+  'Tuck up to 3 [card] from your hand behind this bird. If you tuck at least 1 [card], gain 1 [seed] from the supply.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'assignHandTucks',
+      playerId: pid,
+      targets: [ref, ref, ref],
+      then: { effect: 'gainIfTucked', ids: [1] },
+    }),
+  // --- eggs ---
+  'Lay 1 [egg] on an adjacent bird.': (s, pid, ref) =>
+    pushPending(s, { kind: 'chooseBirdForEgg', playerId: pid, count: 1, nest: 'any', adjacentTo: ref }),
+  'Lay 1 [egg] on each bird in your [grassland], including this one.': eggsEachIn('grassland'),
+  'Lay 1 [egg] on each bird in your [wetland], including this one.': eggsEachIn('wetland'),
+  'Lay 1 [egg] on each of your birds with a [ground] nest, including this one.': layEggsEachNest('ground'),
+  'Lay 1 [egg] on each of your birds with a [platform] nest, including this one.': layEggsEachNest('platform'),
+  'Lay 1 [egg] on each of your birds with a [star] nest, including this one.': (s, pid) => {
+    let p = getPlayer(s, pid);
+    for (const { ref, bird: b } of playedBirds(p)) {
+      if (bird(b.cardId).nest === 'wild' && b.eggs < bird(b.cardId).eggLimit) p = addEggs(p, ref, 1);
+    }
+    return setPlayer(s, p);
+  },
+  'Lay 1 [egg] on each of your birds with a wingspan less than 30cm, including this one.':
+    eggsEachWingspan((w) => w < 30),
+  'Lay 1 [egg] on each of your birds with a wingspan over 100cm, including this one.':
+    eggsEachWingspan((w) => w > 100),
+  'For every 2 [egg] in your [wetland], lay 1 [egg] on this bird.': (s, pid, ref) => {
+    const p = getPlayer(s, pid);
+    const n = Math.floor(p.board.wetland.reduce((x, b) => x + (b.ghost ? 0 : b.eggs), 0) / 2);
+    return n > 0 ? setPlayer(s, addEggs(p, ref, n)) : s;
+  },
+
+  // --- play additional birds ---
+  'Play a bird. Pay its normal food and egg cost. If it has a “when played” or “game end” power, you may use it.': (s, pid) =>
+    pushPending(s, { kind: 'chooseAdditionalPlay', playerId: pid, habitat: 'any', optional: true }),
+  'Play a bird. Pay its normal food cost, but ignore 1 [egg] in its egg cost. If it has a “when played” or “game end” power, you may use it.': (s, pid) =>
+    pushPending(s, { kind: 'chooseAdditionalPlay', playerId: pid, habitat: 'any', eggDiscount: 1, optional: true }),
+  'Play another bird in your [forest]. Pay its normal cost with a 1 [egg] discount.': (s, pid) =>
+    pushPending(s, { kind: 'chooseAdditionalPlay', playerId: pid, habitat: 'forest', eggDiscount: 1, optional: true }),
+  'Play another bird in your [grassland]. Pay its normal cost with a 1 [egg] discount.': (s, pid) =>
+    pushPending(s, { kind: 'chooseAdditionalPlay', playerId: pid, habitat: 'grassland', eggDiscount: 1, optional: true }),
+  'Play another bird in your [wetland]. Pay its normal cost with a 1 [egg] discount.': (s, pid) =>
+    pushPending(s, { kind: 'chooseAdditionalPlay', playerId: pid, habitat: 'wetland', eggDiscount: 1, optional: true }),
+  'Discard 2 [egg] from your [forest]. If you do, play 1 bird in your [grassland] at its normal food cost (ignore its egg cost). If it has a “when played” or “game end” power, you may use it.': (s, pid) =>
+    pushPending(s, {
+      kind: 'chooseBirdForEggDiscard',
+      playerId: pid,
+      count: 2,
+      habitat: 'forest',
+      optional: true,
+      then: { effect: 'playAdditional', ids: [1], n: [99] },
+    }),
+
+  // --- game end caching ---
+  'Cache up to 5 [wild] from your supply on this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseCacheFromSupply',
+      playerId: pid,
+      bird: ref,
+      count: 5,
+      food: 'any',
+      optional: true,
+    }),
+  'Cache up to 8 [seed] from your supply on this bird.': (s, pid, ref) =>
+    pushPending(s, {
+      kind: 'chooseCacheFromSupply',
+      playerId: pid,
+      bird: ref,
+      count: 8,
+      food: 'seed',
+      optional: true,
+    }),
 };
 
 // === pink powers (once between turns) ===
@@ -894,7 +1558,9 @@ export type PinkTrigger =
   | { kind: 'gainFood'; food?: FoodType }
   | { kind: 'playBird'; habitat: 'forest' | 'grassland' | 'wetland' }
   | { kind: 'predatorSuccess' }
-  | { kind: 'tuck' };
+  | { kind: 'tuck' }
+  /** Oceania: fires whenever another player gains nectar (feeder or supply). */
+  | { kind: 'gainNectar' };
 
 interface PinkDef {
   trigger: PinkTrigger;
@@ -976,6 +1642,29 @@ export const PINK_IMPLS: Record<string, PinkDef> = {
         optional: true,
         then: { effect: 'drawCards', n: [1] },
       }),
+  },
+
+  // === oceania expansion pinks ===
+  'When another player takes the “gain food” action, gain 1 [invertebrate] from the birdfeeder, if there is one, at the end of their turn.': {
+    trigger: { kind: 'gainFood' },
+    fn: (s, owner, ref) => gainDice(1, { faces: ['invertebrate'] })(s, owner, ref),
+  },
+  'When another player takes the “gain food” action, gain 1 [invertebrate], [fish], or [rodent] from the birdfeeder, if there is one, at the end of their turn.': {
+    trigger: { kind: 'gainFood' },
+    fn: (s, owner, ref) => gainDice(1, { faces: ['invertebrate', 'fish', 'rodent'] })(s, owner, ref),
+  },
+  'When another player takes the “lay eggs” action, lay 1 [egg] on a bird with a wingspan less than 30cm.': {
+    trigger: { kind: 'layEggs' },
+    fn: (s, owner) =>
+      pushPending(s, { kind: 'chooseBirdForEgg', playerId: owner, count: 1, nest: 'any', wingspanLt: 30 }),
+  },
+  'When another player takes the “lay eggs” action, lay 1 [egg] on this bird.': {
+    trigger: { kind: 'layEggs' },
+    fn: (s, owner, ref) => setPlayer(s, addEggs(getPlayer(s, owner), ref, 1)),
+  },
+  'When another player gains [nectar], gain 1 [nectar] from the supply.': {
+    trigger: { kind: 'gainNectar' },
+    fn: (s, owner) => grantSupplyFood(s, owner, 'nectar'),
   },
 };
 

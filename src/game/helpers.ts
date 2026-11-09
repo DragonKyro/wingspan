@@ -112,6 +112,45 @@ export function eggTargets(
     .map(({ ref }) => ref);
 }
 
+/** Targets for a chooseBirdForEgg pending step, honoring the Oceania
+ *  extensions (onlyBird / adjacentTo / wingspanLt). With `onlyBird` the same
+ *  ref is returned once per egg that still fits so callers may repeat it. */
+export function eggStepTargets(
+  state: GameState,
+  step: {
+    playerId: PlayerId;
+    count: number;
+    nest: NestType | 'any' | 'other' | NestType[];
+    exclude?: BirdRef;
+    overLimit?: number;
+    onlyBird?: BirdRef;
+    adjacentTo?: BirdRef;
+    wingspanLt?: number;
+  },
+): BirdRef[] {
+  const p = getPlayer(state, step.playerId);
+  const over = step.overLimit ?? 0;
+  if (step.onlyBird) {
+    const b = p.board[step.onlyBird.habitat]?.[step.onlyBird.index];
+    if (!b || b.ghost || !eggTargetOk(p, step.onlyBird, over)) return [];
+    const room = bird(b.cardId).eggLimit + over - b.eggs;
+    return Array.from({ length: Math.min(step.count, room) }, () => step.onlyBird!);
+  }
+  let refs = eggTargets(state, step.playerId, step.nest, step.exclude, over);
+  if (step.adjacentTo) {
+    refs = refs.filter(
+      (r) => r.habitat === step.adjacentTo!.habitat && Math.abs(r.index - step.adjacentTo!.index) === 1,
+    );
+  }
+  if (step.wingspanLt != null) {
+    refs = refs.filter((r) => {
+      const b = p.board[r.habitat]?.[r.index];
+      return b != null && wingspanOf(bird(b.cardId)) < step.wingspanLt!;
+    });
+  }
+  return refs;
+}
+
 /** Eggs the player can still spend from (any bird with ≥1 egg). */
 export function eggSources(p: PlayerState): BirdRef[] {
   return playedBirds(p)
@@ -153,6 +192,8 @@ export function payFoodPlan(food: Record<FoodType, number>, cost: FoodCost): Foo
     for (const f of cost.foods) {
       if (take(f, 1)) return [f];
     }
+    // Nectar is wild (Oceania): 1 nectar covers the pick-one cost directly.
+    if (!cost.foods.includes('nectar') && take('nectar', 1)) return ['nectar'];
     // 2-for-1 fallback: any 2 tokens as one listed type.
     const total = (Object.keys(have) as FoodType[]).reduce((n, f) => n + have[f], 0);
     if (total < 2) return null;
@@ -262,9 +303,36 @@ export function appendLog(state: GameState, msg: string): GameState {
   return { ...state, log: [...state.log, { seq: state.log.length, msg }] };
 }
 
-/** The player's leftmost empty slot index for a habitat action = birds in row. */
-export function actionSlot(p: PlayerState, habitat: Habitat): number {
-  return Math.min(p.board[habitat].length, ROW_SIZE - 1);
+/** The player's leftmost empty benefit slot index for a habitat action.
+ *  The Oceania mat has a sixth benefit box reached when the row is full. */
+export function actionSlot(p: PlayerState, habitat: Habitat, oceania = false): number {
+  return Math.min(p.board[habitat].length, oceania ? ROW_SIZE : ROW_SIZE - 1);
+}
+
+/** Does this game use the Oceania expansion (mat, nectar, cards)? */
+export function isOceania(state: GameState): boolean {
+  return state.settings.sets.includes('oceania');
+}
+
+/** Wingspan as a number for power/bonus comparisons. Flightless birds are
+ *  printed '*' — they count as 0 (see Oceania appendix: e.g. they qualify
+ *  for "wingspan less than Xcm" and never for "over Xcm"). */
+export function wingspanOf(card: { wingspan: number | '*' }): number {
+  return typeof card.wingspan === 'number' ? card.wingspan : 0;
+}
+
+/** The player immediately after `playerId` in turn order ("to your left"). */
+export function playerToLeft(state: GameState, playerId: PlayerId): PlayerId | null {
+  const i = state.playerOrder.indexOf(playerId);
+  if (i < 0 || state.playerOrder.length < 2) return null;
+  return state.playerOrder[(i + 1) % state.playerOrder.length]!;
+}
+
+/** The player immediately before `playerId` in turn order ("to your right"). */
+export function playerToRight(state: GameState, playerId: PlayerId): PlayerId | null {
+  const i = state.playerOrder.indexOf(playerId);
+  if (i < 0 || state.playerOrder.length < 2) return null;
+  return state.playerOrder[(i - 1 + state.playerOrder.length) % state.playerOrder.length]!;
 }
 
 // === european expansion power-text predicates ===

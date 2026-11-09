@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { bird } from '@/game/cards';
-import { eggTargets, getPlayer } from '@/game/helpers';
+import { eggStepTargets, getPlayer, nestMatches, wingspanOf } from '@/game/helpers';
 import { faceCovers } from '@/game/powers';
 import type {
   Choice,
@@ -74,7 +74,33 @@ function StepPicker({
         />
       );
     case 'chooseBirdForEgg': {
-      const targets = eggTargets(game, step.playerId, step.nest, step.exclude, step.overLimit ?? 0);
+      // 'onlyBird' pins every egg to one bird: offer "lay N eggs" buttons
+      // since the same ref repeats in the answer.
+      if (step.onlyBird) {
+        const targets = eggStepTargets(game, step);
+        const b = p.board[step.onlyBird.habitat]?.[step.onlyBird.index];
+        const name = b ? bird(b.cardId).name : 'this bird';
+        const max = targets.length;
+        return (
+          <div className="row">
+            <span>lay eggs on {name}:</span>
+            {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                onClick={() =>
+                  send({ kind: 'birds', birds: Array.from({ length: n }, () => step.onlyBird!) })
+                }
+              >
+                lay {n}
+              </button>
+            ))}
+            {step.optional && (
+              <button onClick={() => send({ kind: 'birds', birds: [] })}>none</button>
+            )}
+          </div>
+        );
+      }
+      const targets = eggStepTargets(game, step);
       return (
         <BirdRefPicker
           label={`lay an egg on ${step.count} bird${step.count > 1 ? 's' : ''}${step.optional ? ' (optional)' : ''}`}
@@ -88,6 +114,7 @@ function StepPicker({
     case 'chooseBirdForEggDiscard': {
       const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
       for (const h of HABITATS) {
+        if (step.habitat && h !== step.habitat) continue;
         p.board[h].forEach((b, index) => {
           if (b.eggs > 0 && (!step.exclude || step.exclude.habitat !== h || step.exclude.index !== index)) {
             targets.push({ habitat: h, index });
@@ -96,9 +123,10 @@ function StepPicker({
       }
       return (
         <BirdRefPicker
-          label={`discard ${step.count} egg${step.count > 1 ? 's' : ''}`}
+          label={`discard ${step.count} egg${step.count > 1 ? 's' : ''}${step.optional ? ' (optional)' : ''}`}
           targets={targets}
           count={step.count}
+          optional={step.optional}
           onDone={(birds) => send({ kind: 'birds', birds })}
         />
       );
@@ -151,13 +179,18 @@ function StepPicker({
       );
     case 'discardBonusCards':
       return (
-        <HandPicker
-          hand={p.bonusHand}
-          count={step.count}
-          label={`discard ${step.count} bonus card${step.count > 1 ? 's' : ''}`}
-          onDone={(cardIds) => send({ kind: 'bonusCards', cardIds })}
-          bonus
-        />
+        <div className="row">
+          <HandPicker
+            hand={p.bonusHand}
+            count={step.count}
+            label={`discard ${step.count} bonus card${step.count > 1 ? 's' : ''}`}
+            onDone={(cardIds) => send({ kind: 'bonusCards', cardIds })}
+            bonus
+          />
+          {step.optional && (
+            <button onClick={() => send({ kind: 'bonusCards', cardIds: [] })}>decline</button>
+          )}
+        </div>
       );
     case 'moveBirdHabitat': {
       const b = p.board[step.bird.habitat]?.[step.bird.index];
@@ -246,6 +279,9 @@ function StepPicker({
                 {getPlayer(game, pid).name}
               </button>
             ))}
+          {step.optional && (
+            <button onClick={() => send({ kind: 'boolean', yes: false })}>decline</button>
+          )}
         </div>
       );
     case 'chooseHabitat':
@@ -317,7 +353,11 @@ function StepPicker({
       for (const h of HABITATS) {
         if (step.habitat && h !== step.habitat) continue;
         p.board[h].forEach((b, index) => {
-          if (!b.ghost) targets.push({ habitat: h, index });
+          if (b.ghost) return;
+          if (step.exclude && step.exclude.habitat === h && step.exclude.index === index) return;
+          if (step.nest && !nestMatches(bird(b.cardId).nest, step.nest)) return;
+          if (step.eggsMin != null && b.eggs < step.eggsMin) return;
+          targets.push({ habitat: h, index });
         });
       }
       return (
@@ -364,17 +404,27 @@ function StepPicker({
           onDone={(foods) => send({ kind: 'supplyFood', foods })}
         />
       );
-    case 'chooseOption':
+    case 'chooseOption': {
+      const OPTION_LABELS: Record<string, string> = {
+        gainDie: 'gain 1 die',
+        gain2Dice: 'gain 2 dice',
+        drawCard: 'draw 1 card',
+        layEgg: 'lay 1 egg',
+        gainFruit: 'gain 1 fruit',
+        fruitToNectar: 'discard 1 fruit → gain 1 nectar',
+        selfEggs2: 'lay 2 eggs on this bird',
+      };
       return (
         <div className="row">
           <span>choose one:</span>
           {step.options.map((o) => (
             <button key={o} onClick={() => send({ kind: 'option', option: o })}>
-              {o === 'gainDie' ? 'gain 1 die' : o === 'layEgg' ? 'lay 1 egg' : 'draw 1 card'}
+              {OPTION_LABELS[o] ?? o}
             </button>
           ))}
         </div>
       );
+    }
     case 'chooseCacheFood':
       return (
         <FoodPicker
@@ -400,6 +450,81 @@ function StepPicker({
           <button onClick={() => send({ kind: 'boolean', yes: false })}>Keep it</button>
         </div>
       );
+
+    // === oceania expansion steps ===
+    case 'chooseCopyPower': {
+      const target = getPlayer(game, step.target);
+      const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
+      target.board[step.habitat].forEach((b, index) => {
+        if (b.ghost) return;
+        const c = bird(b.cardId);
+        if (c.powerColor === 'brown' && c.powerText) {
+          targets.push({ habitat: step.habitat, index });
+        }
+      });
+      return (
+        <BirdRefPicker
+          label={`copy a power on ${target.name}'s ${step.habitat}`}
+          targets={targets}
+          count={1}
+          onDone={(birds) => send({ kind: 'repeatTarget', bird: birds[0]! })}
+        />
+      );
+    }
+    case 'chooseTrayCardEx': {
+      const matches = (id: number | null) => {
+        if (id == null) return false;
+        const c = bird(id);
+        if (step.nests && !step.nests.includes(c.nest)) return false;
+        if (step.wingspanLt != null && wingspanOf(c) >= step.wingspanLt) return false;
+        return true;
+      };
+      return (
+        <div className="row">
+          <span>take a tray card{step.destination === 'tuck' ? ' to tuck' : ''}:</span>
+          {game.tray.map(
+            (id, i) =>
+              matches(id) && (
+                <BirdCardView
+                  key={i}
+                  cardId={id!}
+                  selectable
+                  onClick={() => send({ kind: 'trayPick', cardId: id! })}
+                />
+              ),
+          )}
+          {step.mayResetTray && (
+            <button onClick={() => send({ kind: 'trayPick', mode: 'reset' })}>reset tray</button>
+          )}
+        </div>
+      );
+    }
+    case 'chooseTuckOrHand': {
+      const c = bird(step.cardId);
+      return (
+        <div className="row">
+          <span>{c.name}:</span>
+          <button className="primary" onClick={() => send({ kind: 'boolean', yes: true })}>
+            Tuck it
+          </button>
+          <button onClick={() => send({ kind: 'boolean', yes: false })}>Keep in hand</button>
+        </div>
+      );
+    }
+    case 'chooseCacheFromSupply': {
+      const options = (step.food === 'any' ? FOOD_TYPES : [step.food]).filter(
+        (f) => p.food[f] > 0,
+      );
+      return (
+        <FoodPicker
+          count={step.count}
+          options={options}
+          optional={step.optional}
+          label={`cache up to ${step.count} food from your supply`}
+          onDone={(foods) => send({ kind: 'supplyFood', foods })}
+        />
+      );
+    }
     default:
       return <span>…</span>;
   }
@@ -435,6 +560,10 @@ function PromptText({ step }: { step: PendingStep }) {
     chooseCacheOnBirds: `cache ${count} food`,
     chooseFoodType: 'name a food',
     chooseOption: 'choose one',
+    chooseCopyPower: 'copy a power',
+    chooseTrayCardEx: 'take a tray card',
+    chooseTuckOrHand: 'tuck or keep',
+    chooseCacheFromSupply: 'cache food',
   };
   return <span>{text[step.kind]}</span>;
 }

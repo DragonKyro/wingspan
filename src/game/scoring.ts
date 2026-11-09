@@ -1,8 +1,10 @@
 // Round-goal unit counting and end-of-game scoring.
 
 import { bonusCard, BIRD_BY_ID, goalTile } from './cards';
+import { NECTAR_POINTS } from './constants';
 import {
   isGoalDouble,
+  isOceania,
   playedBirds,
   totalCached,
   totalEggs,
@@ -192,6 +194,32 @@ function unitsToVp(vp: { kind: string; tiers?: { min: number; max: number | null
   return 0;
 }
 
+/** Oceania end-game nectar majorities: per habitat, most spent nectar scores
+ *  NECTAR_POINTS[0], second-most NECTAR_POINTS[1]; ties share the rank (all
+ *  tied players get its points, the next rank is skipped). Players with 0
+ *  spent nectar in a habitat cannot place there. */
+export function nectarPoints(state: GameState, playerId: PlayerId): number {
+  if (!isOceania(state)) return 0;
+  const p = state.players.find((x) => x.id === playerId)!;
+  let total = 0;
+  for (const h of HABITATS) {
+    const ranked = state.players
+      .map((x) => ({ id: x.id, n: x.nectarSpent[h] }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n);
+    let rank = 0;
+    for (let i = 0; i < ranked.length && rank < NECTAR_POINTS.length; i++) {
+      if (i > 0 && ranked[i]!.n < ranked[i - 1]!.n) rank = i;
+      if (rank >= NECTAR_POINTS.length) break;
+      if (ranked[i]!.id === p.id) {
+        total += NECTAR_POINTS[rank]!;
+        break;
+      }
+    }
+  }
+  return total;
+}
+
 export function bonusPoints(p: PlayerState): number {
   let total = 0;
   for (const id of p.bonusHand) {
@@ -211,7 +239,7 @@ export function finalScore(state: GameState, playerId: PlayerId): ScoreBreakdown
   const tucked = totalTucked(p);
   const idx = state.playerOrder.indexOf(playerId);
   const goalPoints = state.goalScores.reduce((n, round) => n + (round[idx] ?? 0), 0);
-  const nectar = 0; // Oceania scoring lands with the expansion.
+  const nectar = nectarPoints(state, playerId);
   const total = birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar;
   return { birdPoints, bonusPoints: bonus, eggs, cached, tucked, nectar, goalPoints, total };
 }

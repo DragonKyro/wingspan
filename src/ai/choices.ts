@@ -4,9 +4,10 @@
 import { bird } from '@/game/cards';
 import {
   columnEggCost,
-  eggTargets,
+  eggStepTargets,
   eggsInHabitat,
   getPlayer,
+  nestMatches,
   payFoodPlan,
   playedBirds,
   totalEggs,
@@ -40,13 +41,16 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'supplyFood', foods };
     }
     case 'chooseBirdForEgg': {
-      const targets = eggTargets(state, step.playerId, step.nest, step.exclude, step.overLimit ?? 0);
-      if (targets.length < step.count) return null;
+      const targets = eggStepTargets(state, step);
+      if (targets.length < step.count) {
+        return step.optional ? { kind: 'birds', birds: targets } : null;
+      }
       return { kind: 'birds', birds: targets.slice(0, step.count) };
     }
     case 'chooseBirdForEggDiscard': {
       const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
       for (const h of HABITATS) {
+        if (step.habitat && h !== step.habitat) continue;
         p.board[h].forEach((b, index) => {
           if (
             b.eggs > 0 &&
@@ -56,7 +60,9 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
           }
         });
       }
-      if (targets.length < step.count) return null;
+      if (targets.length < step.count) {
+        return step.optional ? { kind: 'birds', birds: [] } : null;
+      }
       return { kind: 'birds', birds: targets.slice(0, step.count) };
     }
     case 'chooseHandDiscard':
@@ -103,7 +109,7 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
           : [step.habitat === 'same' ? step.sourceBird?.habitat : step.habitat];
       for (const habitat of habitats) {
         if (!habitat) continue;
-        if (totalEggs(p) < columnEggCost(p.board[habitat].length)) continue;
+        if (totalEggs(p) < Math.max(0, columnEggCost(p.board[habitat].length) - (step.eggDiscount ?? 0))) continue;
         const cardId = p.hand.find(
           (id) => bird(id).habitats.includes(habitat) && payFoodPlan(p.food, bird(id).cost) != null,
         );
@@ -127,7 +133,8 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     case 'choosePlayer': {
       if (!step.other) return { kind: 'player', playerId: step.playerId };
       const victim = state.playerOrder.find((pid) => pid !== step.playerId);
-      return victim ? { kind: 'player', playerId: victim } : null;
+      if (victim) return { kind: 'player', playerId: victim };
+      return step.optional ? { kind: 'boolean', yes: false } : null;
     }
     case 'chooseHabitat': {
       if (!step.noEggs) return { kind: 'habitat', habitat: 'forest' };
@@ -176,7 +183,15 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     }
     case 'chooseBirds': {
       const eligible: BirdRef[] = playedBirds(p)
-        .filter(({ ref }) => !step.habitat || ref.habitat === step.habitat)
+        .filter(({ ref, bird: b }) => {
+          if (step.habitat && ref.habitat !== step.habitat) return false;
+          if (step.exclude && step.exclude.habitat === ref.habitat && step.exclude.index === ref.index) {
+            return false;
+          }
+          if (step.nest && !nestMatches(bird(b.cardId).nest, step.nest)) return false;
+          if (step.eggsMin != null && b.eggs < step.eggsMin) return false;
+          return true;
+        })
         .map(({ ref }) => ref);
       if (eligible.length < step.min) return null;
       return { kind: 'birds', birds: eligible.slice(0, step.max) };
@@ -201,6 +216,48 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'supplyFood', foods: ['seed'] };
     case 'chooseOption':
       return { kind: 'option', option: step.options[0]! };
+
+    // === oceania expansion steps ===
+    case 'chooseCopyPower': {
+      const target = getPlayer(state, step.target);
+      const idx = target.board[step.habitat].findIndex((b) => {
+        if (b.ghost) return false;
+        const c = bird(b.cardId);
+        return c.powerColor === 'brown' && !!c.powerText;
+      });
+      if (idx < 0) return null;
+      return { kind: 'repeatTarget', bird: { habitat: step.habitat, index: idx } };
+    }
+    case 'chooseTrayCardEx': {
+      const idx = state.tray.findIndex((id) => {
+        if (id == null) return false;
+        const c = bird(id);
+        if (step.nests && !step.nests.includes(c.nest)) return false;
+        if (step.wingspanLt != null && c.wingspan >= step.wingspanLt) return false;
+        return true;
+      });
+      if (idx >= 0) return { kind: 'trayPick', cardId: state.tray[idx]! };
+      // No qualifying card: reset the tray when allowed.
+      if (step.mayResetTray && (state.deck.length > 0 || state.discard.length > 0)) {
+        return { kind: 'trayPick', mode: 'reset' };
+      }
+      return null;
+    }
+    case 'chooseTuckOrHand':
+      // Tucking is at worst neutral (it's a bonus point); the AI tucks.
+      return { kind: 'boolean', yes: true };
+    case 'chooseCacheFromSupply': {
+      const owned = (Object.keys(p.food) as (keyof typeof p.food)[]).filter(
+        (f) => p.food[f] > 0 && (step.food === 'any' || f === step.food),
+      );
+      const n = step.optional ? Math.min(step.count, owned.length) : step.count;
+      if (owned.length === 0 || n <= 0) {
+        return step.optional ? { kind: 'supplyFood', foods: [] } : null;
+      }
+      const foods: FoodType[] = [];
+      for (let i = 0; i < n; i++) foods.push(owned[i % owned.length]!);
+      return { kind: 'supplyFood', foods };
+    }
   }
 }
 

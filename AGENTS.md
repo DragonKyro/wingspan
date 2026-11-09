@@ -114,11 +114,48 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   auto-fire (all beneficial); optional sub-choices honor `optional`
   (chooseHandTuck decline skips `then`, chooseAdditionalPlay can pass).
 
+## Oceania expansion (`set: 'oceania'`, 95 birds)
+
+- Nectar is a sixth food type and a die face (replaces the split face —
+  `OCEANIA_DIE_FACES`). It's wild for food costs (`payFoodPlan`), tracked in
+  `p.nectarSpent[habitat]` when spent, and discarded from the supply at
+  round end after teal powers, before goal scoring (`finishRound`).
+- End-game nectar majorities: `nectarPoints` in scoring.ts — per habitat,
+  most spent nectar = 5 pts, second = 2 (`NECTAR_POINTS`); ties share the
+  rank and skip the next.
+- Every supply gain routes through `grantSupplyFood` (records the gain and
+  fires the `gainNectar` pink watch — Spangled Drongo). Feeder nectar gains
+  fire it in `takeDieFromFeeder`.
+- The Oceania mat has 6 benefit boxes (the 6th only when a row is full —
+  `actionSlot(p, h, oceania)`); constants `OCEANIA_*` in constants.ts give
+  per-slot dice/eggs/cards plus reset/trade slots. Action fields:
+  `GainFoodAction.rerollCost`, `LayEggsAction.extraTrades`,
+  `DrawCardsAction.tradeNectar`/`resetTrayCost`, all validated in actions.ts.
+- Players start with 1 nectar (can't be discarded during setup keeps).
+- New PendingStep kinds: chooseCopyPower (Tūī/Lyrebird copy),
+  chooseTrayCardEx (nest/wingspan filters + tray reset + hand-or-tuck
+  destination), chooseTuckOrHand, chooseCacheFromSupply. Plus
+  chooseBirdForEgg gains `onlyBird`/`adjacentTo`/`wingspanLt`,
+  chooseBirdForEggDiscard gains `habitat`, chooseBirds gains
+  `exclude`/`nest`/`eggsMin`, chooseBonusCards gains `fromDiscard`
+  (Wrybill, using `state.bonusDiscard`), choosePlayer/chooseFoodDiscard/
+  discardBonusCards gain `optional` declines (a declined optional drops its
+  `then`), chooseWildTrade/chooseFoodDiscard track `spentHabitat` nectar,
+  chooseAdditionalPlay gains `eggDiscount`.
+- New PowerOptions: gainFruit/fruitToNectar (Mistletoebird),
+  selfEggs2/gain2Dice (Red-Winged Parrot).
+- "Copy a brown power" runs the target's POWER_IMPLS with the copier's
+  playerId/ref; "play another bird" powers can fire the played bird's
+  yellow (game-end) power immediately per the card text.
+
 ## Known gaps (future work)
 
-- `POWER_IMPLS` covers all distinct core + european texts; other expansion
-  texts warn once and no-op (`hasPowerImpl` is the check).
-- Nectar/Oceania scoring stubbed (0), blue (per-item) goal side unimplemented.
+- `POWER_IMPLS` covers all distinct core + european + oceania texts; other
+  expansion texts warn once and no-op (`hasPowerImpl` is the check). The
+  Amazonian Parrotlet (promo) has no implementation.
+- Blue (per-item) goal side unimplemented.
+- Oceania mat trades/reset options exist in the actions but the UI draft
+  flow doesn't expose them yet (AI skips them too — always optional).
 - When-played and pink powers auto-fire instead of prompting (all base
   powers are beneficial, so this is a safe simplification). European pinks
   that say "at the end of their turn" fire immediately.

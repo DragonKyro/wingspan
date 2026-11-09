@@ -3,6 +3,9 @@ import { bird, goalTile } from '@/game/cards';
 import {
   FOREST_DICE,
   GRASSLAND_EGGS,
+  OCEANIA_FOREST_DICE,
+  OCEANIA_GRASSLAND_EGGS,
+  OCEANIA_WETLAND_CARDS,
   WETLAND_CARDS,
 } from '@/game/constants';
 import {
@@ -12,6 +15,7 @@ import {
   columnEggCost,
   getPlayer,
   isCoverBird,
+  isOceania,
   playedBirds,
   rowFull,
   totalEggs,
@@ -75,6 +79,7 @@ export function GameScreen() {
         <CommonRow game={game} draft={draft} setDraft={setDraft} canAct={canAct} />
         <PlayerMatView
           player={shownP}
+          oceania={isOceania(game)}
           draft={draft}
           setDraft={setDraft}
           controls={controls(shown)}
@@ -169,13 +174,17 @@ function CommonRow({
 }) {
   const acting = actingPlayerId(game);
   const actingP = getPlayer(game, acting);
+  const oceania = isOceania(game);
   const pickingDice = draft?.kind === 'gainFood';
   const diceNeeded = pickingDice
-    ? FOREST_DICE[actionSlot(actingP, 'forest')]! + (0 /* trade adds later */)
+    ? (oceania ? OCEANIA_FOREST_DICE : FOREST_DICE)[actionSlot(actingP, 'forest', oceania)]! +
+      (0 /* trade adds later */)
     : 0;
   const allSame = game.feederIn.length > 0 && game.feederIn.every((f) => f === game.feederIn[0]);
   const pickingCards = draft?.kind === 'drawCards';
-  const cardsNeeded = pickingCards ? WETLAND_CARDS[actionSlot(actingP, 'wetland')]! : 0;
+  const cardsNeeded = pickingCards
+    ? (oceania ? OCEANIA_WETLAND_CARDS : WETLAND_CARDS)[actionSlot(actingP, 'wetland', oceania)]!
+    : 0;
 
   return (
     <div className="card">
@@ -254,12 +263,14 @@ function dieLabel(f: DieFace): string {
 /** One player's mat: three habitat rows, five slots each. */
 function PlayerMatView({
   player,
+  oceania,
   draft,
   setDraft,
   controls,
   dispatch,
 }: {
   player: PlayerState;
+  oceania: boolean;
   draft: Draft | null;
   setDraft: (d: Draft | null) => void;
   controls: boolean;
@@ -267,7 +278,10 @@ function PlayerMatView({
 }) {
   const playing = draft?.kind === 'playBird' && draft.habitat;
   const laying = draft?.kind === 'layEggs';
-  const eggsLeft = laying ? GRASSLAND_EGGS[actionSlot(player, 'grassland')]! - draft.placements.length : 0;
+  const eggsLeft = laying
+    ? (oceania ? OCEANIA_GRASSLAND_EGGS : GRASSLAND_EGGS)[actionSlot(player, 'grassland', oceania)]! -
+      draft.placements.length
+    : 0;
 
   return (
     <div className="card mat">
@@ -525,9 +539,10 @@ function ActionsPanel({
   const fresh = mine && !game.turnTookAction && game.phase === 'main';
   const inActivation = !!game.activation && game.activation.remaining.length > 0;
 
-  const diceCount = FOREST_DICE[actionSlot(p, 'forest')]!;
-  const eggCount = GRASSLAND_EGGS[actionSlot(p, 'grassland')]!;
-  const cardCount = WETLAND_CARDS[actionSlot(p, 'wetland')]!;
+  const oceania = isOceania(game);
+  const diceCount = (oceania ? OCEANIA_FOREST_DICE : FOREST_DICE)[actionSlot(p, 'forest', oceania)]!;
+  const eggCount = (oceania ? OCEANIA_GRASSLAND_EGGS : GRASSLAND_EGGS)[actionSlot(p, 'grassland', oceania)]!;
+  const cardCount = (oceania ? OCEANIA_WETLAND_CARDS : WETLAND_CARDS)[actionSlot(p, 'wetland', oceania)]!;
 
   return (
     <div className="card">

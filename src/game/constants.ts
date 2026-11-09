@@ -21,6 +21,34 @@ export const TRADE_SLOTS = [3, 4];
 /** Egg cost to play a bird per column (0-indexed): cols 2-3 = 1, cols 4-5 = 2. */
 export const COLUMN_EGG_COST = [0, 1, 1, 2, 2];
 
+// === Oceania player mat ===
+// The Oceania mat has six benefit boxes per row (the last is used when the
+// row is full of birds); slot = min(row length, 5).
+
+/** Oceania forest: dice gained per slot. */
+export const OCEANIA_FOREST_DICE = [1, 2, 2, 2, 3, 3];
+/** Oceania forest slots allowing "discard a bird card for +1 die". */
+export const OCEANIA_FOREST_TRADE_SLOTS = [0, 2, 3, 5];
+/** Oceania forest slots allowing "pay any 1 food to reset the birdfeeder". */
+export const OCEANIA_FOREST_RESET_SLOTS = [1, 3];
+
+/** Oceania grassland: eggs per slot. */
+export const OCEANIA_GRASSLAND_EGGS = [1, 2, 2, 2, 3, 4];
+/** Oceania grassland slots allowing a trade for +1 egg. */
+export const OCEANIA_EGG_TRADE_SLOTS = [0, 2, 3, 4];
+/** Oceania grassland slot allowing TWO trades (each +1 egg). */
+export const OCEANIA_EGG_DOUBLE_TRADE_SLOT = 3;
+
+/** Oceania wetland: cards per slot. */
+export const OCEANIA_WETLAND_CARDS = [1, 2, 2, 2, 3, 4];
+/** Oceania wetland slots allowing "discard an egg or nectar for +1 card". */
+export const OCEANIA_CARD_TRADE_SLOTS = [0, 2, 3, 4];
+/** Oceania wetland slots allowing "pay any 1 food to reset the tray". */
+export const OCEANIA_WETLAND_RESET_SLOTS = [1, 3];
+
+/** Oceania end-game nectar majority: points per rank within a habitat. */
+export const NECTAR_POINTS = [5, 2];
+
 /** Max birds per habitat row. */
 export const ROW_SIZE = 5;
 

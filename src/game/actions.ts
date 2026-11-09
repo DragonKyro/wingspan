@@ -7,6 +7,15 @@ import {
   FOREST_DICE,
   GOAL_POINTS,
   GRASSLAND_EGGS,
+  OCEANIA_CARD_TRADE_SLOTS,
+  OCEANIA_EGG_DOUBLE_TRADE_SLOT,
+  OCEANIA_EGG_TRADE_SLOTS,
+  OCEANIA_FOREST_DICE,
+  OCEANIA_FOREST_RESET_SLOTS,
+  OCEANIA_FOREST_TRADE_SLOTS,
+  OCEANIA_GRASSLAND_EGGS,
+  OCEANIA_WETLAND_CARDS,
+  OCEANIA_WETLAND_RESET_SLOTS,
   TRADE_SLOTS,
   WETLAND_CARDS,
 } from './constants';
@@ -19,6 +28,7 @@ import {
   getPlayer,
   isCardCostBird,
   isCoverBird,
+  isOceania,
   isSideways,
   nextSlot,
   payFoodPlan,
@@ -103,6 +113,8 @@ export function keepSetup(state: GameState, action: KeepSetupAction): GameState 
   if (action.discardFood.length !== action.keepBirds.length) {
     throw new Error('you must discard 1 food per bird kept');
   }
+  // Oceania: the starting nectar is gained only after setup choices are made.
+  if (action.discardFood.includes('nectar')) throw new Error('cannot discard nectar during setup');
   const food = { ...p.food };
   for (const f of action.discardFood) {
     if (food[f] <= 0) throw new Error(`you don't have ${f}`);
@@ -216,8 +228,10 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
     row[cp.bird.index] = { ...b, cached: b.cached.filter((_, i) => i !== at) };
     pl = { ...pl, board: { ...pl.board, [cp.bird.habitat]: row } };
   }
-  // Pay food (track nectar spent for Oceania scoring).
-  const nectarPaid = action.foodPayments.filter((f) => f === 'nectar').length;
+  // Pay food (track nectar spent for Oceania scoring — including cached nectar).
+  const nectarPaid =
+    action.foodPayments.filter((f) => f === 'nectar').length +
+    cachedPayments.filter((cp) => cp.food === 'nectar').length;
   pl = spendFood(pl, action.foodPayments);
   if (nectarPaid > 0) {
     pl = {
@@ -303,12 +317,21 @@ function allSameFace(dice: DieFace[]): boolean {
 export function gainFood(state: GameState, action: GainFoodAction): GameState {
   requireTurn(state, action.playerId);
   const p = getPlayer(state, action.playerId);
-  const slot = actionSlot(p, 'forest');
-  let diceToTake = FOREST_DICE[slot]!;
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'forest', oceania);
+  let diceToTake = (oceania ? OCEANIA_FOREST_DICE[slot]! : FOREST_DICE[slot]!);
   if (action.bonusTradeCardId != null) {
-    if (!TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
+    const tradeSlots = oceania ? OCEANIA_FOREST_TRADE_SLOTS : TRADE_SLOTS;
+    if (!tradeSlots.includes(slot)) throw new Error('this slot has no trade');
     if (!p.hand.includes(action.bonusTradeCardId)) throw new Error('card not in hand');
     diceToTake += 1;
+  }
+  if (action.rerollCost != null) {
+    // Oceania mat: pay any 1 food to reset the birdfeeder before gaining.
+    if (!oceania || !OCEANIA_FOREST_RESET_SLOTS.includes(slot)) {
+      throw new Error('this slot has no reset option');
+    }
+    if (p.food[action.rerollCost] <= 0) throw new Error(`you don't have ${action.rerollCost}`);
   }
   let s = spendCube(state, action.playerId, 'forest');
   if (action.bonusTradeCardId != null) {
@@ -317,6 +340,11 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
       ...setPlayer(s, { ...pl, hand: pl.hand.filter((id) => id !== action.bonusTradeCardId) }),
       discard: [...s.discard, action.bonusTradeCardId],
     };
+  }
+  if (action.rerollCost != null) {
+    const pl = getPlayer(s, action.playerId);
+    s = setPlayer(s, spendNectarAware(pl, action.rerollCost, 'forest'));
+    s = refillFeeder(s);
   }
   if (action.reroll) {
     if (!allSameFace(s.feederIn)) throw new Error('can only reroll when all dice show the same face');
@@ -344,17 +372,46 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
   return startActivation(s, action.playerId, 'forest');
 }
 
+/** Spend one food of `food` from `p`; nectar also goes to the spent-nectar
+ *  space of `habitat` for Oceania end-game scoring. */
+function spendNectarAware(
+  p: ReturnType<typeof getPlayer>,
+  food: FoodType,
+  habitat: Habitat,
+): ReturnType<typeof getPlayer> {
+  const out = spendFood(p, [food]);
+  if (food !== 'nectar') return out;
+  return { ...out, nectarSpent: { ...out.nectarSpent, [habitat]: out.nectarSpent[habitat] + 1 } };
+}
+
 // === lay eggs ===
 
 export function layEggs(state: GameState, action: LayEggsAction): GameState {
   requireTurn(state, action.playerId);
   const p = getPlayer(state, action.playerId);
-  const slot = actionSlot(p, 'grassland');
-  let eggs = GRASSLAND_EGGS[slot]!;
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'grassland', oceania);
+  let eggs = oceania ? OCEANIA_GRASSLAND_EGGS[slot]! : GRASSLAND_EGGS[slot]!;
   if (action.tradeFood != null) {
+    if (oceania) throw new Error('use extraTrades on the oceania mat');
     if (!TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
     if (p.food[action.tradeFood] <= 0) throw new Error(`you don't have ${action.tradeFood}`);
     eggs += 1;
+  }
+  const extraTrades = action.extraTrades ?? [];
+  if (extraTrades.length > 0) {
+    if (!oceania) throw new Error('extra trades need the oceania mat');
+    if (!OCEANIA_EGG_TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
+    const maxTrades = slot === OCEANIA_EGG_DOUBLE_TRADE_SLOT ? 2 : 1;
+    if (extraTrades.length > maxTrades) throw new Error(`at most ${maxTrades} trade(s) here`);
+    for (const t of extraTrades) {
+      if ('card' in t) {
+        if (!p.hand.includes(t.card)) throw new Error('card not in hand');
+      } else if (p.food[t.food] <= 0) {
+        throw new Error(`you don't have ${t.food}`);
+      }
+    }
+    eggs += extraTrades.length;
   }
   if (action.placements.length > eggs) throw new Error(`only ${eggs} eggs to place`);
   // Validate targets up-front against remaining room.
@@ -372,6 +429,17 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
   if (action.tradeFood != null) {
     s = setPlayer(s, spendFood(getPlayer(s, action.playerId), [action.tradeFood]));
   }
+  for (const t of extraTrades) {
+    let pl = getPlayer(s, action.playerId);
+    if ('card' in t) {
+      s = {
+        ...setPlayer(s, { ...pl, hand: pl.hand.filter((id) => id !== t.card) }),
+        discard: [...s.discard, t.card],
+      };
+    } else {
+      s = setPlayer(s, spendNectarAware(pl, t.food, 'grassland'));
+    }
+  }
   for (const ref of action.placements) {
     const pl = getPlayer(s, action.playerId);
     const row = [...pl.board[ref.habitat]];
@@ -387,14 +455,30 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
 export function drawCards(state: GameState, action: DrawCardsAction): GameState {
   requireTurn(state, action.playerId);
   const p = getPlayer(state, action.playerId);
-  const slot = actionSlot(p, 'wetland');
-  let count = WETLAND_CARDS[slot]!;
+  const oceania = isOceania(state);
+  const slot = actionSlot(p, 'wetland', oceania);
+  let count = oceania ? OCEANIA_WETLAND_CARDS[slot]! : WETLAND_CARDS[slot]!;
+  const trades = (action.tradeEgg ? 1 : 0) + (action.tradeNectar ? 1 : 0);
+  if (trades > 1) throw new Error('only one card trade per action');
   if (action.tradeEgg) {
-    if (!TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
+    const tradeSlots = oceania ? OCEANIA_CARD_TRADE_SLOTS : TRADE_SLOTS;
+    if (!tradeSlots.includes(slot)) throw new Error('this slot has no trade');
     const b = birdAt(state, action.playerId, action.tradeEgg);
     if (b.ghost) throw new Error('that space is covered');
     if (b.eggs <= 0) throw new Error('that bird has no eggs');
     count += 1;
+  }
+  if (action.tradeNectar) {
+    if (!oceania || !OCEANIA_CARD_TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
+    if (p.food.nectar <= 0) throw new Error("you don't have nectar");
+    count += 1;
+  }
+  if (action.resetTrayCost != null) {
+    // Oceania mat: pay any 1 food to discard + refill the tray first.
+    if (!oceania || !OCEANIA_WETLAND_RESET_SLOTS.includes(slot)) {
+      throw new Error('this slot has no reset option');
+    }
+    if (p.food[action.resetTrayCost] <= 0) throw new Error(`you don't have ${action.resetTrayCost}`);
   }
   if (action.picks.length !== count) throw new Error(`draw ${count} cards`);
   for (const pick of action.picks) {
@@ -403,11 +487,30 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
     }
   }
   let s = spendCube(state, action.playerId, 'wetland');
+  if (action.resetTrayCost != null) {
+    const pl = getPlayer(s, action.playerId);
+    s = setPlayer(s, spendNectarAware(pl, action.resetTrayCost, 'wetland'));
+    // Reset: discard all face-up cards, then refill from the deck.
+    s = {
+      ...s,
+      discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
+      tray: [null, null, null],
+    };
+    s = refillTray(s);
+    // Re-validate tray picks against the new tray.
+    for (const pick of action.picks) {
+      if (pick !== 'deck' && s.tray[pick] == null) throw new Error('that tray slot is empty');
+    }
+  }
   if (action.tradeEgg) {
     const pl = getPlayer(s, action.playerId);
     const row = [...pl.board[action.tradeEgg.habitat]];
     row[action.tradeEgg.index] = { ...row[action.tradeEgg.index]!, eggs: row[action.tradeEgg.index]!.eggs - 1 };
     s = setPlayer(s, { ...pl, board: { ...pl.board, [action.tradeEgg.habitat]: row } });
+  }
+  if (action.tradeNectar) {
+    const pl = getPlayer(s, action.playerId);
+    s = setPlayer(s, spendNectarAware(pl, 'nectar', 'wetland'));
   }
   for (const pick of action.picks) {
     if (pick === 'deck') {
@@ -517,9 +620,18 @@ function endRound(state: GameState): GameState {
  *  restock the tray, reset cubes, rotate the first player, and continue to
  *  the next round — or begin game end after round 4. */
 export function finishRound(state: GameState): GameState {
-  // Score this round's goal tile (green side: ranked).
-  const tile = state.goalTiles[state.round];
   let s = state;
+  // Oceania: unused nectar in each player's supply is discarded after the
+  // round-end (teal) powers and before the goal is scored. Nectar already
+  // spent or cached on birds is not affected.
+  if (isOceania(s)) {
+    s = {
+      ...s,
+      players: s.players.map((pl) => ({ ...pl, food: { ...pl.food, nectar: 0 } })),
+    };
+  }
+  // Score this round's goal tile (green side: ranked).
+  const tile = s.goalTiles[s.round];
   if (tile != null) {
     const points = GOAL_POINTS[s.round] ?? GOAL_POINTS[3]!;
     const units = s.playerOrder.map((pid) => goalScore(s, pid, tile));
