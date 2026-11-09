@@ -20,14 +20,27 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 - `npm run build` — `tsc` + `vite build`
 - `npm run test:run` / `npx vitest run` — tests
 - `npx tsc --noEmit` — typecheck
-- `npm run cards` — regenerate `src/game/data/*.json` from the card DB
+- `npm run cards` — regenerate `src/wingspan/data/*.json` from the card DB
   (reads `../wingsearch/src/assets/data/{master,bonus,goals}.json` — see
   `scripts/convert-cards.mjs`)
 - `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
 
 ## Architecture
 
-- `src/game/` — pure engine. No React/DOM/net imports. Every state mutation
+Three engines share one layout — `createGame(options)`, `applyAction(state,
+action) => state` (in `engine.ts`), `chooseAction(state, playerId)` for the
+AI — and only Wingspan has a UI so far.
+
+- `src/shared/` — code every engine uses: `rng.ts` (seeded mulberry32,
+  threaded through `state.rngState`) and `state.ts` (getPlayer / setPlayer /
+  pushPending). Engines re-export these bound to their own types; don't add
+  per-engine copies.
+- `src/finspan/`, `src/wyrmspan/` — the Finspan (+ Sharks & Reefs) and
+  Wyrmspan (+ Dragon Academy) engines + AIs. Engine-only: no UI/net yet.
+- `src/selfplay.test.ts` — AI self-play over every set/player count/mode of
+  all three engines (`SELFPLAY_SEEDS=250` for a wide local sweep). Each
+  engine's `regressions.test.ts` pins the bugs it found.
+- `src/wingspan/` — pure engine. No React/DOM/net imports. Every state mutation
   goes through `applyAction(state, action) => state` in `engine.ts`.
   Deterministic from `createGame(options)` + the action log; `state.rngState`
   threads the seeded RNG.
@@ -42,9 +55,9 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   - `resolve.ts` — resolves pending steps, runs `then` continuations, drops
     impossible steps.
   - `scoring.ts` — goal-tile unit counts + end-game ScoreBreakdown.
-  - `cards.ts` — typed accessors over `src/game/data/*.json` (generated).
-- `src/ai/` — pure heuristic. `chooseAction(state, playerId) => Action | null`;
-  `choices.ts` gives greedy legal answers to pending steps.
+  - `cards.ts` — typed accessors over `src/wingspan/data/*.json` (generated).
+  - `ai/` — pure heuristic. `chooseAction(state, playerId) => Action | null`;
+    `choices.ts` gives greedy legal answers to pending steps.
 - `src/net/` — room transport (ported from catan). `transport.ts` interface,
   `firebaseRoom.ts` (lazy-loaded, `DB_ROOT='wingspan'`, `PROTOCOL_VERSION=1`
   must match `database.rules.json`), `fakeTransport.ts` for tests,

@@ -1,7 +1,8 @@
 // Low-level state helpers: player/slot accessors, token movement with school
 // formation, fish placement legality, and the global deck.
 
-import { shuffle } from '../game/rng';
+import { shuffle } from '../shared/rng';
+import * as shared from '../shared/state';
 import { fish } from './cards';
 import { INITIAL_OCEAN, MAX_CORAL, SCHOOL_SIZE } from './constants';
 import type {
@@ -21,15 +22,8 @@ import { DEEPWATER_ROW, ESTUARY_ROW, SITE_COLORS, zoneOfRow } from './types';
 
 // === basic accessors ===
 
-export function getPlayer(state: GameState, id: PlayerId): PlayerState {
-  const p = state.players.find((x) => x.id === id);
-  if (!p) throw new Error(`unknown player ${id}`);
-  return p;
-}
-
-export function setPlayer(state: GameState, p: PlayerState): GameState {
-  return { ...state, players: state.players.map((x) => (x.id === p.id ? p : x)) };
-}
+export const getPlayer: (state: GameState, id: PlayerId) => PlayerState = shared.getPlayer;
+export const setPlayer: (state: GameState, p: PlayerState) => GameState = shared.setPlayer;
 
 export function appendLog(state: GameState, msg: string): GameState {
   return { ...state, log: [...state.log, { seq: state.log.length, msg }] };

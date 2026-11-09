@@ -4,7 +4,8 @@
 
 import { BIRD_BY_ID, bird, hummingbird } from './cards';
 import { FEEDER_SIZE, HUM_BONUS_SPACES, HUM_LADDER } from './constants';
-import { rollBirdfeeder, shuffle } from './rng';
+import { rollBirdfeeder, shuffle } from '../shared/rng';
+import * as shared from '../shared/state';
 import {
   addEggs,
   addFood,
@@ -44,13 +45,8 @@ import { BASE_DIE_FACES, BASE_FOODS, FOOD_TYPES, HABITATS, HUM_GROUPS, NEST_TYPE
 
 // === low-level state writers ===
 
-export function setPlayer(state: GameState, p: PlayerState): GameState {
-  return { ...state, players: state.players.map((x) => (x.id === p.id ? p : x)) };
-}
-
-export function pushPending(state: GameState, ...steps: PendingStep[]): GameState {
-  return { ...state, pending: [...state.pending, ...steps] };
-}
+export const setPlayer: (state: GameState, p: PlayerState) => GameState = shared.setPlayer;
+export const pushPending: (state: GameState, ...steps: PendingStep[]) => GameState = shared.pushPending;
 
 /** Draw `n` cards from the deck into the player's hand, reshuffling the
  *  discard pile (with rng) into a new deck when the deck runs out. */
@@ -1250,12 +1246,13 @@ export function queueHumAction(
   playerId: PlayerId,
   habitat: Habitat,
   groups?: HumGroup[],
+  lazy?: boolean,
 ): GameState {
   const p = getPlayer(state, playerId);
   if (p.humBoard[habitat] == null) {
-    return pushPending(state, { kind: 'chooseHumSource', playerId, habitat, groups });
+    return pushPending(state, { kind: 'chooseHumSource', playerId, habitat, groups, lazy });
   }
-  return pushPending(state, { kind: 'chooseHumCover', playerId, habitat });
+  return pushPending(state, { kind: 'chooseHumCover', playerId, habitat, lazy });
 }
 
 /** Consume `state.humAction`: queue the hummingbird action owed by the row
@@ -1264,7 +1261,9 @@ export function queueHumAction(
 export function queueRowHumAction(state: GameState, playerId: PlayerId): GameState {
   const h = state.humAction;
   if (h == null) return state;
-  return queueHumAction({ ...state, humAction: null }, playerId, h);
+  // Lazy: this can queue behind other hummingbird steps (e.g. an "any habitat"
+  // power on the same row), so attract-vs-return is re-decided when it comes up.
+  return queueHumAction({ ...state, humAction: null }, playerId, h, undefined, true);
 }
 
 /** Grant the attracted hummingbird's printed benefit (the row benefit of the

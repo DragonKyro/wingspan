@@ -1,5 +1,6 @@
 // Shared queries over GameState — used by handlers, the UI and the AI.
 
+import * as shared from '../shared/state';
 import { bird } from './cards';
 import { COLUMN_EGG_COST, ROW_SIZE } from './constants';
 import type {
@@ -15,11 +16,7 @@ import type {
 } from './types';
 import { BASE_FOODS, HABITATS } from './types';
 
-export function getPlayer(state: GameState, playerId: PlayerId): PlayerState {
-  const p = state.players.find((pl) => pl.id === playerId);
-  if (!p) throw new Error(`unknown player ${playerId}`);
-  return p;
-}
+export const getPlayer: (state: GameState, playerId: PlayerId) => PlayerState = shared.getPlayer;
 
 export function actingPlayerId(state: GameState): PlayerId {
   return state.playerOrder[state.currentPlayerIndex]!;
@@ -273,6 +270,14 @@ export function payFoodPlan(food: Record<FoodType, number>, cost: FoodCost): Foo
 /** Eggs needed to play into column `col` (0-indexed). */
 export function columnEggCost(col: number): number {
   return COLUMN_EGG_COST[col] ?? 0;
+}
+
+/** Eggs the player must pay to play their next bird into `habitat`: the
+ *  column cost, less 1 when an Americas Rufous Hornero placeholder egg sits
+ *  on that row. The single source of truth for the engine, AI, and UI. */
+export function playEggCost(p: PlayerState, habitat: Habitat): number {
+  const cost = columnEggCost(p.board[habitat].length);
+  return cost > 0 && p.horneroEggs.includes(habitat) ? cost - 1 : cost;
 }
 
 /** The slot (column index) the next bird in `habitat` will occupy. */

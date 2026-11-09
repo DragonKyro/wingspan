@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore, warmUpNetwork } from '@/store/networkStore';
-import { SETS } from '@/game/cards';
-import type { GameMode, PlayerColor } from '@/game/types';
+import { SETS } from '@/wingspan/cards';
+import type { GameMode, PlayerColor } from '@/wingspan/types';
 
 const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'];
 const OFFICIAL_SETS = ['core', 'european', 'oceania', 'asia', 'americas'];
@@ -38,7 +38,7 @@ export function MenuScreen() {
       playerTypes: types,
       playerColors: COLORS.slice(0, names.length),
       seed: Math.floor(Math.random() * 0xffffffff),
-      settings: { sets, goalSide: 'blue', mode },
+      settings: { sets, goalSide: 'green', mode },
     });
   };
 
@@ -83,7 +83,11 @@ export function MenuScreen() {
           </button>
           {!seatsOk && (
             <span className="muted" style={{ fontSize: '0.8rem', marginLeft: 8 }}>
-              {mode === 'duet' ? 'Duet needs exactly 2 players.' : 'Flock needs 6-7 players.'}
+              {mode === 'duet'
+                ? 'Duet needs exactly 2 players.'
+                : mode === 'flock'
+                  ? 'Flock needs 6-7 players.'
+                  : 'Standard needs 1-5 players.'}
             </span>
           )}
         </div>

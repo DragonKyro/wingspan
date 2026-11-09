@@ -39,7 +39,7 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
   const expansions = opts.expansions ?? ['base', 'academy'];
 
   let state: GameState = {
-    rngState: seed,
+    rngState: seed >>> 0,
     phase: 'setup',
     round: 1,
     turn: 'p1',

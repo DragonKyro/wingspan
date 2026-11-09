@@ -1,9 +1,9 @@
 // Convert wingsearch's card data (src/assets/data/*.json) into this app's
-// typed card database under src/game/data/. Run: npm run cards.
+// typed card database under src/wingspan/data/. Run: npm run cards.
 //
 // Source schemas (wingsearch master.json / bonus.json / goals.json) use the
 // printed column names ("Common name", "Victory points", ...); the output is
-// compact camelCase JSON imported by src/game/cards.ts.
+// compact camelCase JSON imported by src/wingspan/cards.ts.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = process.env.WINGSEARCH_DIR ?? resolve(root, '..', 'wingsearch');
-const OUT = join(root, 'src', 'game', 'data');
+const OUT = join(root, 'src', 'wingspan', 'data');
 
 const FOODS = ['Invertebrate', 'Seed', 'Fish', 'Fruit', 'Rodent', 'Nectar'];
 const foodId = (name) => name.toLowerCase();

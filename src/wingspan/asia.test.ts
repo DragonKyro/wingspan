@@ -3,8 +3,8 @@
 // modes end-to-end.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/ai/choices';
-import { chooseAction } from '@/ai/chooseAction';
+import { greedyChoice } from '@/wingspan/ai/choices';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird, BIRDS } from './cards';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
@@ -21,7 +21,7 @@ import type { BirdRef, FoodType, GameState, PlayerState } from './types';
 
 const COLORS = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'] as const;
 
-// asia card ids used below (see src/game/data/birds.json).
+// asia card ids used below (see src/wingspan/data/birds.json).
 const ASIAN_KOEL = 359; // pink: egg on another platform bird, +3 over limit.
 const BEARDED_REEDLING = 362; // teal: egg per other column bird with eggs.
 const BLACK_DRONGO = 363; // discard tray cards; if a grassland bird → lay 1 egg.

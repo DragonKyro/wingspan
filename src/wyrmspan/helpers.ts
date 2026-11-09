@@ -1,6 +1,8 @@
 // Shared pure helpers: seeded RNG, deck/display manipulation, position
 // queries, counter/condition evaluation, and resource/card movement.
 
+import { shuffle as shuffleSeeded } from '../shared/rng';
+import * as shared from '../shared/state';
 import { dragonCard, dragonMatchesCond, isDragonCard, parseIcons } from './cards';
 import type {
   Cond,
@@ -18,39 +20,19 @@ import type {
 import { RESOURCES } from './types';
 
 // ---------------------------------------------------------------------------
-// Seeded RNG (mulberry32), same pattern as the wingspan engine.
+// Seeded RNG: the shared mulberry32 (src/shared/rng.ts), threaded through
+// GameState.rngState.
 
-export function nextRng(rngState: number): [number, number] {
-  let t = (rngState + 0x6d2b79f5) | 0;
-  let r = Math.imul(t ^ (t >>> 15), 1 | t);
-  r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
-  return [((r ^ (r >>> 14)) >>> 0) / 4294967296, t];
-}
-
-export function randInt(state: GameState, n: number): [number, GameState] {
-  const [f, s] = nextRng(state.rngState);
-  return [Math.floor(f * n), { ...state, rngState: s }];
-}
-
-export function shuffle<T>(state: GameState, arr: T[]): [T[], GameState] {
-  const out = [...arr];
-  let s = state;
-  for (let i = out.length - 1; i > 0; i--) {
-    const [j, s2] = randInt(s, i + 1);
-    s = s2;
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return [out, s];
+export function shuffle<T>(state: GameState, arr: readonly T[]): [T[], GameState] {
+  const [out, rngState] = shuffleSeeded(state.rngState, arr);
+  return [out, { ...state, rngState }];
 }
 
 // ---------------------------------------------------------------------------
 // Player/state accessors
 
-export function player(state: GameState, id: PlayerId): PlayerState {
-  const p = state.players.find((pl) => pl.id === id);
-  if (!p) throw new Error(`unknown player ${id}`);
-  return p;
-}
+export const player: (state: GameState, id: PlayerId) => PlayerState = shared.getPlayer;
+export const setPlayer: (state: GameState, p: PlayerState) => GameState = shared.setPlayer;
 
 export function otherPlayers(state: GameState, id: PlayerId): PlayerState[] {
   return state.players.filter((p) => p.id !== id);

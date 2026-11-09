@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/ai/choices';
+import { greedyChoice } from '@/wingspan/ai/choices';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
 import type { Action, GameState } from './types';

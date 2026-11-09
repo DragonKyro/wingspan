@@ -35,13 +35,7 @@ Thumbs.db
 
 # Test coverage
 coverage/
-# Rulebook PDFs and agent research scratch (local-only)
+# Rulebook PDFs and text extracted from them (local-only)
 docs/
 *.pdf
-*_rules*.txt
-yt*.*
-resume.*
-dragon_*.txt
-wyrm_gallu.*
-automa.pdf
-academy_rules.txt
+/*.txt

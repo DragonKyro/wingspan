@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createGame } from '@/game/createGame';
-import { applyAction } from '@/game/engine';
-import type { GameState } from '@/game/types';
+import { createGame } from '@/wingspan/createGame';
+import { applyAction } from '@/wingspan/engine';
+import type { GameState } from '@/wingspan/types';
 import { chooseAction } from './chooseAction';
-import { actingPlayerId } from '@/game/helpers';
+import { actingPlayerId } from '@/wingspan/helpers';
 
 function aiGame(seed = 5, players = 2): GameState {
   return createGame({
     playerNames: ['A', 'B', 'C', 'D'].slice(0, players),
     playerTypes: Array.from({ length: players }, () => 'ai' as const),
-    playerColors: (['red', 'blue', 'orange', 'white'] as const).slice(0, players) as import('@/game/types').PlayerColor[],
+    playerColors: (['red', 'blue', 'orange', 'white'] as const).slice(0, players) as import('@/wingspan/types').PlayerColor[],
     seed,
   });
 }

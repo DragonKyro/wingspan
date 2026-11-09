@@ -99,19 +99,3 @@ export function settle(state: GameState): GameState {
   }
   return s;
 }
-
-/** Legal-actions enumeration for the AI and UI hinting. Deliberately a
- *  subset for v1: lists the main action kinds that are currently allowed. */
-export function legalActionKinds(state: GameState): Action['type'][] {
-  const head = state.pending[0];
-  if (head) return ['resolveChoice'];
-  if (state.phase === 'setup') return ['keepSetup'];
-  if (state.phase === 'roundEnd' || state.phase === 'gameEnd') return []; // auto-settles
-  if (state.phase !== 'main') return [];
-  if (state.activation && state.activation.remaining.length > 0) {
-    return ['activatePower', 'skipPower'];
-  }
-  const p = state.players.find((x) => x.id === state.playerOrder[state.currentPlayerIndex]);
-  if (!p || p.actionCubes <= 0) return [];
-  return ['playBird', 'gainFood', 'layEggs', 'drawCards'];
-}

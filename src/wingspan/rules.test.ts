@@ -4,7 +4,7 @@
 // zero-unit exclusion, and right-to-left power activation.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/ai/choices';
+import { greedyChoice } from '@/wingspan/ai/choices';
 import { finishRound, internals } from './actions';
 import { createGame } from './createGame';
 import { applyAction } from './engine';

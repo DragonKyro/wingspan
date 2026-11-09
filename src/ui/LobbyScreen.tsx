@@ -1,7 +1,7 @@
 import { useNetworkStore } from '@/store/networkStore';
 import { LOBBY_SETS, lobbyStartProblem } from '@/store/lobbyGame';
 import { roomLink } from '@/net';
-import { SETS } from '@/game/cards';
+import { SETS } from '@/wingspan/cards';
 
 export function LobbyScreen() {
   const { lobby, role, roomCode, connection, myUuid, hostAddAISeat, hostRemoveSeat, hostSetGame, hostStartGame, leaveRoom, onlineUuids, chat, sendChat } =

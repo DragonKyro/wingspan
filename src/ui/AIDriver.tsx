@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore } from '@/store/networkStore';
-import { chooseAction } from '@/ai/chooseAction';
-import { actingPlayerId, getPlayer } from '@/game/helpers';
-import type { PlayerId } from '@/game/types';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
+import { actingPlayerId, getPlayer } from '@/wingspan/helpers';
+import type { PlayerId } from '@/wingspan/types';
 
 /** Who the game is waiting on right now. */
 function actorNeeded(s: NonNullable<ReturnType<typeof useGameStore.getState>['game']>): PlayerId | null {

@@ -1,5 +1,5 @@
-import { bird, bonusCard } from '@/game/cards';
-import type { BirdCard, PlayedBird } from '@/game/types';
+import { bird, bonusCard } from '@/wingspan/cards';
+import type { BirdCard, PlayedBird } from '@/wingspan/types';
 
 const FOOD_ICON: Record<string, string> = {
   invertebrate: 'worm',

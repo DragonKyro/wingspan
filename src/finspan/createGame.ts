@@ -2,7 +2,7 @@
 // 3 main fish per player, place forage fish and starting tokens, and pick
 // the week's achievements (fixed side A, or 3 drawn tiles on side B).
 
-import { rngInt, shuffle } from '../game/rng';
+import { rngInt, shuffle } from '../shared/rng';
 import { ACHIEVEMENTS, fishIdsInSets, sideBTilePool } from './cards';
 import { REEF_DISCARD_ITEMS, SETUP_MAIN_CARDS, SETUP_STARTER_CARDS } from './constants';
 import { buildInitialOcean } from './helpers';

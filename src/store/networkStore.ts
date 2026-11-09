@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { GameState, PlayerColor, PlayerId } from '@/game/types';
-import { createGame } from '@/game/createGame';
-import type { CreateGameOptions } from '@/game/types';
+import type { GameState, PlayerColor, PlayerId } from '@/wingspan/types';
+import { createGame } from '@/wingspan/createGame';
+import type { CreateGameOptions } from '@/wingspan/types';
 import {
   type ChatMessage,
   type ConnectionState,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { bird, goalTile } from '@/game/cards';
+import { bird, goalTile } from '@/wingspan/cards';
 import {
   FOREST_DICE,
   GRASSLAND_EGGS,
@@ -7,19 +7,19 @@ import {
   OCEANIA_GRASSLAND_EGGS,
   OCEANIA_WETLAND_CARDS,
   WETLAND_CARDS,
-} from '@/game/constants';
+} from '@/wingspan/constants';
 import {
   actingPlayerId,
   actionSlot,
   autoPayBird,
-  columnEggCost,
   getPlayer,
   isCoverBird,
   isOceania,
+  playEggCost,
   playedBirds,
   rowFull,
   totalEggs,
-} from '@/game/helpers';
+} from '@/wingspan/helpers';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore } from '@/store/networkStore';
 import type {
@@ -30,8 +30,8 @@ import type {
   Habitat,
   PlayerId,
   PlayerState,
-} from '@/game/types';
-import { BASE_FOODS, FOOD_TYPES, HABITATS } from '@/game/types';
+} from '@/wingspan/types';
+import { BASE_FOODS, FOOD_TYPES, HABITATS } from '@/wingspan/types';
 import { BirdCardView, BonusCardView } from './BirdCardView';
 import { PendingBar } from './PendingBar';
 
@@ -335,7 +335,6 @@ function PlayerMatView({
                       }
                     }
                     if (playHere && controls) {
-                      const col = i;
                       const pay = autoPayBird(player, draft.cardId);
                       if (!pay) return;
                       dispatch({
@@ -343,7 +342,7 @@ function PlayerMatView({
                         playerId: player.id,
                         cardId: draft.cardId,
                         habitat: h,
-                        eggPayments: autoEggs(player, columnEggCost(col)),
+                        eggPayments: autoEggs(player, playEggCost(player, h)),
                         foodPayments: pay.foodPayments,
                         cachedFoodPayments: pay.cachedFoodPayments,
                         cardPayments: pay.cardPayments,

@@ -7,7 +7,7 @@ sibling `catan` project.
 
 ```bash
 npm run dev          # dev server
-npm run test:run     # vitest (189 tests)
+npm run test:run     # vitest (262 tests)
 npm run build        # typecheck + production build
 npm run cards        # regenerate Wingspan card data from wingsearch
 npm run deploy:rules # merge + deploy Firebase RTDB rules
@@ -15,7 +15,7 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
 
 ## Checklist
 
-### Wingspan — base game (`src/game/`)
+### Wingspan — base game (`src/wingspan/`)
 
 - [x] Card data pipeline (707 birds, 61 bonus cards, 56 goal tiles converted
       from wingsearch data)
@@ -45,7 +45,7 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
 - [x] **Americas** — hummingbird subsystem (attract/return/cover, garden,
       track bonuses), all 111 set power texts, americas goals + bonus cards
 - [ ] Promo card packs — 144 birds' powers unimplemented (locked as a known
-      gap by `src/game/coverage.test.ts`)
+      gap by `src/wingspan/coverage.test.ts`)
 
 ### Wyrmspan (`src/wyrmspan/`)
 
@@ -73,7 +73,10 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       fixed (turn-stall on end-of-turn discards, supply-cache duplication,
       guild-square stacking, explore cost cap, phantom-card payments, …)
 - [x] Coverage tests pin every power/ability text to an implementation
-- [x] 189 tests, `tsc` clean
+- [x] AI self-play sweep over every set, player count, and mode of all three
+      games (`src/selfplay.test.ts`); fixed the 8 engine/AI bugs it found (most
+      pinned in each engine's `regressions.test.ts`)
+- [x] 262 tests, `tsc` clean
 
 ### Still to do
 

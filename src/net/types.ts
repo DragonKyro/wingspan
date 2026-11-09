@@ -1,5 +1,5 @@
-import type { Action, PlayerColor } from '@/game/types';
-import type { CreateGameOptions } from '@/game/types';
+import type { Action, PlayerColor } from '@/wingspan/types';
+import type { CreateGameOptions } from '@/wingspan/types';
 
 export type ConnectionState =
   | 'disconnected'

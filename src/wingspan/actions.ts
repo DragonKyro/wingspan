@@ -25,7 +25,6 @@ import {
   addEggs,
   birdAt,
   canHoldEggs,
-  columnEggCost,
   getPlayer,
   isAmericas,
   isCardCostBird,
@@ -37,6 +36,7 @@ import {
   isSideways,
   nextSlot,
   payFoodPlan,
+  playEggCost,
   rowFull,
   spendFood,
 } from './helpers';
@@ -183,10 +183,8 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
   const coversTwo = isSideways(card) && action.coverTwo !== false && slot <= 3;
   // "Pay the lower egg cost": the lower of the two covered columns' costs —
   // column costs are non-decreasing, so that is the left covered slot's cost.
-  const eggCost = columnEggCost(slot);
-  // Americas: a Rufous Hornero placeholder egg on this slot discounts the cost.
-  const horneroDiscount = p.horneroEggs.includes(action.habitat) && eggCost > 0;
-  const effEggCost = eggCost - (horneroDiscount ? 1 : 0);
+  // Includes the Americas Rufous Hornero placeholder-egg discount.
+  const effEggCost = playEggCost(p, action.habitat);
   if (action.eggPayments.length !== effEggCost) throw new Error(`column ${slot + 1} costs ${effEggCost} eggs`);
   for (const ref of action.eggPayments) {
     const b = birdAt(state, action.playerId, ref);

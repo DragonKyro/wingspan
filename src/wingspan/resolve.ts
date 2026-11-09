@@ -310,6 +310,7 @@ function feasible(state: GameState, step: PendingStep): number {
 
     // === americas expansion steps ===
     case 'chooseHumSource':
+      if (p.humBoard[step.habitat] != null) return 0; // the space filled up since this was queued
       return humSourceOptions(state, step).length > 0 ? 1 : 0;
     case 'chooseHumCover':
       return p.humBoard[step.habitat] != null ? 1 : 0;
@@ -399,10 +400,34 @@ function trayCardMatches(step: Extract<PendingStep, { kind: 'chooseTrayCardEx' }
 /** Drop pending steps that have no legal answer (their `then` goes with them). */
 export function dropImpossiblePending(state: GameState): GameState {
   let s = state;
-  while (s.pending.length > 0 && feasible(s, s.pending[0]!) === 0) {
+  for (;;) {
+    s = retargetLazyHumHead(s);
+    const head = s.pending[0];
+    if (!head || feasible(s, head) > 0) break;
     s = { ...s, pending: s.pending.slice(1) };
   }
-  return s;
+  // Show the UI and AI the count the board can actually deliver, so the
+  // prompt never asks for more than resolveChoice will accept.
+  return clampHead(s);
+}
+
+/** The row's owed hummingbird action is queued before the brown powers that
+ *  may precede it have resolved (e.g. an "any habitat" hummingbird power on
+ *  the same row). Re-decide attract vs return against the board as it is
+ *  when the step comes up: an empty space attracts, an occupied one returns. */
+function retargetLazyHumHead(state: GameState): GameState {
+  const head = state.pending[0];
+  if (!head || (head.kind !== 'chooseHumSource' && head.kind !== 'chooseHumCover') || !head.lazy) {
+    return state;
+  }
+  const occupied = getPlayer(state, head.playerId).humBoard[head.habitat] != null;
+  let next: PendingStep | null = null;
+  if (head.kind === 'chooseHumSource' && occupied) {
+    next = { kind: 'chooseHumCover', playerId: head.playerId, habitat: head.habitat, lazy: true, then: head.then };
+  } else if (head.kind === 'chooseHumCover' && !occupied) {
+    next = { kind: 'chooseHumSource', playerId: head.playerId, habitat: head.habitat, lazy: true, then: head.then };
+  }
+  return next ? { ...state, pending: [next, ...state.pending.slice(1)] } : state;
 }
 
 /** Clamp `count` on the head step to what the board can actually deliver. */
@@ -419,8 +444,7 @@ function clampHead(state: GameState): GameState {
 // === the resolver ===
 
 export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choice): GameState {
-  let s = dropImpossiblePending(state);
-  s = clampHead(s);
+  let s = dropImpossiblePending(state); // also clamps the head step's count
   const step = s.pending[0];
   if (!step) throw new Error('nothing to resolve');
   if (step.playerId !== playerId) throw new Error('not your choice');
@@ -502,9 +526,13 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         return dropImpossiblePending(s); // declined — the "if you do" fails
       }
       if (choice.birds.length !== step.count) throw new Error(`choose ${step.count} birds`);
+      const discards = new Map<string, number>(); // eggs taken so far per bird
       for (const ref of choice.birds) {
         const b = birdAt(s, playerId, ref);
-        if (b.eggs <= 0) throw new Error('that bird has no eggs');
+        const key = `${ref.habitat}:${ref.index}`;
+        const taken = (discards.get(key) ?? 0) + 1;
+        discards.set(key, taken);
+        if (b.eggs < taken) throw new Error('that bird has no eggs');
         if (step.exclude && sameRef(ref, step.exclude)) throw new Error('not that bird');
         if (step.habitat && ref.habitat !== step.habitat) throw new Error(`must be in the ${step.habitat}`);
       }
@@ -722,7 +750,20 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       const card = bird(b.cardId);
       if (card.powerColor !== 'brown' || !card.powerText) throw new Error('not a brown power');
       if (step.predatorOnly && !card.predator) throw new Error('not a predator');
+      // A repeat power reached through this one (Gray Catbird -> Northern
+      // Mockingbird -> ...) may not loop back to a bird already used in the
+      // chain, or two repeaters in one row would trigger each other forever.
+      const chain = [...(step.excludeIds ?? []), ...(source ? [source.index] : []), target.index];
+      const queued = new Set(s.pending);
       s = runPower(s, playerId, target);
+      s = {
+        ...s,
+        pending: s.pending.map((st) =>
+          st.kind === 'chooseRepeatPower' && !queued.has(st) && st.habitat === step.habitat
+            ? { ...st, excludeIds: [...new Set([...(st.excludeIds ?? []), ...chain])] }
+            : st,
+        ),
+      };
       break;
     }
     case 'chooseAdditionalPlay': {

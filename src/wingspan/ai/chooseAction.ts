@@ -2,7 +2,7 @@
 // Pure — no React, no store imports. Returns one Action at a time; the caller
 // (AIDriver / tests) applies it via the engine and asks again.
 
-import { bird, bonusCard } from '@/game/cards';
+import { bird, bonusCard } from '@/wingspan/cards';
 import {
   FOREST_DICE,
   GRASSLAND_EGGS,
@@ -10,20 +10,20 @@ import {
   OCEANIA_GRASSLAND_EGGS,
   OCEANIA_WETLAND_CARDS,
   WETLAND_CARDS,
-} from '@/game/constants';
+} from '@/wingspan/constants';
 import {
   actingPlayerId,
   actionSlot,
   birdCount,
   canPayFood,
-  columnEggCost,
   getPlayer,
   isOceania,
   payFoodPlan,
+  playEggCost,
   playedBirds,
   rowFull,
   totalFood,
-} from '@/game/helpers';
+} from '@/wingspan/helpers';
 import type {
   Action,
   BirdCard,
@@ -32,8 +32,8 @@ import type {
   Habitat,
   PlayerId,
   PlayerState,
-} from '@/game/types';
-import { BASE_FOODS } from '@/game/types';
+} from '@/wingspan/types';
+import { BASE_FOODS } from '@/wingspan/types';
 import { resolveHeadAction } from './choices';
 
 // === scoring helpers ===
@@ -73,8 +73,7 @@ function bestHabitat(p: PlayerState, card: BirdCard): Habitat | null {
 /** Can the player actually pay for `card` in `habitat` (food + column eggs)? */
 function canPlayIn(p: PlayerState, card: BirdCard, habitat: Habitat): boolean {
   if (!canPayFood(p.food, card.cost)) return false;
-  const eggsNeeded = columnEggCost(p.board[habitat].length);
-  return totalEggsAvail(p) >= eggsNeeded;
+  return totalEggsAvail(p) >= playEggCost(p, habitat);
 }
 
 function totalEggsAvail(p: PlayerState): number {
@@ -188,13 +187,12 @@ function mainAction(state: GameState, playerId: PlayerId): Action | null {
 
   if (handGood && !wantFood && (birds <= 2 || round >= 1 || playable[0]!.value > 6)) {
     const best = playable[0]!;
-    const col = p.board[best.habitat].length;
     return {
       type: 'playBird',
       playerId,
       cardId: best.card.id,
       habitat: best.habitat,
-      eggPayments: eggPayments(p, columnEggCost(col)),
+      eggPayments: eggPayments(p, playEggCost(p, best.habitat)),
       foodPayments: payFoodPlan(p.food, best.card.cost)!,
     };
   }
@@ -206,13 +204,12 @@ function mainAction(state: GameState, playerId: PlayerId): Action | null {
   if (handGood) {
     // Can't decide between: play the best anyway if we have the food.
     const best = playable[0]!;
-    const col = p.board[best.habitat].length;
     return {
       type: 'playBird',
       playerId,
       cardId: best.card.id,
       habitat: best.habitat,
-      eggPayments: eggPayments(p, columnEggCost(col)),
+      eggPayments: eggPayments(p, playEggCost(p, best.habitat)),
       foodPayments: payFoodPlan(p.food, best.card.cost)!,
     };
   }

@@ -4,8 +4,8 @@
 // tiles and bonus cards, plus a full-game smoke test.
 
 import { describe, expect, it } from 'vitest';
-import { chooseAction } from '@/ai/chooseAction';
-import { greedyChoice } from '@/ai/choices';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
+import { greedyChoice } from '@/wingspan/ai/choices';
 import { hummingbird } from './cards';
 import { HUM_BONUS_SPACES, HUM_GARDEN_SLOTS, HUM_LADDER } from './constants';
 import { createGame } from './createGame';
@@ -17,7 +17,7 @@ import type { BirdRef, FoodType, GameState, PlayerState } from './types';
 
 const COLORS = ['red', 'blue'] as const;
 
-// americas card ids (see src/game/data/birds.json).
+// americas card ids (see src/wingspan/data/birds.json).
 const ALTAMIRA_ORIOLE = 598; // attract 1 hummingbird to another row.
 const AMAZON_KINGFISHER = 599; // reset the birdfeeder; cache all fish shown.
 const ANTIOQUIA_BRUSHFINCH = 605; // white: per hummingbird on mat, draw bonus, keep 1.
@@ -36,7 +36,7 @@ const BARRED_ANTSHRIKE = 607; // pink: invertebrate shown after reset → gain 1
 const VERDIN = 700; // discard 1 invertebrate to take a hummingbird action.
 const WOODCOCK = 13; // core, no power.
 
-// hummingbird ids with known benefits (see src/game/data/hummingbirds.json).
+// hummingbird ids with known benefits (see src/wingspan/data/hummingbirds.json).
 const RUFOUS_BREASTED_HERMIT = 2035; // nectar
 const RUBY_TOPAZ = 2030; // card
 const LONG_BILLED_HERMIT = 2033; // advance

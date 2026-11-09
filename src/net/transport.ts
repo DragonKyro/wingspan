@@ -2,7 +2,7 @@
 // real one (Firebase Realtime Database); `fakeTransport.ts` is an in-memory
 // stand-in for tests. Nothing here knows about game rules.
 
-import type { Action } from '@/game/types';
+import type { Action } from '@/wingspan/types';
 import type {
   ChatMessage,
   LobbyState,

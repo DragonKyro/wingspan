@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { bird, hummingbird } from '@/game/cards';
-import { DUET_MAP, duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
+import { bird, hummingbird } from '@/wingspan/cards';
+import { DUET_MAP, duetEligibleSpaces, duetFoodsFor } from '@/wingspan/duetMap';
 import {
   eggStepTargets,
   getPlayer,
   nestMatches,
   playedBirds,
   wingspanOf,
-} from '@/game/helpers';
-import { costHasFood, faceCovers, hasPowerImpl } from '@/game/powers';
+} from '@/wingspan/helpers';
+import { costHasFood, faceCovers, hasPowerImpl } from '@/wingspan/powers';
 import type {
   BirdRef,
   Choice,
@@ -16,8 +16,8 @@ import type {
   GameState,
   PendingStep,
   PlayerState,
-} from '@/game/types';
-import { FOOD_TYPES, HABITATS } from '@/game/types';
+} from '@/wingspan/types';
+import { FOOD_TYPES, HABITATS } from '@/wingspan/types';
 import { BirdCardView, BonusCardView } from './BirdCardView';
 
 /** Bar pinned to the bottom while a pending choice is open. Renders the
@@ -958,7 +958,7 @@ function DicePicker({
 }: {
   game: GameState;
   count: number;
-  faces?: import('@/game/types').DieFace[];
+  faces?: import('@/wingspan/types').DieFace[];
   onDone: (picks: { die: number; take?: FoodType }[]) => void;
 }) {
   const [picks, setPicks] = useState<number[]>([]);

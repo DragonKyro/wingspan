@@ -1,8 +1,8 @@
 // Greedy answers for pending steps — used by the AI and by tests that need
 // to push through sub-choices without caring about quality.
 
-import { bird, hummingbird } from '@/game/cards';
-import { duetEligibleSpaces, duetFoodsFor } from '@/game/duetMap';
+import { bird, hummingbird } from '@/wingspan/cards';
+import { duetEligibleSpaces, duetFoodsFor } from '@/wingspan/duetMap';
 import {
   adjacentRefs,
   columnEggCost,
@@ -16,10 +16,10 @@ import {
   playerToRight,
   totalEggs,
   wingspanOf,
-} from '@/game/helpers';
-import { costHasFood, faceCovers, hasPowerImpl } from '@/game/powers';
-import type { BirdRef, Choice, FoodType, GameState, PendingStep, PlayerId } from '@/game/types';
-import { FOOD_TYPES, HABITATS } from '@/game/types';
+} from '@/wingspan/helpers';
+import { costHasFood, faceCovers, hasPowerImpl } from '@/wingspan/powers';
+import type { BirdRef, Choice, FoodType, GameState, PendingStep, PlayerId } from '@/wingspan/types';
+import { FOOD_TYPES, HABITATS } from '@/wingspan/types';
 
 /** A legal (if unremarkable) answer to `step`, or null when unanswerable. */
 export function greedyChoice(state: GameState, step: PendingStep): Choice | null {
@@ -48,8 +48,14 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
     case 'chooseBirdForEgg': {
       const targets = eggStepTargets(state, step);
       // Each bird may take several eggs up to its (possibly over-) limit.
+      // `onlyBird` steps already list the bird once per egg that fits, so
+      // expand each distinct bird exactly once.
       const expanded: BirdRef[] = [];
+      const seen = new Set<string>();
       for (const t of targets) {
+        const key = `${t.habitat}:${t.index}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         const b = p.board[t.habitat]?.[t.index];
         if (!b) continue;
         const room = Math.max(
@@ -64,22 +70,24 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'birds', birds: expanded.slice(0, step.count) };
     }
     case 'chooseBirdForEggDiscard': {
-      const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
+      // One entry per egg (a bird may be listed once per egg it holds),
+      // spreading across birds first so no bird is drained needlessly.
+      const targets: { habitat: (typeof HABITATS)[number]; index: number; nth: number }[] = [];
       for (const h of HABITATS) {
         if (step.habitat && h !== step.habitat) continue;
         p.board[h].forEach((b, index) => {
-          if (
-            b.eggs > 0 &&
-            (!step.exclude || step.exclude.habitat !== h || step.exclude.index !== index)
-          ) {
-            targets.push({ habitat: h, index });
-          }
+          if (step.exclude && step.exclude.habitat === h && step.exclude.index === index) return;
+          for (let nth = 0; nth < b.eggs; nth++) targets.push({ habitat: h, index, nth });
         });
       }
       if (targets.length < step.count) {
         return step.optional ? { kind: 'birds', birds: [] } : null;
       }
-      return { kind: 'birds', birds: targets.slice(0, step.count) };
+      targets.sort((a, b) => a.nth - b.nth);
+      return {
+        kind: 'birds',
+        birds: targets.slice(0, step.count).map(({ habitat, index }) => ({ habitat, index })),
+      };
     }
     case 'chooseHandDiscard': {
       if (p.hand.length === 0) {
@@ -171,7 +179,7 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
         habitats = habitats.filter((h) => h && p.board[h].length === step.column);
       }
       for (const habitat of habitats) {
-        if (!habitat) continue;
+        if (!habitat || p.board[habitat].length >= 5) continue;
         if (totalEggs(p) < Math.max(0, columnEggCost(p.board[habitat].length) - (step.eggDiscount ?? 0))) continue;
         const cardId = p.hand.find(
           (id) => bird(id).habitats.includes(habitat) && payFoodPlan(p.food, bird(id).cost) != null,

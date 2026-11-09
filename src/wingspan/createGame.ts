@@ -3,7 +3,7 @@
 import { birdsInSets, bonusCardsInSets, goalsForSets, hummingbirdsInSets } from './cards';
 import { CUBES_PER_ROUND, HUM_GARDEN_SLOTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS } from './duetMap';
-import { rollBirdfeeder, rngInt, shuffle } from './rng';
+import { rollBirdfeeder, rngInt, shuffle } from '../shared/rng';
 import type {
   CreateGameOptions,
   GameMode,

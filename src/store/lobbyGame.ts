@@ -2,8 +2,8 @@
 // deck and the seat range. Shared by networkStore (to start the game) and
 // the lobby screen (to show it).
 
-import { SETS } from '@/game/cards';
-import type { GameSettings } from '@/game/types';
+import { SETS } from '@/wingspan/cards';
+import type { GameSettings } from '@/wingspan/types';
 import type { LobbyGame, LobbyState } from '@/net/types';
 
 /** Wingspan seats: official game is 1-5; an online room needs at least 2 seats. */
@@ -47,7 +47,7 @@ export function lobbySettings(lobby: LobbyState): Partial<GameSettings> {
   const game = normalizeLobbyGame(lobby.game);
   return {
     sets: game.sets,
-    goalSide: 'blue',
+    goalSide: 'green',
     aiLevel: lobby.aiLevel,
   };
 }

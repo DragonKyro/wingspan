@@ -5,6 +5,7 @@
 // continues its resume. This mirrors the wingspan engine's powers/resolve
 // split, folded into one file.
 
+import * as shared from '../shared/state';
 import { parseAbility, warnUnsupported } from './abilities';
 import { cardAbilityTypes, cardName, caveCard, dragonCard, dragonMatchesCond, isDragonCard } from './cards';
 import { GUILD_TILES, GUILD_TRACK, INCOME_SECTIONS, incomeSectionIndex } from './guild';
@@ -24,6 +25,7 @@ import {
   otherPlayers,
   payItems,
   player,
+  setPlayer,
   removeEggs,
   takeFromDisplay,
   type Pos,
@@ -47,13 +49,7 @@ import { RESOURCES } from './types';
 // ---------------------------------------------------------------------------
 // Small state helpers
 
-function setPlayer(state: GameState, p: PlayerState): GameState {
-  return { ...state, players: state.players.map((q) => (q.id === p.id ? p : q)) };
-}
-
-export function pushPending(state: GameState, pending: PendingStep): GameState {
-  return { ...state, pending: [...state.pending, pending] };
-}
+export const pushPending: (state: GameState, ...steps: PendingStep[]) => GameState = shared.pushPending;
 
 /** Apply non-interactive parts of a gain item; returns [itemsDeferred, state]. */
 function applyGainItems(state: GameState, p: PlayerState, items: GainItem[]): [GainItem[], GameState] {
@@ -1029,6 +1025,28 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       // Simplified: answer.indexes = indices into cardIds kept; rest follow
       // tuck/discard/playFree defaults (kept-first heuristic).
       const ids = head.cardIds;
+      if (head.playFree) {
+        // "Play 1 for free and keep/discard the other N": the answer's first
+        // index is the card played; the rest go to hand ("keep") or the
+        // discard pile. (Playing last — it may trigger further effects.)
+        const first = answer.kind === 'indexes' ? answer.indexes[0] : undefined;
+        const pick = first != null && ids[first] != null ? first : 0;
+        const playId = ids[pick]!;
+        const others = ids.filter((_, i) => i !== pick);
+        if (head.keep != null) {
+          const q = clone(player(s, playerId));
+          q.hand.push(...others);
+          s = setPlayer(s, q);
+        } else {
+          for (const id of others) {
+            s = isDragonCard(id)
+              ? { ...s, dragonDiscard: [...s.dragonDiscard, id] }
+              : { ...s, caveDiscard: [...s.caveDiscard, id] };
+          }
+        }
+        s = tryPlayFree(s, playerId, playId, head.resume?.ctx);
+        return resumeSteps(head.resume);
+      }
       const keepIdx = answer.kind === 'indexes' ? new Set(answer.indexes) : new Set(ids.map((_, i) => i));
       const q = clone(player(s, playerId));
       const keepN = head.keep ?? ids.length;
@@ -1036,12 +1054,6 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       const leftovers: number[] = [];
       for (let i = 0; i < ids.length; i++) {
         if (keepIdx.has(i) && kept < keepN) {
-          if (head.playFree && kept === 0) {
-            // first "kept" card is played for free instead
-            leftovers.push(ids[i]!); // handled via play below
-            kept++;
-            continue;
-          }
           q.hand.push(ids[i]!);
           kept++;
         } else {
@@ -1054,12 +1066,6 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       const target = head.tuckTarget ?? { kind: 'any' };
       const positions = dragonTargetPositions(player(s, playerId), target, head.resume?.ctx.dragon);
       for (const id of leftovers) {
-        if (head.playFree && q.hand.indexOf(id) < 0 && leftovers.indexOf(id) === 0) {
-          // play it for free: place on first legal space
-          const placed = tryPlayFree(s, playerId, id, head.resume?.ctx);
-          s = placed;
-          continue;
-        }
         if (tuckN > 0 && isDragonCard(id) && positions.length) {
           const pos = positions[0]!;
           const q2 = clone(player(s, playerId));
@@ -1553,6 +1559,13 @@ export function tryPlayDragonAt(
 
 function tryPlayFree(state: GameState, playerId: PlayerId, cardId: number, ctx?: EffectCtx): GameState {
   void ctx;
+  if (!isDragonCard(cardId)) {
+    // Playing a cave card = excavating with it, into the first cave that
+    // still has an unexcavated space (no space anywhere: it is discarded).
+    const cave = player(state, playerId).caves.findIndex((row) => row.spaces.some((sp) => !sp.excavated));
+    if (cave < 0) return { ...state, caveDiscard: [...state.caveDiscard, cardId] };
+    return excavateAt(state, playerId, cave, cardId);
+  }
   const r = tryPlayDragonAt(state, playerId, cardId, {}, undefined);
   if (!r.ok && isDragonCard(cardId)) return { ...state, dragonDiscard: [...state.dragonDiscard, cardId] };
   return r.state;

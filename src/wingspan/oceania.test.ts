@@ -3,8 +3,8 @@
 // spread of the new pending-step power mechanics.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/ai/choices';
-import { chooseAction } from '@/ai/chooseAction';
+import { greedyChoice } from '@/wingspan/ai/choices';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird } from './cards';
 import { createGame } from './createGame';
 import { applyAction, settle } from './engine';
@@ -20,7 +20,7 @@ import type { BirdRef, FoodType, GameState, PlayerState } from './types';
 
 const COLORS = ['red', 'blue'] as const;
 
-// oceania card ids used below (see src/game/data/birds.json).
+// oceania card ids used below (see src/wingspan/data/birds.json).
 const TUI = 350; // copy a brown power on a forest bird of the player to your left.
 const RED_WINGED_PARROT = 333; // give 1 nectar; lay 2 eggs on this bird or gain 2 dice.
 const COCKATIEL = 280; // discard 1 seed → take a tray card and tuck it behind this bird.

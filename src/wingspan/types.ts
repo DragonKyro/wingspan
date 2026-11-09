@@ -310,11 +310,13 @@ export type PendingStep =
   /** Pick which hummingbird to attract into `habitat`'s empty hummingbird
    *  space: the top card of a garden slot (answer = slot index), or 'deck' to
    *  take the top of the hummingbird deck. `groups` restricts garden picks to
-   *  those groups (group-named attract powers — deck draw is then illegal). */
-  | { kind: 'chooseHumSource'; playerId: PlayerId; habitat: Habitat; groups?: HumGroup[]; then?: PendingTag }
+   *  those groups (group-named attract powers — deck draw is then illegal).
+   *  `lazy` (the row's owed hummingbird action) re-decides attract vs return
+   *  when the step comes up, since earlier steps may have changed the space. */
+  | { kind: 'chooseHumSource'; playerId: PlayerId; habitat: Habitat; groups?: HumGroup[]; lazy?: boolean; then?: PendingTag }
   /** Pick a garden slot for the hummingbird being returned from `habitat`'s
-   *  hummingbird space (may cover a garden card). */
-  | { kind: 'chooseHumCover'; playerId: PlayerId; habitat: Habitat; then?: PendingTag }
+   *  hummingbird space (may cover a garden card). `lazy`: see chooseHumSource. */
+  | { kind: 'chooseHumCover'; playerId: PlayerId; habitat: Habitat; lazy?: boolean; then?: PendingTag }
   /** Move one hummingbird token `count` space(s) up (or down with `down`) in
    *  a chosen column. `groups` lists the eligible columns. */
   | { kind: 'chooseHumColumn'; playerId: PlayerId; groups: HumGroup[]; down?: boolean; then?: PendingTag }

@@ -4,12 +4,8 @@
 import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { MAT_ICONS, excavateAt, pushPending, runAbility, runSteps, tryPlayDragonAt } from './effects';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
-import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payItems, player, removeEggs } from './helpers';
+import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payItems, player, removeEggs, setPlayer } from './helpers';
 import type { GameState, GainItem, PlayerId, PlayerState, Resource } from './types';
-
-function setPlayer(state: GameState, p: PlayerState): GameState {
-  return { ...state, players: state.players.map((q) => (q.id === p.id ? p : q)) };
-}
 
 /** Egg cost of excavating column idx (0-based): col3 = +1 egg, col4 = +2 eggs. */
 export function excavateEggCost(spaceIdx: number): number {

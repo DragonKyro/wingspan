@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { Action, GameState } from '@/game/types';
-import { applyAction } from '@/game/engine';
-import { createGame } from '@/game/createGame';
-import type { CreateGameOptions } from '@/game/types';
+import type { Action, GameState } from '@/wingspan/types';
+import { applyAction } from '@/wingspan/engine';
+import { createGame } from '@/wingspan/createGame';
+import type { CreateGameOptions } from '@/wingspan/types';
 
 /** The state captured for online rollbacks (just the game — the log is inside it). */
 export type GameSnapshot = GameState;

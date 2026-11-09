@@ -3,8 +3,8 @@
 // european bonus cards, and a full AI game on the combined deck.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/ai/choices';
-import { chooseAction } from '@/ai/chooseAction';
+import { greedyChoice } from '@/wingspan/ai/choices';
+import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird } from './cards';
 import { createGame } from './createGame';
 import { applyAction, settle } from './engine';
@@ -20,7 +20,7 @@ import type { GameState, PlayerState } from './types';
 
 const COLORS = ['red', 'blue'] as const;
 
-// european card ids used below (see src/game/data/birds.json).
+// european card ids used below (see src/wingspan/data/birds.json).
 const BLACKBIRD = 77; // Place sideways covering 2 [forest] spaces.
 const SPARROWHAWK = 116; // pay 1 [card] per [rodent] in cost.
 const RED_KITE = 195; // play on top of another bird.
