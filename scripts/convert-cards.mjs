@@ -23,6 +23,9 @@ const bonusRaw = Object.values(
   JSON.parse(readFileSync(join(SRC, 'src/assets/data/bonus.json'), 'utf8')),
 );
 const goalsRaw = JSON.parse(readFileSync(join(SRC, 'src/assets/data/goals.json'), 'utf8'));
+const humRaw = Object.values(
+  JSON.parse(readFileSync(join(SRC, 'src/assets/data/hummingbirds.json'), 'utf8')),
+);
 
 // Bonus-card names as they appear as flags on birds (same spelling).
 const BONUS_NAMES = new Set(bonusRaw.map((b) => b['Bonus card']));
@@ -92,14 +95,49 @@ function parseVp(text) {
   return { kind: 'raw', text };
 }
 
-const bonusCards = bonusRaw.map((b) => ({
-  id: b['id'],
-  name: b['Bonus card'],
-  set: b['Set'],
-  condition: b['Condition'],
-  vpText: b['VP'],
-  vp: parseVp(b['VP']),
-  automa: !!b['Automa'],
+const bonusCards = bonusRaw.map((b) => {
+  const card = {
+    id: b['id'],
+    name: b['Bonus card'],
+    set: b['Set'],
+    condition: b['Condition'],
+    vpText: b['VP'],
+    vp: parseVp(b['VP']),
+    automa: !!b['Automa'],
+  };
+  // Ecolodge Owner's tiers overlap after parsing ("3 points" becomes
+  // {min:3,max:null} which would swallow the 4+ tier): rewrite them exactly.
+  if (card.name === 'Ecolodge Owner') {
+    card.vp = {
+      kind: 'tiers',
+      tiers: [
+        { min: 0, max: 2, vp: 6 },
+        { min: 3, max: 3, vp: 3 },
+        { min: 4, max: null, vp: 0 },
+      ],
+    };
+  }
+  return card;
+});
+
+// Hummingbird taxonomic groups → short ids used by goals/powers/bonus cards.
+const HUM_GROUPS = {
+  'bees & mountaingems': 'bee',
+  'brilliants & coquettes': 'brilliant',
+  emeralds: 'emerald',
+  mangoes: 'mango',
+  'topazes, jacobins, & hermits': 'topaz',
+};
+
+const hummingbirds = humRaw.map((c) => ({
+  id: c['id'],
+  name: c['Common name'],
+  sciName: c['Scientific name'],
+  set: c['Set'],
+  group: HUM_GROUPS[c['Group']] ?? c['Group'],
+  benefit: c['Benefit'],
+  bonusFlags: [...BONUS_NAMES].filter((n) => c[n] === 'X'),
+  beakLeft: c['Beak direction'] === 'L' ? true : c['Beak direction'] === 'R' ? false : null,
 }));
 
 // Goal text → structured scorer kind. Texts not on this map are kept as
@@ -139,6 +177,17 @@ const GOAL_MAP = {
   '[fruit] + [seed] in food cost of your birds': { kind: 'costIncludes', foods: ['fruit', 'seed'], all: true },
   '[rodent] + [fish] in food cost of your birds': { kind: 'costIncludes', foods: ['rodent', 'fish'], all: true },
   'no goal': { kind: 'noGoal' },
+  // === americas expansion goals ===
+  'Birds worth EVEN points (0, 2, 4, 6, 8)': { kind: 'birdsParity', parity: 'even' },
+  'Birds worth ODD points (1, 3, 5, 7, 9)': { kind: 'birdsParity', parity: 'odd' },
+  'Different point values on birds': { kind: 'distinctPoints' },
+  'Hummingbird Points': { kind: 'humPoints' },
+  'Total of egg limits (blue side: ÷ 5)': { kind: 'eggLimitTotal' },
+  '[bee]': { kind: 'humColumn', group: 'bee' },
+  '[brilliant]': { kind: 'humColumn', group: 'brilliant' },
+  '[emerald]': { kind: 'humColumn', group: 'emerald' },
+  '[mango]': { kind: 'humColumn', group: 'mango' },
+  '[topaz]': { kind: 'humColumn', group: 'topaz' },
 };
 
 const goals = goalsRaw.map((g) => ({
@@ -152,6 +201,7 @@ mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'birds.json'), JSON.stringify(birds));
 writeFileSync(join(OUT, 'bonusCards.json'), JSON.stringify(bonusCards));
 writeFileSync(join(OUT, 'goals.json'), JSON.stringify(goals));
+writeFileSync(join(OUT, 'hummingbirds.json'), JSON.stringify(hummingbirds));
 
 const sets = {};
 for (const b of birds) sets[b.set] = (sets[b.set] ?? 0) + 1;

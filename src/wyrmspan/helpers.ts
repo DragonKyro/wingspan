@@ -56,6 +56,17 @@ export function otherPlayers(state: GameState, id: PlayerId): PlayerState[] {
   return state.players.filter((p) => p.id !== id);
 }
 
+/**
+ * Other players in turn (clockwise) order, starting with the player after
+ * `id`. Used for "each opponent may ..." benefits, which the rulebook
+ * resolves clockwise starting with the effect's owner.
+ */
+export function orderedOthers(state: GameState, id: PlayerId): PlayerState[] {
+  const i = state.playerOrder.indexOf(id);
+  const rotated = [...state.playerOrder.slice(i + 1), ...state.playerOrder.slice(0, i)];
+  return rotated.map((pid) => player(state, pid));
+}
+
 export function leftNeighbor(state: GameState, id: PlayerId): PlayerState {
   const i = state.playerOrder.indexOf(id);
   return player(state, state.playerOrder[(i + 1) % state.playerOrder.length]!);
@@ -334,6 +345,35 @@ export function eggsOnMatCount(p: PlayerState): number {
   let n = p.nestEggs;
   for (const d of allDragons(p)) n += d.dragon.eggs;
   return n;
+}
+
+/** Remove `n` eggs from a player's mat: dragon eggs first, then mat nests. */
+export function removeEggs(p: PlayerState, n: number): PlayerState {
+  let left = n;
+  outer: for (const row of p.caves) {
+    for (const sp of row.spaces) {
+      if (left <= 0) break outer;
+      if (sp.dragon && sp.dragon.eggs > 0) {
+        sp.dragon.eggs -= 1;
+        left--;
+      }
+    }
+  }
+  if (left > 0) p.nestEggs = Math.max(0, p.nestEggs - left);
+  return p;
+}
+
+/** The printed cost of a dragon card (resources/coins/eggs printed on it). */
+export function dragonPrintedCost(cardId: number): GainItem[] {
+  const c = dragonCard(cardId);
+  const out: GainItem[] = [];
+  for (const r of RESOURCES) {
+    const n = c.cost[r];
+    if (n) out.push({ kind: 'resource', res: r, count: n });
+  }
+  if (c.cost.coin) out.push({ kind: 'coin', count: c.cost.coin });
+  if (c.cost.egg) out.push({ kind: 'egg', count: c.cost.egg });
+  return out;
 }
 
 /** Pay a resource/coin/card cost (eggs handled separately via chooseEggPayment). */

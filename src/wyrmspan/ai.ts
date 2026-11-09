@@ -1,7 +1,7 @@
 // Greedy heuristic AI: resolves pending choices sensibly, otherwise prefers
 // entice > excavate > explore > pass.
 
-import { dragonCard, isDragonCard } from './cards';
+import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { dragonCost, excavateEggCost, exploreCost, nextEmptySpace } from './actions';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, player } from './helpers';
@@ -41,10 +41,13 @@ export function chooseAction(state: GameState, playerId: PlayerId): Action | nul
       }
     }
   }
-  // Then explore the cave with the most dragons, if affordable.
+  // Then explore the cave with the most dragons, if affordable and under the
+  // 3-explores-per-cave-per-round cap.
+  const caveNames = ['crimson', 'golden', 'amethyst'] as const;
   let bestCave = -1;
   let bestCount = 0;
   for (let cave = 0; cave < 3; cave++) {
+    if (p.explores[caveNames[cave]!] >= 3) continue;
     const n = p.caves[cave]!.spaces.filter((sp) => sp.dragon).length;
     if (n > bestCount && canPay(p, exploreCost(p, cave) as never)) {
       bestCount = n;
@@ -158,7 +161,8 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
       if (head.pos) return { kind: 'dragon', pos: head.pos };
       const fl = allDragons(p).find((d) => {
         const c = dragonCard(d.dragon.cardId);
-        const track = c.trainingTrack ? c.trainingTrack.length : 0;
+        // The track length is the number of cost ICONS, not the string length.
+        const track = c.trainingTrack ? parseIcons(c.trainingTrack).length : 0;
         return c.size === 'Fledgling' && track > 0 && (d.dragon.training ?? 0) < track;
       });
       if (!fl) return { kind: 'decline' };
@@ -188,7 +192,9 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
       return { kind: 'resources', resources: toDrop };
     }
     case 'oncePerRoundPick':
-      return { kind: 'confirm' };
+      return { kind: 'index', index: 0 };
+    case 'payDragonCost':
+      return { kind: 'option', index: 0 };
     case 'chooseIncomeSpace': {
       // Greedy: prefer more coins, then more total items.
       const section = INCOME_SECTIONS[incomeSectionIndex(state.round)]!;

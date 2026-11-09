@@ -314,9 +314,12 @@ const matchTuckGainCost: Matcher = (s) => {
     `^Tuck (${ICONS})from your hand here to gain (${ICONS})of the cost printed on the tucked dragon\\.$`,
   ).exec(s);
   if (!m) return null;
+  // The tuck is a trade (optional); the gain only happens if a card was
+  // actually tucked. KNOWN PARTIAL: the gain is a generic any-resource rather
+  // than a choice among the resource types printed in the tucked card's cost.
   return [
-    { op: 'tuck', count: 1, from: 'hand', target: { kind: 'here' } },
-    { op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] },
+    { op: 'tuck', count: 1, from: 'hand', target: { kind: 'here' }, upTo: true },
+    { op: 'if', cond: { kind: 'didPrecede' }, then: [{ op: 'gain', items: [{ kind: 'resource', res: 'any', count: 1 }] }] },
   ];
 };
 
@@ -1484,6 +1487,12 @@ function parseClauses(text: string): Step[] | null {
     }
     if (att !== null) {
       steps.push(...att);
+      // An "If you do, ..." continuation makes the immediately preceding
+      // tuck/cache step optional: it is a cost the player may decline to pay.
+      if (att.some((st) => st.op === 'if' && st.cond.kind === 'didPrecede')) {
+        const prev = steps[steps.length - att.length - 1];
+        if (prev && (prev.op === 'tuck' || prev.op === 'cache')) prev.upTo = true;
+      }
       i++;
       continue;
     }

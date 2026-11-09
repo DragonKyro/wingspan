@@ -4,9 +4,8 @@
 import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { MAT_ICONS, excavateAt, pushPending, runAbility, runSteps, tryPlayDragonAt } from './effects';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
-import { allDragons, canPay, clone, eggsOnMatCount, log, otherPlayers, payItems, player } from './helpers';
+import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payItems, player, removeEggs } from './helpers';
 import type { GameState, GainItem, PlayerId, PlayerState, Resource } from './types';
-import { RESOURCES } from './types';
 
 function setPlayer(state: GameState, p: PlayerState): GameState {
   return { ...state, players: state.players.map((q) => (q.id === p.id ? p : q)) };
@@ -41,17 +40,7 @@ export function excavate(state: GameState, playerId: PlayerId, cave: number, car
 
   const q = payItems(clone(p), cost, undefined);
   // pay eggs from anywhere on the mat
-  let left = eggs;
-  outer: for (const row of q.caves) {
-    for (const sp of row.spaces) {
-      if (left <= 0) break outer;
-      if (sp.dragon && sp.dragon.eggs > 0) {
-        sp.dragon.eggs -= 1;
-        left--;
-      }
-    }
-  }
-  if (left > 0) q.nestEggs = Math.max(0, q.nestEggs - left);
+  removeEggs(q, eggs);
   q.hand.splice(q.hand.indexOf(cardId), 1);
   let s = setPlayer(state, q);
   s = excavateAt(s, playerId, cave, cardId);
@@ -62,15 +51,8 @@ export function excavate(state: GameState, playerId: PlayerId, cave: number, car
 // ENTICE — play a dragon into the leftmost excavated space of a preferred cave.
 
 export function dragonCost(cardId: number): GainItem[] {
-  const c = dragonCard(cardId);
-  const out: GainItem[] = [{ kind: 'coin', count: 1 }];
-  for (const r of RESOURCES) {
-    const n = c.cost[r];
-    if (n) out.push({ kind: 'resource', res: r, count: n });
-  }
-  if (c.cost.coin) out.push({ kind: 'coin', count: c.cost.coin });
-  if (c.cost.egg) out.push({ kind: 'egg', count: c.cost.egg });
-  return out;
+  // 1-coin entice action cost + the dragon's printed cost.
+  return [{ kind: 'coin', count: 1 }, ...dragonPrintedCost(cardId)];
 }
 
 export function entice(state: GameState, playerId: PlayerId, cave: number, cardId: number): GameState {
@@ -81,29 +63,20 @@ export function entice(state: GameState, playerId: PlayerId, cave: number, cardI
   if (!prefs.includes(cave)) return log(state, 'entice: dragon does not live in that cave');
   if (nextEnticeSpace(p, cave) < 0) return log(state, 'entice: no excavated space');
 
-  // "Ignore this dragon's cost if ..." — evaluate the printed clause.
+  // "Ignore this dragon's cost if ..." — evaluate the printed clause. The
+  // printed cost is waived but the 1-coin entice action cost is always paid.
   let cost = dragonCost(cardId);
   const ignoreCheck = evaluateIgnoreCost(state, p, cardId, cave);
-  if (ignoreCheck) cost = cost.filter((it) => it.kind === 'coin' && it.count === 1); // keep the 1-coin action cost
+  if (ignoreCheck) cost = [{ kind: 'coin', count: 1 }];
 
   if (!canPay(p, cost)) return log(state, 'entice: cannot pay');
   const q = payItems(clone(p), cost, undefined);
   q.coinsSpentEntice += cost.filter((it) => it.kind === 'coin').reduce((a, i) => a + i.count, 0);
   // pay egg portion of the printed cost from the mat
   const eggCost = cost.filter((it) => it.kind === 'egg').reduce((a, i) => a + i.count, 0);
-  let left = eggCost;
-  outer: for (const row of q.caves) {
-    for (const sp of row.spaces) {
-      if (left <= 0) break outer;
-      if (sp.dragon && sp.dragon.eggs > 0) {
-        sp.dragon.eggs -= 1;
-        left--;
-      }
-    }
-  }
-  if (left > 0) q.nestEggs = Math.max(0, q.nestEggs - left);
+  removeEggs(q, eggCost);
   let s = setPlayer(state, q);
-  const r = tryPlayDragonAt(s, playerId, cardId, { discount: 'full' }, { cave, space: nextEnticeSpace(q, cave) });
+  const r = tryPlayDragonAt(s, playerId, cardId, {}, { cave, space: nextEnticeSpace(q, cave) });
   return r.state;
 }
 
@@ -169,28 +142,27 @@ export function exploreCost(p: PlayerState, cave: number): GainItem[] {
 
 export function explore(state: GameState, playerId: PlayerId, cave: number): GameState {
   const p = player(state, playerId);
+  const names = ['crimson', 'golden', 'amethyst'] as const;
+  // Rulebook: the 3rd entry into a cave in a round is the maximum.
+  if (p.explores[names[cave]!] >= 3) {
+    return log(state, 'explore: cave already explored 3 times this round');
+  }
   const cost = exploreCost(p, cave);
   if (!canPay(p, cost)) return log(state, 'explore: cannot pay');
   const q = payItems(clone(p), cost, undefined);
   // pay egg portion of explore cost
   const eggN = cost.filter((it) => it.kind === 'egg').reduce((a, i) => a + i.count, 0);
-  let left = eggN;
-  outer: for (const row of q.caves) {
-    for (const sp of row.spaces) {
-      if (left <= 0) break outer;
-      if (sp.dragon && sp.dragon.eggs > 0) {
-        sp.dragon.eggs -= 1;
-        left--;
-      }
-    }
-  }
-  if (left > 0) q.nestEggs = Math.max(0, q.nestEggs - left);
-  const names = ['crimson', 'golden', 'amethyst'] as const;
+  removeEggs(q, eggN);
   q.explores[names[cave]!] += 1;
   let s = setPlayer(state, q);
 
-  // Walk left to right: mat icon, then dragon's Adventurer ability; stop at
-  // the first space without a dragon.
+  // Walk left to right: printed path icon, then dragon's Adventurer ability;
+  // stop at the first space without a dragon. The printed icons sit on the
+  // path the adventurer walks, so the icon on the path segment leading to a
+  // space is "passed" (and may activate) BEFORE the adventurer walks onto the
+  // space and discovers it is empty (rulebook example: Tess activates the
+  // second printed "Gain" icon, then ends her turn on the next dragon-less
+  // space).
   const row = q.caves[cave]!;
   for (let i = 0; i < row.spaces.length; i++) {
     const icons = MAT_ICONS[cave]?.[i] ?? [];

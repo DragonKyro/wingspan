@@ -3,8 +3,8 @@
 // wingspan engine's structure).
 
 import { entice, excavate, exchange, explore, nextTurnPlayer, pass } from './actions';
-import { cardAbilityTypes, dragonCard } from './cards';
-import { collectIncome, resolveChoice, runAbility } from './effects';
+import { cardAbilityTypes, dragonCard, parseIcons } from './cards';
+import { collectIncome, pushPending, resolveChoice, runAbility } from './effects';
 import { clone, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
 import { scoreObjective } from './objectives';
 import { scoreGame } from './scoring';
@@ -45,7 +45,8 @@ export function applyAction(state: GameState, action: Action): GameState {
       s = endAction(s);
       break;
     case 'exchange':
-      if (s.phase !== 'main' || s.pending.length) return s;
+      // Free conversion, but only on your own turn.
+      if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
       s = exchange(s, action.playerId, action.give, action.get);
       break;
   }
@@ -92,26 +93,48 @@ function pushDiscardDown(state: GameState, playerId: PlayerId): GameState {
   return s;
 }
 
+/**
+ * Round end, step 1: queue every "once per round" dragon ability in turn
+ * order starting with that round's start player. settle() drains the queue
+ * (see below) before scoring the objective; abilities that queue choices
+ * pause the drain until those choices resolve.
+ */
 function endRound(state: GameState): GameState {
   let s = state;
   s = log(s, `round ${s.round} ended`);
 
-  // 1. Once-per-round abilities, in turn order from the start player.
-  const order = [...s.playerOrder.slice(s.playerOrder.indexOf(s.startPlayer)), ...s.playerOrder.slice(0, s.playerOrder.indexOf(s.startPlayer))];
+  const startIdx = s.playerOrder.indexOf(s.startPlayer);
+  const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)];
+  const queue: GameState['roundEndQueue'] = [];
   for (const pid of order) {
     const p = player(s, pid);
     for (const [cave, row] of p.caves.entries()) {
       for (const [space, sp] of row.spaces.entries()) {
         if (!sp.dragon) continue;
         const card = dragonCard(sp.dragon.cardId);
-        if (cardAbilityTypes(card).includes('OncePerRound')) {
-          s = runAbility(s, pid, { cave, space }, ['OncePerRound']);
+        if (!cardAbilityTypes(card).includes('OncePerRound')) continue;
+        // Fledgling purple abilities are inactive until fully trained.
+        if (card.size === 'Fledgling') {
+          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          if ((sp.dragon.training ?? 0) < track) continue;
         }
+        queue.push({ playerId: pid, pos: [cave, space] });
       }
     }
   }
+  return { ...s, phase: 'roundEnd', roundEndQueue: queue, turnEnding: false };
+}
 
-  // 2. Score the round objective.
+/**
+ * Round end, steps 2+: score the objective (once), then refresh displays,
+ * rotate the start player, and either collect Academy income or run the
+ * base upkeep and begin the next round. Called by settle() once the
+ * once-per-round queue has fully drained.
+ */
+function finishRound(state: GameState): GameState {
+  let s = state;
+
+  // Score the round objective.
   const scores = scoreObjective(s, s.round - 1);
   s = {
     ...s,
@@ -123,20 +146,20 @@ function endRound(state: GameState): GameState {
     return endGame(s);
   }
 
-  // 3. Refresh both displays.
+  // Refresh both displays.
   s = refreshDisplays(s);
 
-  // 4. Rotate the start player marker.
+  // Rotate the start player marker.
   const startIdx = (s.playerOrder.indexOf(s.startPlayer) + 1) % s.playerOrder.length;
   const start = s.playerOrder[startIdx]!;
   s = { ...s, startPlayer: start };
 
   if (s.expansions.includes('academy')) {
-    // 5. Academy: each player collects the income space they claimed when
+    // Academy: each player collects the income space they claimed when
     // passing, in turn order from the new start player. settle() drains
     // incomeQueue and begins the next round once empty.
     const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)];
-    s = { ...s, phase: 'roundEnd', incomeQueue: order };
+    s = { ...s, incomeQueue: order };
     return s;
   }
 
@@ -163,6 +186,7 @@ function endRound(state: GameState): GameState {
   s = {
     ...s,
     players,
+    phase: 'main',
     round: s.round + 1,
     turn: start,
     turnIndex: startIdx,
@@ -191,10 +215,34 @@ export function settle(state: GameState): GameState {
       s = { ...s, phase: 'main' };
       continue;
     }
-    // Academy round end: drain the income queue between pending answers.
+    // Round end: once-per-round abilities drain first, then the objective is
+    // scored, displays refresh, the start player rotates, and (Academy) the
+    // income queue drains between pending answers.
     if (s.phase === 'roundEnd' && s.pending.length === 0) {
       // Drafted display cards are immediately refilled.
       s = refillDisplayGaps(s);
+      if (s.roundEndQueue.length) {
+        // The next player's once-per-round dragons activate. With several,
+        // the owner picks the activation order via oncePerRoundPick.
+        const pid = s.roundEndQueue[0]!.playerId;
+        const mine = s.roundEndQueue.filter((e) => e.playerId === pid);
+        s = { ...s, roundEndQueue: s.roundEndQueue.filter((e) => e.playerId !== pid) };
+        if (mine.length === 1) {
+          const [cave, space] = mine[0]!.pos;
+          s = runAbility(s, pid, { cave, space }, ['OncePerRound']);
+        } else {
+          s = pushPending(s, {
+            kind: 'oncePerRoundPick',
+            playerId: pid,
+            positions: mine.map((e) => e.pos),
+          });
+        }
+        continue;
+      }
+      if (!s.players.every((p) => p.objectiveVps.length >= s.round)) {
+        s = finishRound(s);
+        continue;
+      }
       if (s.incomeQueue.length) {
         const pid = s.incomeQueue[0]!;
         s = { ...s, incomeQueue: s.incomeQueue.slice(1) };

@@ -365,8 +365,9 @@ export type PendingStep =
   /** Pick which resource(s) to cache + onto which dragon. */
   | { kind: 'chooseCache'; playerId: PlayerId; count: number; res: Resource | 'any'; from: 'supply' | 'general'; target: DragonTarget; upTo?: boolean; resume?: Resume }
   | { kind: 'chooseTuck'; playerId: PlayerId; count: number; from: 'hand' | 'deck'; target: DragonTarget; upTo?: boolean; resume?: Resume }
-  /** Pick `count` hand cards of `what` to discard/pay. */
-  | { kind: 'chooseHandCards'; playerId: PlayerId; count: number; what: 'dragon' | 'cave' | 'any'; purpose: 'discard' | 'pay' | 'tuck' | 'cavesForEggs'; upTo?: boolean; resume?: Resume }
+  /** Pick `count` hand cards of `what` to discard/pay. `then` runs only when
+   * the discard is actually performed (declined `upTo` skips it). */
+  | { kind: 'chooseHandCards'; playerId: PlayerId; count: number; what: 'dragon' | 'cave' | 'any'; purpose: 'discard' | 'pay' | 'tuck' | 'cavesForEggs'; upTo?: boolean; then?: Step[]; resume?: Resume }
   /** Pick a face-up display card. */
   | { kind: 'chooseDisplay'; playerId: PlayerId; deck: 'dragon' | 'cave'; resume?: Resume }
   /** Distribute just-drawn cards: choose which to keep/tuck/discard/play. */
@@ -377,6 +378,9 @@ export type PendingStep =
   | { kind: 'chooseExcavate'; playerId: PlayerId; source: 'hand' | 'display' | 'deck'; count: number; resume?: Resume }
   /** Pick a dragon card to play for free/discounted. */
   | { kind: 'choosePlayDragon'; playerId: PlayerId; source: 'hand' | 'display' | 'handOrDisplay' | 'deck'; discount?: GainItem[][] | 'full'; onTop?: boolean; resume?: Resume }
+  /** Pay for a dragon chosen via choosePlayDragon: `options` are the single
+   * items that may be waived from the printed cost (pick one). */
+  | { kind: 'payDragonCost'; playerId: PlayerId; cardId: number; pos: [number, number]; onTop?: boolean; options: { label: string; waive: GainItem[] }[]; resume?: Resume }
   /** Pick a square on the guild tile after reaching a brown track space. */
   | { kind: 'chooseGuildSquare'; playerId: PlayerId; resume?: Resume }
   /** Pick one of several option bundles. */
@@ -392,8 +396,10 @@ export type PendingStep =
   | { kind: 'opponentMay'; playerId: PlayerId; label: string; steps: Step[]; resume?: Resume }
   /** End-of-turn discard down to limits. */
   | { kind: 'discardDown'; playerId: PlayerId; resume?: Resume }
-  /** Pick which once-per-round dragon to activate next (round end). */
-  | { kind: 'oncePerRoundPick'; playerId: PlayerId; resume?: Resume }
+  /** Pick which once-per-round dragon to activate next (round end). When a
+   * player has several "once per round" dragons they choose the activation
+   * order; `positions` are the [cave, space] refs still awaiting activation. */
+  | { kind: 'oncePerRoundPick'; playerId: PlayerId; positions: [number, number][]; resume?: Resume }
   /** Pick which benefit group (for "gain N different benefits"). */
   | { kind: 'chooseBenefits'; playerId: PlayerId; count: number; options: GainItem[][]; resume?: Resume }
   /** Reveal resolution is automatic; kept for logging symmetry. */

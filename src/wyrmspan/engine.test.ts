@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
-import { chooseAction } from './ai';
-import { INCOME_SECTIONS } from './guild';
-import type { GameState } from './types';
+import { answerFor, chooseAction } from './ai';
+import { exploreCost } from './actions';
+import { isDragonCard } from './cards';
+import { GUILD_TILES, INCOME_SECTIONS } from './guild';
+import type { GameState, PlayerId } from './types';
 import type { CreateGameOptions } from './createGame';
 
 /** Drive the game with the AI until it ends or we hit a safety cap. */
@@ -60,6 +62,20 @@ function inMain(opts: CreateGameOptions = {}): GameState {
   }
   expect(s.phase).toBe('main');
   return s;
+}
+
+/** `pid` passes and answers the income-space choice their pass produces. */
+function passAndAnswer(s: GameState, pid: PlayerId): GameState {
+  s = applyAction(s, { type: 'pass', playerId: pid });
+  while (s.pending.length && s.pending[0]!.kind === 'chooseIncomeSpace') {
+    const who = s.pending[0]!.playerId;
+    s = applyAction(s, { type: 'resolveChoice', playerId: who, answer: { kind: 'index', index: 0 } });
+  }
+  return s;
+}
+
+function playerOf(s: GameState, pid: PlayerId) {
+  return s.players.find((p) => p.id === pid)!;
 }
 
 describe('wyrmspan engine', () => {
@@ -276,5 +292,279 @@ describe('dragon academy round tracker', () => {
     const bpid = b.turn;
     b = applyAction(b, { type: 'pass', playerId: bpid });
     expect(b.pending.filter((p) => p.kind === 'chooseIncomeSpace')).toHaveLength(0);
+  });
+});
+
+describe('audit regressions', () => {
+  it('caching "any" resource from your supply spends that resource', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Knowing Guardian: "Cache [AnyResource] from your supply here. If you do,
+    // draw [DragonCard]." (once per round)
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 119, eggs: 0, tucked: [], cached: [] };
+    p1.resources.gold = 1;
+    p1.hand = [];
+    let s = passAndAnswer(st, 'p1');
+    s = passAndAnswer(s, 'p2');
+
+    const head = s.pending[0];
+    expect(head?.kind).toBe('chooseCache');
+    expect(head?.playerId).toBe('p1');
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['gold'] } });
+
+    const after = playerOf(s, 'p1');
+    expect(after.resources.gold).toBe(0); // the cached gold came out of the supply
+    expect(after.caves[0]!.spaces[0]!.dragon!.cached).toEqual(['gold']);
+    // "If you do, draw" — didPrecede was true, so a dragon card was drawn.
+    expect(after.hand.filter(isDragonCard)).toHaveLength(1);
+  });
+
+  it('a declined once-per-round tuck does not pay the cost or lay the egg', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Guarding Horned Drake: "Tuck [DragonCard] from your hand here. If you
+    // do, lay [Egg] here." — the tuck is a cost the owner may decline.
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 62, eggs: 0, tucked: [], cached: [] };
+    p1.hand = [9];
+    let s = passAndAnswer(st, 'p1');
+    s = passAndAnswer(s, 'p2');
+
+    const head = s.pending[0];
+    expect(head?.kind).toBe('chooseTuck');
+    if (head?.kind !== 'chooseTuck') throw new Error('unreachable');
+    expect(head.upTo).toBe(true);
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'decline' } });
+
+    const d = playerOf(s, 'p1').caves[0]!.spaces[0]!.dragon!;
+    expect(d.tucked).toEqual([]);
+    expect(d.eggs).toBe(0);
+  });
+
+  it('a performed once-per-round tuck lays the conditional egg', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 62, eggs: 0, tucked: [], cached: [] };
+    p1.hand = [9];
+    let s = passAndAnswer(st, 'p1');
+    s = passAndAnswer(s, 'p2');
+
+    expect(s.pending[0]?.kind).toBe('chooseTuck');
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      answer: { kind: 'assignTucks', assignments: [{ cardId: 9, pos: [0, 0] }] },
+    });
+    // The tucked card paid off: now choose where the egg lands.
+    expect(s.pending[0]?.kind).toBe('chooseEggSpot');
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      answer: { kind: 'eggSpots', spots: [{ kind: 'dragon', pos: [0, 0] }] },
+    });
+    const d = playerOf(s, 'p1').caves[0]!.spaces[0]!.dragon!;
+    expect(d.tucked).toEqual([9]);
+    expect(d.eggs).toBe(1);
+  });
+
+  it('runs once-per-round abilities in turn order from the start player, with owner-chosen order', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    const p2 = playerOf(st, 'p2');
+    // p1 has TWO once-per-round dragons; p2 has one.
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 138, eggs: 0, tucked: [], cached: [] }; // Oracular Dragon
+    p1.caves[0]!.spaces[1]!.excavated = true;
+    p1.caves[0]!.spaces[1]!.dragon = { cardId: 153, eggs: 0, tucked: [], cached: [] }; // Contrary Lung Dragon
+    p2.caves[0]!.spaces[0]!.dragon = { cardId: 153, eggs: 0, tucked: [], cached: [] };
+    let s = passAndAnswer(st, 'p1');
+    s = passAndAnswer(s, 'p2');
+
+    // p1 goes first (start player) and picks which dragon to activate.
+    const head = s.pending[0];
+    expect(head?.kind).toBe('oncePerRoundPick');
+    if (head?.kind !== 'oncePerRoundPick') throw new Error('unreachable');
+    expect(head.playerId).toBe('p1');
+    expect(head.positions).toEqual([
+      [0, 0],
+      [0, 1],
+    ]);
+    // Pick the SECOND dragon (Contrary Lung Dragon): gains meat, may cache.
+    const meatBefore = playerOf(s, 'p1').resources.meat;
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 1 } });
+    expect(playerOf(s, 'p1').resources.meat).toBe(meatBefore + 1);
+    expect(s.pending[0]?.kind).toBe('chooseCache');
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'decline' } });
+
+    // The un-picked dragon is re-queued: Oracular Dragon lays an egg.
+    expect(s.pending[0]?.kind).toBe('chooseEggSpot');
+    expect(s.pending[0]?.playerId).toBe('p1');
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: 'p1',
+      answer: { kind: 'eggSpots', spots: [{ kind: 'dragon', pos: [0, 0] }] },
+    });
+    expect(playerOf(s, 'p1').caves[0]!.spaces[0]!.dragon!.eggs).toBe(1);
+
+    // Only then does p2's once-per-round ability run.
+    expect(s.pending[0]?.kind).toBe('chooseCache');
+    expect(s.pending[0]?.playerId).toBe('p2');
+  });
+
+  it('playDragonFree with discount "full" charges the printed cost', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Galvanic Wyrm (fully trained fledgling): "Play [DragonCard] from your
+    // hand. Pay its printed costs."
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 272, eggs: 0, tucked: [], cached: [], training: 2 };
+    p1.caves[0]!.spaces[1]!.excavated = true;
+    p1.hand = [9]; // Melodious Firedragon: costs milk + egg
+    p1.resources.milk = 1;
+    p1.nestEggs = 1;
+    let s = passAndAnswer(st, 'p1');
+    s = passAndAnswer(s, 'p2');
+
+    expect(s.pending[0]?.kind).toBe('choosePlayDragon');
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+
+    const after = playerOf(s, 'p1');
+    expect(after.caves[0]!.spaces[1]!.dragon?.cardId).toBe(9);
+    expect(after.resources.milk).toBe(0); // printed milk paid
+    expect(after.nestEggs).toBe(0); // printed egg paid from the mat
+    expect(after.hand).not.toContain(9);
+  });
+
+  it('playDragonFree with an item discount lets the player pick what to waive', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 138, eggs: 0, tucked: [], cached: [] };
+    p1.caves[0]!.spaces[1]!.excavated = true;
+    p1.hand = [9]; // costs milk + egg
+    p1.resources.milk = 1;
+    p1.nestEggs = 1;
+    // Cave cards 234-236: "Immediately play [DragonCard] with a discount of 1
+    // [Egg] or [AnyResource]."
+    st.pending = [
+      {
+        kind: 'choosePlayDragon',
+        playerId: 'p1',
+        source: 'handOrDisplay',
+        discount: [[{ kind: 'egg', count: 1 }], [{ kind: 'resource', res: 'any', count: 1 }]],
+      },
+    ];
+    let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+
+    const head = s.pending[0];
+    expect(head?.kind).toBe('payDragonCost');
+    if (head?.kind !== 'payDragonCost') throw new Error('unreachable');
+    expect(head.options.map((o) => o.label)).toEqual(['discount 1 egg', 'discount 1 milk']);
+    // Waive the egg: only the milk is charged.
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'option', index: 0 } });
+
+    const after = playerOf(s, 'p1');
+    expect(after.caves[0]!.spaces[1]!.dragon?.cardId).toBe(9);
+    expect(after.resources.milk).toBe(0);
+    expect(after.nestEggs).toBe(1); // egg was discounted away, not paid
+  });
+
+  it('guild tile squares reject a second marker (unlimited square excepted)', () => {
+    const st = structuredClone(inMain());
+    st.guild.tile = 'seafarers';
+    st.guild.squares = GUILD_TILES.seafarers.squares.map(() => []);
+    st.guild.squares[0] = ['p2'];
+    st.guild.squares[4] = ['p2']; // the unlimited rectangle
+    st.pending = [
+      { kind: 'chooseGuildSquare', playerId: 'p1' },
+      { kind: 'chooseGuildSquare', playerId: 'p1' },
+    ];
+    let s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
+    expect(s.guild.squares[0]).toEqual(['p2']); // square holds 1 marker
+    expect(playerOf(s, 'p1').guildMarkersPlaced).toBe(0);
+    // But the unlimited rectangle accepts a second player's marker.
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 4 } });
+    expect(s.guild.squares[4]).toEqual(['p2', 'p1']);
+    expect(playerOf(s, 'p1').guildMarkersPlaced).toBe(1);
+  });
+
+  it('egg-cost fledgling training boxes consume an egg from the mat', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Speckled Manta track is [Egg][Milk]: the first box costs an egg.
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 262, eggs: 0, tucked: [], cached: [], training: 0 };
+    p1.nestEggs = 1;
+    st.pending = [{ kind: 'chooseTrain', playerId: 'p1', times: 1, free: false, target: 'any', pos: [0, 0] }];
+    const s = applyAction(st, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'dragon', pos: [0, 0] } });
+    const after = playerOf(s, 'p1');
+    expect(after.caves[0]!.spaces[0]!.dragon!.training).toBe(1);
+    expect(after.nestEggs).toBe(0); // the egg box cost was actually paid
+  });
+
+  it('rejects a 4th explore of the same cave in a round and charges egg tiers', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    expect(exploreCost(p1, 0)).toEqual([{ kind: 'coin', count: 1 }]);
+    p1.explores.crimson = 1;
+    expect(exploreCost(p1, 0)).toEqual([
+      { kind: 'coin', count: 1 },
+      { kind: 'egg', count: 1 },
+    ]);
+    p1.explores.crimson = 2;
+    expect(exploreCost(p1, 0)).toEqual([
+      { kind: 'coin', count: 1 },
+      { kind: 'egg', count: 2 },
+    ]);
+    p1.explores.crimson = 3; // 3rd entry is the max per round
+    const s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    expect(playerOf(s, 'p1').explores.crimson).toBe(3);
+    expect(s.log[s.log.length - 1]).toContain('3 times');
+  });
+
+  it('rejects resource exchange on another player\'s turn', () => {
+    const st = structuredClone(inMain());
+    expect(st.turn).toBe('p1');
+    playerOf(st, 'p1').resources.meat = 2;
+    playerOf(st, 'p2').resources.gold = 2;
+    const goldBefore = playerOf(st, 'p1').resources.gold;
+    let s = applyAction(st, { type: 'exchange', playerId: 'p2', give: ['gold', 'gold'], get: 'meat' });
+    expect(playerOf(s, 'p2').resources.gold).toBe(2); // rejected
+    s = applyAction(s, { type: 'exchange', playerId: 'p1', give: ['meat', 'meat'], get: 'gold' });
+    expect(playerOf(s, 'p1').resources.meat).toBe(0);
+    expect(playerOf(s, 'p1').resources.gold).toBe(goldBefore + 1);
+  });
+
+  it('ignore-cost entice still pays only the 1-coin action cost', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Two fledglings already on the mat satisfy the ignore-cost clause; card
+    // 314's printed cost is exactly 1 coin — the bug charged 2 coins total.
+    p1.caves[1]!.spaces[0]!.dragon = { cardId: 258, eggs: 0, tucked: [], cached: [], training: 0 };
+    p1.caves[2]!.spaces[0]!.dragon = { cardId: 262, eggs: 0, tucked: [], cached: [], training: 0 };
+    p1.hand = [314];
+    p1.coins = 6;
+    const s = applyAction(st, { type: 'entice', playerId: 'p1', cave: 0, cardId: 314 });
+    const after = playerOf(s, 'p1');
+    expect(after.coins).toBe(5);
+    expect(after.coinsSpentEntice).toBe(1);
+    expect(after.caves[0]!.spaces[0]!.dragon?.cardId).toBe(314);
+  });
+
+  it('activates the printed mat icon on the path segment before the stopping space', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 138, eggs: 0, tucked: [], cached: [] };
+    p1.caves[0]!.spaces[1]!.excavated = true; // empty: the adventurer stops here
+    const s = applyAction(st, { type: 'explore', playerId: 'p1', cave: 0 });
+    // MAT_ICONS[0][1] ("gain any resource") is passed before reaching space 2.
+    const head = s.pending[0];
+    expect(head?.kind).toBe('chooseResource');
+    expect(head?.playerId).toBe('p1');
+  });
+
+  it('AI chooseTrain counts training-track icons, not string length', () => {
+    const st = structuredClone(inMain());
+    const p1 = playerOf(st, 'p1');
+    // Hovering Polychromatic Stripling: 4-icon track, fully trained.
+    p1.caves[0]!.spaces[0]!.dragon = { cardId: 287, eggs: 0, tucked: [], cached: [], training: 4 };
+    st.pending = [{ kind: 'chooseTrain', playerId: 'p1', times: 1, free: false, target: 'any' }];
+    // A fully-trained fledgling is not a trainable target.
+    expect(answerFor(st, 'p1')).toEqual({ kind: 'decline' });
   });
 });
