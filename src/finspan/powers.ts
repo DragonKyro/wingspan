@@ -1,0 +1,187 @@
+// Executes parsed fish abilities. Choice-based benefits queue PendingSteps;
+// unambiguous benefits (draw, "on each" eggs, fixed-site coral) apply
+// immediately. "(all players)" abilities run for every player in clockwise
+// order starting with the active player — each may decline their choice
+// benefits (steps are optional).
+
+import { parseAbility, type Effect } from './abilities';
+import {
+  addEgg,
+  allSlots,
+  appendLog,
+  getPlayer,
+  matchesSlotFilter,
+  placeCoral,
+  setPlayer,
+  drawFromDeck,
+} from './helpers';
+import { siteIndex } from './helpers';
+import type { GameState, PlayerId, SlotFilter, SlotRef } from './types';
+import { MAX_CORAL } from './constants';
+
+/** Players in benefit order: active player first, then clockwise. */
+export function benefitOrder(state: GameState, activeId: PlayerId): PlayerId[] {
+  const idx = state.playerOrder.indexOf(activeId);
+  const out: PlayerId[] = [];
+  for (let i = 0; i < state.playerOrder.length; i++) {
+    out.push(state.playerOrder[(idx + i) % state.playerOrder.length]!);
+  }
+  return out;
+}
+
+function push(state: GameState, step: GameState['pending'][number]): GameState {
+  return { ...state, pending: [...state.pending, step] };
+}
+
+/** Does this egg step have any legal target right now? */
+function eggTargetExists(state: GameState, playerId: PlayerId, filter?: SlotFilter): boolean {
+  const p = getPlayer(state, playerId);
+  for (const { ref, slot } of allSlots(p.ocean)) {
+    if (slot.stack.length === 0 || slot.eggs > 0) continue;
+    if (filter && !matchesSlotFilter(p.ocean, ref, filter)) continue;
+    return true;
+  }
+  return false;
+}
+
+/** Auto-place eggs on every matching fish that lacks one ("on each"). */
+function eggsOnEach(state: GameState, playerId: PlayerId, filter?: SlotFilter): GameState {
+  let p = getPlayer(state, playerId);
+  for (const { ref, slot } of allSlots(p.ocean)) {
+    if (slot.stack.length === 0 || slot.eggs > 0) continue;
+    if (filter && !matchesSlotFilter(p.ocean, ref, filter)) continue;
+    p = addEgg(p, ref);
+  }
+  return setPlayer(state, p);
+}
+
+function hasAnyEgg(state: GameState, playerId: PlayerId): boolean {
+  const p = getPlayer(state, playerId);
+  for (const { slot } of allSlots(p.ocean)) if (slot.eggs > 0) return true;
+  return false;
+}
+
+function hasAnySchool(state: GameState, playerId: PlayerId): boolean {
+  const p = getPlayer(state, playerId);
+  for (const { slot } of allSlots(p.ocean)) if (slot.school) return true;
+  return false;
+}
+
+function hasAnyYoung(state: GameState, playerId: PlayerId): boolean {
+  const p = getPlayer(state, playerId);
+  for (const { slot } of allSlots(p.ocean)) if (slot.young > 0 || slot.school) return true;
+  return false;
+}
+
+function applyEffect(
+  state: GameState,
+  playerId: PlayerId,
+  source: SlotRef | undefined,
+  e: Effect,
+  optional: boolean,
+): GameState {
+  switch (e.kind) {
+    case 'draw':
+      return drawFromDeck(state, playerId, 1);
+    case 'discard':
+      if (getPlayer(state, playerId).hand.length === 0) return state;
+      return push(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional });
+    case 'egg': {
+      if (e.onEach) return eggsOnEach(state, playerId, e.filter);
+      if (!eggTargetExists(state, playerId, e.filter)) return state;
+      return push(state, { kind: 'chooseEggTargets', playerId, count: 1, filter: e.filter, optional });
+    }
+    case 'hatch':
+      if (!hasAnyEgg(state, playerId)) return state;
+      return push(state, { kind: 'chooseHatch', playerId, count: 1, optional });
+    case 'young':
+      return push(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
+    case 'move':
+      if (!hasAnyYoung(state, playerId)) return state;
+      return push(state, { kind: 'chooseMove', playerId, count: 1, optional });
+    case 'consume': {
+      // Skip when nothing in hand could be tucked.
+      const p = getPlayer(state, playerId);
+      if (p.hand.length === 0) return state;
+      const onto = e.onto === 'self' ? source : undefined;
+      return push(state, { kind: 'chooseConsume', playerId, count: e.n, onto, optional });
+    }
+    case 'playFromHand':
+      if (getPlayer(state, playerId).hand.length === 0) return state;
+      return push(state, {
+        kind: 'choosePlayFromHand',
+        playerId,
+        free: false,
+        restrict: e.restrict,
+        optional,
+      });
+    case 'freePlayFromHand':
+      if (getPlayer(state, playerId).hand.length === 0) return state;
+      return push(state, {
+        kind: 'choosePlayFromHand',
+        playerId,
+        free: true,
+        filter: e.filter,
+        restrict: e.restrict,
+        optional,
+      });
+    case 'unSchool':
+      if (hasAnySchool(state, playerId)) {
+        return push(state, { kind: 'chooseUnSchool', playerId, count: 1, optional });
+      }
+      // "or place 1 young instead if you don't have a school token to discard"
+      return push(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
+    case 'coral': {
+      const p = getPlayer(state, playerId);
+      if (e.site !== 'any') {
+        const col = siteIndex(e.site);
+        return p.ocean.corals[col]! >= MAX_CORAL ? state : setPlayer(state, placeCoral(p, col));
+      }
+      if (p.ocean.corals.every((c) => c >= MAX_CORAL)) return state;
+      return push(state, { kind: 'chooseCoralSite', playerId, count: 1, optional });
+    }
+  }
+}
+
+/** Fire the ability on the fish at `ref` (undefined for non-slot sources).
+ *  `optional` marks choice steps as decline-able (always true in practice —
+ *  Finspan benefits are optional). */
+export function fireAbility(
+  state: GameState,
+  playerId: PlayerId,
+  rawAbility: string | null,
+  ref: SlotRef | undefined,
+  logLabel: string,
+): GameState {
+  const parsed = parseAbility(rawAbility);
+  if (!parsed || parsed.wave) return state;
+
+  let s = appendLog(state, `${logLabel} fires`);
+
+  // "if no coral in this fish's dive site" gate.
+  if (parsed.ifNoCoralThisSite && ref) {
+    const p = getPlayer(s, playerId);
+    if (p.ocean.corals[ref.col]! > 0) return appendLog(s, 'skipped (coral present)');
+  }
+
+  const targets = parsed.allPlayers ? benefitOrder(s, playerId) : [playerId];
+  for (const pid of targets) {
+    for (const e of parsed.effects) {
+      s = applyEffect(s, pid, ref, e, true);
+    }
+  }
+
+  // Two-part IfActivated: gated on >=count coral of `site` in THIS dive site.
+  if (parsed.alsoIf && ref) {
+    const p = getPlayer(s, playerId);
+    const coralCol = siteIndex(parsed.alsoIf.site);
+    if (p.ocean.corals[coralCol]! >= parsed.alsoIf.count) {
+      s = appendLog(s, `coral-gated part activates (${parsed.alsoIf.count} ${parsed.alsoIf.site} coral)`);
+      for (const e of parsed.alsoIf.effects) {
+        s = applyEffect(s, playerId, ref, e, true);
+      }
+    }
+  }
+
+  return s;
+}
