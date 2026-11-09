@@ -4,9 +4,9 @@
 
 import {
   activatePower,
-  beginGameEnd,
   drawCards,
   endTurn,
+  finishRound,
   gainFood,
   keepSetup,
   layEggs,
@@ -65,7 +65,9 @@ export function settle(state: GameState): GameState {
     s = dropImpossiblePending(s);
   }
   if (s.phase === 'roundEnd' && s.pending.length === 0 && s.roundEndQueue.length === 0) {
-    s = s.round >= 4 ? beginGameEnd(s) : { ...s, phase: 'main' };
+    // Teal powers are done → score the goal, reset cubes, move on (finishRound
+    // returns a 'main' state or begins game end after round 4).
+    s = finishRound(s);
   }
   while (
     s.phase === 'gameEnd' &&

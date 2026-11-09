@@ -68,15 +68,41 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 - Power colors: brown = when activated, pink = once between turns,
   white = when played, teal = end of round, yellow = game end.
   Teal powers drain via `roundEndQueue` during the 'roundEnd' phase
-  (after goal scoring, before next round / game end); yellow powers drain
-  via `gameEndQueue` during 'gameEnd'. The base set has no teal/yellow birds.
-- `settle()` in engine.ts drains the roundEnd/gameEnd queues and computes
-  finalScores/winner after every action.
+  (BEFORE goal scoring — they can change it); yellow powers drain
+  via `gameEndQueue` during 'gameEnd'.
+- `settle()` in engine.ts drains the roundEnd queue, calls `finishRound`
+  (goal scoring → tray restock → cube reset → first-player rotation), then
+  drains the gameEnd queue and computes finalScores/winner.
 - Goal board: 'green' side = ranked majority scoring, points escalate per
   round (4/1, 5/2/1, 6/3/2, 7/4/3 — see GOAL_POINTS); players with 0 units
   score 0. 'blue' side (1 pt/item, max 5) is unimplemented.
-- Round end: goal scored → face-up tray cards discarded + restocked →
-  cubes reset → first player rotates → teal queue drains.
+- Round end (EE order): teal powers → goal scored → tray discarded +
+  restocked → cubes reset → first player rotates.
+
+## European expansion (`set: 'european'`, 81 birds)
+
+- Sideways birds (`Place this bird sideways…`) push a `ghost` PlayedBird into
+  the covered slot: it occupies board space/row length and the filled-columns
+  goal but is skipped by `playedBirds`, egg/cube targets, and power scans.
+- Alternative-cost predators: `coverBird` plays on top of a bird (its eggs +
+  caches are discarded, the bird + its tucks go underneath); `cardPayments`
+  pays 1 hand card per [rodent] item (the cards tuck behind the bird);
+  `cachedFoodPayments` spends food cached on birds. `autoPayBird` in
+  helpers.ts builds all three for UI/AI.
+- `roundCubes` tracks cubes per action column each round (teal "action cubes
+  on their [habitat]" powers); `gainedThisTurn` tracks food types gained per
+  turn (European Robin) — reset by `resetPinkFlags`.
+- Teal powers resolve in turn order before goal scoring; a teal-power bird
+  played mid-roundEnd (Yellowhammer's extra play) fires immediately.
+- "Counts double" teal birds contribute weight 2 in `goalScore` via
+  `goalWeight`; "white & no powers" goal counts no-power AND white birds.
+- New bonus-card scorers (Citizen Scientist, Diet Specialist, Ethologist,
+  Behaviorist) live in `scoring.ts` `bonusUnits`; `[automa] …` bonus cards
+  are filtered out of `bonusCardsInSets`.
+- New PendingStep kinds: choosePlayer/chooseHabitat/chooseFoodDiscard/
+  chooseFoodSteal/chooseTrayCard/chooseDieRemove/chooseBirds/assignHandTucks/
+  chooseCacheOnBirds/chooseFoodType/chooseOption — all answered by
+  `greedyChoice` in ai/choices.ts and rendered in PendingBar.
 - Setup: players keep up to 5 birds and discard 1 food PER BIRD KEPT
   (official: "for each bird card you keep, discard 1 food").
 - The deck DOES reshuffle discards when emptied (official rule) — see
@@ -90,10 +116,14 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 
 ## Known gaps (future work)
 
-- Expansion powers: `POWER_IMPLS` covers all distinct core-set texts;
-  expansion-only texts warn once and no-op (`hasPowerImpl` is the check).
+- `POWER_IMPLS` covers all distinct core + european texts; other expansion
+  texts warn once and no-op (`hasPowerImpl` is the check).
 - Nectar/Oceania scoring stubbed (0), blue (per-item) goal side unimplemented.
 - When-played and pink powers auto-fire instead of prompting (all base
-  powers are beneficial, so this is a safe simplification).
+  powers are beneficial, so this is a safe simplification). European pinks
+  that say "at the end of their turn" fire immediately.
+- `endOfTurnDiscards` discards are picked from the whole hand, not the drawn
+  subset ("keep 1 of the drawn cards" is not strictly enforced).
 - Rulebooks for all games live in `docs/` (PDFs — extract with `pdftotext`).
-- UI is functional, not pretty: no bird art, no animations.
+- UI is functional, not pretty: no bird art, no animations. Sideways birds
+  always cover 2 spaces when legal (the "may" is not offered).

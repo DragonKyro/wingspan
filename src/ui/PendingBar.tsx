@@ -206,16 +206,175 @@ function StepPicker({
     }
     case 'chooseAdditionalPlay': {
       const habitat = step.habitat === 'same' ? step.sourceBird?.habitat : step.habitat;
-      const playable = p.hand.filter((id) => habitat && bird(id).habitats.includes(habitat));
+      // 'any' habitat: the player picks both a card and where to play it.
+      const playable = p.hand.filter(
+        (id) => habitat === 'any' || (habitat && bird(id).habitats.includes(habitat)),
+      );
       return (
         <div className="row">
-          <span>play a bird in {habitat} (normal cost):</span>
-          {playable.map((id) => (
-            <BirdCardView key={id} cardId={id} selectable onClick={() => send({ kind: 'handCards', cardIds: [id] })} />
-          ))}
+          <span>play a bird{habitat && habitat !== 'any' ? ` in ${habitat}` : ''} (normal cost):</span>
+          {playable.map((id) =>
+            habitat === 'any' ? (
+              <span key={id}>
+                {bird(id).habitats.map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => send({ kind: 'handCards', cardIds: [id], habitat: h })}
+                  >
+                    {bird(id).name} → {h}
+                  </button>
+                ))}
+              </span>
+            ) : (
+              <BirdCardView key={id} cardId={id} selectable onClick={() => send({ kind: 'handCards', cardIds: [id] })} />
+            ),
+          )}
+          {step.optional && (
+            <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>skip</button>
+          )}
         </div>
       );
     }
+    case 'choosePlayer':
+      return (
+        <div className="row">
+          <span>pick a player:</span>
+          {game.playerOrder
+            .filter((pid) => !step.other || pid !== step.playerId)
+            .map((pid) => (
+              <button key={pid} onClick={() => send({ kind: 'player', playerId: pid })}>
+                {getPlayer(game, pid).name}
+              </button>
+            ))}
+        </div>
+      );
+    case 'chooseHabitat':
+      return (
+        <div className="row">
+          <span>pick a habitat{step.noEggs ? ' with no eggs' : ''}:</span>
+          {HABITATS.filter(
+            (h) =>
+              !step.noEggs || p.board[h].every((b) => b.eggs === 0),
+          ).map((h) => (
+            <button key={h} onClick={() => send({ kind: 'habitat', habitat: h })}>
+              {h}
+            </button>
+          ))}
+        </div>
+      );
+    case 'chooseFoodDiscard':
+      return (
+        <FoodPicker
+          count={step.count}
+          options={(step.options === 'any' ? FOOD_TYPES : step.options).filter((f) => p.food[f] > 0)}
+          optional={step.optional}
+          label={`discard ${step.count} food`}
+          onDone={(foods) => send({ kind: 'supplyFood', foods })}
+        />
+      );
+    case 'chooseFoodSteal': {
+      const victim = getPlayer(game, step.from);
+      const options = (step.food === 'any' ? FOOD_TYPES : [step.food]).filter(
+        (f) => victim.food[f] > 0,
+      );
+      return (
+        <FoodPicker
+          count={1}
+          options={options}
+          label={`take 1 food from ${victim.name}`}
+          onDone={(foods) => send({ kind: 'supplyFood', foods })}
+        />
+      );
+    }
+    case 'chooseTrayCard':
+      return (
+        <div className="row">
+          <span>take a tray card:</span>
+          {game.tray.map(
+            (id, i) =>
+              id != null &&
+              (!step.habitat || bird(id).habitats.includes(step.habitat)) && (
+                <BirdCardView
+                  key={i}
+                  cardId={id}
+                  selectable
+                  onClick={() => send({ kind: 'handCards', cardIds: [id] })}
+                />
+              ),
+          )}
+        </div>
+      );
+    case 'chooseDieRemove':
+      return (
+        <DicePicker
+          game={game}
+          count={step.count}
+          onDone={(picks) => send({ kind: 'dice', picks })}
+        />
+      );
+    case 'chooseBirds': {
+      const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
+      for (const h of HABITATS) {
+        if (step.habitat && h !== step.habitat) continue;
+        p.board[h].forEach((b, index) => {
+          if (!b.ghost) targets.push({ habitat: h, index });
+        });
+      }
+      return (
+        <BirdRefPicker
+          label={`pick ${step.min}–${step.max} birds`}
+          targets={targets}
+          count={step.max}
+          optional={step.min < step.max}
+          onDone={(birds) => send({ kind: 'birds', birds })}
+        />
+      );
+    }
+    case 'assignHandTucks':
+      return (
+        <HandPicker
+          hand={p.hand}
+          count={Math.min(step.targets.length, p.hand.length)}
+          label={`tuck up to ${step.targets.length} card${step.targets.length > 1 ? 's' : ''}`}
+          onDone={(cardIds) => send({ kind: 'handCards', cardIds })}
+        />
+      );
+    case 'chooseCacheOnBirds': {
+      const targets: { habitat: (typeof HABITATS)[number]; index: number }[] = [];
+      for (const h of HABITATS) {
+        p.board[h].forEach((b, index) => {
+          if (!b.ghost) targets.push({ habitat: h, index });
+        });
+      }
+      return (
+        <CacheAssignPicker
+          targets={targets}
+          count={step.count}
+          options={step.food === 'any' ? FOOD_TYPES : [step.food]}
+          onDone={(items) => send({ kind: 'cacheAssign', items })}
+        />
+      );
+    }
+    case 'chooseFoodType':
+      return (
+        <FoodPicker
+          count={1}
+          options={FOOD_TYPES}
+          label="name a food type"
+          onDone={(foods) => send({ kind: 'supplyFood', foods })}
+        />
+      );
+    case 'chooseOption':
+      return (
+        <div className="row">
+          <span>choose one:</span>
+          {step.options.map((o) => (
+            <button key={o} onClick={() => send({ kind: 'option', option: o })}>
+              {o === 'gainDie' ? 'gain 1 die' : o === 'layEgg' ? 'lay 1 egg' : 'draw 1 card'}
+            </button>
+          ))}
+        </div>
+      );
     case 'chooseCacheFood':
       return (
         <FoodPicker
@@ -265,6 +424,17 @@ function PromptText({ step }: { step: PendingStep }) {
     chooseCacheFood: 'cache food',
     chooseWildTrade: 'trade a food',
     chooseCacheGained: 'cache or keep',
+    choosePlayer: 'pick a player',
+    chooseHabitat: 'pick a habitat',
+    chooseFoodDiscard: `discard ${count} food`,
+    chooseFoodSteal: 'take a food',
+    chooseTrayCard: 'take a tray card',
+    chooseDieRemove: `remove ${count} dice`,
+    chooseBirds: 'pick birds',
+    assignHandTucks: 'tuck cards',
+    chooseCacheOnBirds: `cache ${count} food`,
+    chooseFoodType: 'name a food',
+    chooseOption: 'choose one',
   };
   return <span>{text[step.kind]}</span>;
 }
@@ -466,6 +636,55 @@ function WildTradePicker({
             {f}
           </button>
         ))}
+    </div>
+  );
+}
+
+/** Assign `count` food tokens to own birds for caching. Each click adds a
+ *  cache item; the default food is the first allowed option. */
+function CacheAssignPicker({
+  targets,
+  count,
+  options,
+  onDone,
+}: {
+  targets: { habitat: (typeof HABITATS)[number]; index: number }[];
+  count: number;
+  options: FoodType[];
+  onDone: (items: { bird: { habitat: (typeof HABITATS)[number]; index: number }; food: FoodType }[]) => void;
+}) {
+  const [items, setItems] = useState<{ bird: (typeof targets)[number]; food: FoodType }[]>([]);
+  const [food, setFood] = useState<FoodType>(options[0]!);
+  return (
+    <div className="row">
+      <span>
+        cache {count} food on your birds ({items.length}/{count}):
+      </span>
+      {options.map((f) => (
+        <button
+          key={f}
+          style={food === f ? { borderColor: 'var(--accent)' } : undefined}
+          onClick={() => setFood(f)}
+        >
+          {f}
+        </button>
+      ))}
+      {targets.map((t) => (
+        <button
+          key={`${t.habitat}:${t.index}`}
+          disabled={items.length >= count}
+          onClick={() => setItems((cur) => [...cur, { bird: t, food }])}
+        >
+          {t.habitat} #{t.index + 1}
+        </button>
+      ))}
+      <button
+        className="primary"
+        disabled={items.length !== count}
+        onClick={() => onDone(items)}
+      >
+        Confirm
+      </button>
     </div>
   );
 }

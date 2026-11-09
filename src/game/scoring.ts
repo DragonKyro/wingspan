@@ -2,15 +2,28 @@
 
 import { bonusCard, BIRD_BY_ID, goalTile } from './cards';
 import {
-  birdCount,
+  isGoalDouble,
   playedBirds,
   totalCached,
   totalEggs,
   totalFood,
   totalTucked,
 } from './helpers';
-import type { GameState, PlayerId, PlayerState, ScoreBreakdown } from './types';
+import type { GameState, PlayedBird, PlayerId, PlayerState, ScoreBreakdown } from './types';
 import { HABITATS } from './types';
+
+/** Goal-unit weight of a played bird: european "counts double toward the
+ *  end-of-round goal" teal powers double the bird when it qualifies. */
+function goalWeight(b: PlayedBird): number {
+  return isGoalDouble(BIRD_BY_ID.get(b.cardId)!) ? 2 : 1;
+}
+
+/** Power colors present among `birds`; birds with no power count as white. */
+function powerColorsOf(birds: PlayedBird[]): Set<string> {
+  const colors = new Set<string>();
+  for (const b of birds) colors.add(BIRD_BY_ID.get(b.cardId)!.powerColor ?? 'white');
+  return colors;
+}
 
 /** Units a player has for a goal tile (ranked comparison happens in actions.ts). */
 export function goalScore(state: GameState, playerId: PlayerId, tileId: number): number {
@@ -19,24 +32,38 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
   const g = tile.goal;
   switch (g.kind) {
     case 'birdsInHabitat':
-      return p.board[g.habitat].length;
+      return playedBirds(p)
+        .filter(({ ref }) => ref.habitat === g.habitat)
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'eggsInHabitat':
       return p.board[g.habitat].reduce((n, b) => n + b.eggs, 0);
     case 'birdsInOneRow':
-      return Math.max(...HABITATS.map((h) => p.board[h].length));
+      return Math.max(
+        ...HABITATS.map((h) =>
+          playedBirds(p)
+            .filter(({ ref }) => ref.habitat === h)
+            .reduce((n, { bird: b }) => n + goalWeight(b), 0),
+        ),
+      );
     case 'birdsNoEggs':
-      return playedBirds(p).filter(({ bird: b }) => b.eggs === 0).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => b.eggs === 0)
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'birdsPoints': {
-      return playedBirds(p).filter(({ bird: b }) => {
-        const pts = BIRD_BY_ID.get(b.cardId)!.points;
-        return g.op === 'gt' ? pts > g.value : pts <= g.value;
-      }).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => {
+          const pts = BIRD_BY_ID.get(b.cardId)!.points;
+          return g.op === 'gt' ? pts > g.value : pts <= g.value;
+        })
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     }
     case 'nestBirdsWithEggs':
-      return playedBirds(p).filter(({ bird: b }) => {
-        const c = BIRD_BY_ID.get(b.cardId)!;
-        return (c.nest === g.nest || c.nest === 'wild') && b.eggs > 0;
-      }).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => {
+          const c = BIRD_BY_ID.get(b.cardId)!;
+          return (c.nest === g.nest || c.nest === 'wild') && b.eggs > 0;
+        })
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'eggsInNest':
       return playedBirds(p).reduce((n, { bird: b }) => {
         const c = BIRD_BY_ID.get(b.cardId)!;
@@ -47,12 +74,16 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
     case 'foodInSupply':
       return totalFood(p);
     case 'birdsPowerColor':
-      return playedBirds(p).filter(({ bird: b }) => {
-        const c = BIRD_BY_ID.get(b.cardId)!;
-        if (g.color === 'white') return c.powerColor === 'white' && !c.powerText;
-        return c.powerColor === g.color;
-      }).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => {
+          const c = BIRD_BY_ID.get(b.cardId)!;
+          // "White & No Powers": no power at all, or a when-played power.
+          if (g.color === 'white') return c.powerColor == null || c.powerColor === 'white';
+          return c.powerColor === g.color;
+        })
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'filledColumns': {
+      // Counts covered (ghost) spaces too: sideways birds fill both spaces.
       let n = 0;
       for (let i = 0; i < 5; i++) {
         if (HABITATS.every((h) => p.board[h].length > i)) n++;
@@ -64,24 +95,30 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
     case 'setsOfThreeEggs':
       return Math.min(...HABITATS.map((h) => p.board[h].reduce((x, b) => x + b.eggs, 0)));
     case 'totalBirds':
-      return birdCount(p);
+      return playedBirds(p).reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'birdsWithTucked':
-      return playedBirds(p).filter(({ bird: b }) => b.tucked.length > 0).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => b.tucked.length > 0)
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'beakDirection':
-      return playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.beakLeft === (g.dir === 'L')).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.beakLeft === (g.dir === 'L'))
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'cubesOnPlayBird':
       return p.cubesOnPlayBird;
     case 'costIncludes':
-      return playedBirds(p).filter(({ bird: b }) => {
-        const cost = BIRD_BY_ID.get(b.cardId)!.cost;
-        const have = (f: string) =>
-          cost.kind === 'and'
-            ? cost.items.some((i) => i.food === f || i.food === 'any')
-            : cost.kind === 'or'
-              ? cost.foods.includes(f as never)
-              : cost.kind === 'any';
-        return g.all ? g.foods.every(have) : g.foods.some(have);
-      }).length;
+      return playedBirds(p)
+        .filter(({ bird: b }) => {
+          const cost = BIRD_BY_ID.get(b.cardId)!.cost;
+          const have = (f: string) =>
+            cost.kind === 'and'
+              ? cost.items.some((i) => i.food === f || i.food === 'any')
+              : cost.kind === 'or'
+                ? cost.foods.includes(f as never)
+                : cost.kind === 'any';
+          return g.all ? g.foods.every(have) : g.foods.some(have);
+        })
+        .reduce((n, { bird: b }) => n + goalWeight(b), 0);
     case 'noGoal':
     case 'unsupported':
       return 0;
@@ -101,12 +138,43 @@ function bonusUnits(p: PlayerState, name: string): number {
       return playedBirds(p).filter(({ bird: b }) => b.eggs >= 4).length;
     case 'Oologist':
       return playedBirds(p).filter(({ bird: b }) => b.eggs >= 1).length;
-    case 'Ecologist': {
-      const min = Math.min(...HABITATS.map((h) => p.board[h].length));
-      return p.board[HABITATS.find((h) => p.board[h].length === min)!].length;
-    }
+    case 'Ecologist':
+      return Math.min(
+        ...HABITATS.map((h) => playedBirds(p).filter(({ ref }) => ref.habitat === h).length),
+      );
     case 'Visionary Leader':
       return p.hand.length;
+    // === european bonus cards ===
+    case 'Citizen Scientist':
+      return playedBirds(p).filter(({ bird: b }) => b.tucked.length > 0).length;
+    case 'Diet Specialist':
+      return playedBirds(p).filter(({ bird: b }) => costTotal(BIRD_BY_ID.get(b.cardId)!.cost) === 3).length;
+    case 'Ethologist': {
+      // "In any one habitat: 2[point] per power color" — best single habitat.
+      return Math.max(
+        0,
+        ...HABITATS.map(
+          (h) =>
+            powerColorsOf(
+              playedBirds(p)
+                .filter(({ ref }) => ref.habitat === h)
+                .map(({ bird: b }) => b),
+            ).size,
+        ),
+      );
+    }
+    case 'Behaviorist': {
+      // Columns (all three rows) holding birds with 3 different power colors.
+      // A sideways bird covers a space in the column — its color counts there.
+      let n = 0;
+      for (let i = 0; i < 5; i++) {
+        const column = HABITATS.map((h) => p.board[h][i]).filter(
+          (b): b is NonNullable<typeof b> => b != null,
+        );
+        if (column.length === 3 && powerColorsOf(column).size >= 3) n++;
+      }
+      return n;
+    }
     default:
       return playedBirds(p).filter(({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.bonusFlags.includes(name)).length;
   }

@@ -55,6 +55,8 @@ export function createGame(opts: CreateGameOptions): GameState {
       food: { invertebrate: 1, seed: 1, fish: 1, fruit: 1, rodent: 1, nectar: 0 },
       board: { forest: [], grassland: [], wetland: [] },
       actionCubes: CUBES_PER_ROUND[0]!,
+      roundCubes: { forest: 0, grassland: 0, wetland: 0, playBird: 0 },
+      gainedThisTurn: [],
       endOfTurnDiscards: 0,
       cubesOnPlayBird: 0,
       nectarSpent: { forest: 0, grassland: 0, wetland: 0 },

@@ -25,11 +25,14 @@ export function actingPlayerId(state: GameState): PlayerId {
   return state.playerOrder[state.currentPlayerIndex]!;
 }
 
-/** Every played bird of a player, with its location. */
+/** Every real played bird of a player, with its location. Covered spaces
+ *  (ghost placeholders from sideways birds) are not birds and are skipped. */
 export function playedBirds(p: PlayerState): { ref: BirdRef; bird: PlayedBird }[] {
   const out: { ref: BirdRef; bird: PlayedBird }[] = [];
   for (const h of HABITATS) {
-    p.board[h].forEach((b, index) => out.push({ ref: { habitat: h, index }, bird: b }));
+    p.board[h].forEach((b, index) => {
+      if (!b.ghost) out.push({ ref: { habitat: h, index }, bird: b });
+    });
   }
   return out;
 }
@@ -62,7 +65,7 @@ export function totalFood(p: PlayerState): number {
 }
 
 export function birdCount(p: PlayerState): number {
-  return HABITATS.reduce((n, h) => n + p.board[h].length, 0);
+  return playedBirds(p).length;
 }
 
 /** Egg capacity remaining on a bird. */
@@ -83,9 +86,11 @@ export function eggTargetOk(p: PlayerState, ref: BirdRef, overLimit = 0): boolea
   return bird(b.cardId).eggLimit + overLimit - b.eggs > 0;
 }
 
-/** Does `nest` satisfy a required nest filter? 'wild' nest counts as every type. */
-export function nestMatches(nest: NestType, want: NestType | 'any' | 'other'): boolean {
+/** Does `nest` satisfy a required nest filter? 'wild' nest counts as every type.
+ *  `want` may be a list — the bird qualifies if its nest matches any entry. */
+export function nestMatches(nest: NestType, want: NestType | 'any' | 'other' | NestType[]): boolean {
   if (want === 'any' || want === 'other') return true;
+  if (Array.isArray(want)) return want.some((w) => nest === w) || nest === 'wild';
   return nest === want || nest === 'wild';
 }
 
@@ -93,7 +98,7 @@ export function nestMatches(nest: NestType, want: NestType | 'any' | 'other'): b
 export function eggTargets(
   state: GameState,
   playerId: PlayerId,
-  nest: NestType | 'any' | 'other',
+  nest: NestType | 'any' | 'other' | NestType[],
   exclude?: BirdRef,
   overLimit = 0,
 ): BirdRef[] {
@@ -225,6 +230,17 @@ export function addFood(p: PlayerState, f: FoodType, n = 1): PlayerState {
   return { ...p, food: { ...p.food, [f]: p.food[f] + n } };
 }
 
+/** Record a food type gained (european "already gained this turn" powers). */
+export function recordFoodGain(p: PlayerState, f: FoodType): PlayerState {
+  if (p.gainedThisTurn.includes(f)) return p;
+  return { ...p, gainedThisTurn: [...p.gainedThisTurn, f] };
+}
+
+/** Eggs sitting on the player's birds in `habitat` (goal/teal-power queries). */
+export function eggsInHabitat(p: PlayerState, habitat: Habitat): number {
+  return p.board[habitat].reduce((n, b) => n + (b.ghost ? 0 : b.eggs), 0);
+}
+
 export function spendFood(p: PlayerState, foods: FoodType[]): PlayerState {
   const food = { ...p.food };
   for (const f of foods) {
@@ -249,4 +265,106 @@ export function appendLog(state: GameState, msg: string): GameState {
 /** The player's leftmost empty slot index for a habitat action = birds in row. */
 export function actionSlot(p: PlayerState, habitat: Habitat): number {
   return Math.min(p.board[habitat].length, ROW_SIZE - 1);
+}
+
+// === european expansion power-text predicates ===
+
+/** Sideways bird: covers 2 habitat spaces when played (pays the lower egg cost). */
+export function isSideways(card: { powerText: string | null }): boolean {
+  return card.powerText?.startsWith('Place this bird sideways') ?? false;
+}
+
+/** Predator that may be played on top of another bird instead of paying costs. */
+export function isCoverBird(card: { powerText: string | null }): boolean {
+  return card.powerText?.startsWith('Instead of paying any costs') ?? false;
+}
+
+/** Predator that may pay 1 hand card per [rodent] in its cost (cards tuck behind it). */
+export function isCardCostBird(card: { powerText: string | null }): boolean {
+  return card.powerText?.startsWith('For each [rodent] in this bird') ?? false;
+}
+
+/** Round-end power: this bird counts double toward the goal when it qualifies. */
+export function isGoalDouble(card: { powerText: string | null }): boolean {
+  return (
+    card.powerText ===
+    'This bird counts double toward the end-of-round goal, if it qualifies for the goal.'
+  );
+}
+
+/** Build a play-bird payment for `cardId` out of `p`'s supply, cached food on
+ *  birds, and (for european card-cost predators) hand cards covering [rodent]
+ *  items. Prefers supply food, then cached, then the fewest hand cards needed.
+ *  Returns null when the card is unaffordable by every means. */
+export function autoPayBird(
+  p: PlayerState,
+  cardId: number,
+): {
+  foodPayments: FoodType[];
+  cachedFoodPayments?: { bird: BirdRef; food: FoodType }[];
+  cardPayments?: number[];
+} | null {
+  const card = bird(cardId);
+  const cached: { bird: BirdRef; food: FoodType }[] = [];
+  const pool = { ...p.food };
+  for (const { ref, bird: b } of playedBirds(p)) {
+    for (const f of b.cached) {
+      pool[f]++;
+      cached.push({ bird: ref, food: f });
+    }
+  }
+  const planFor = (cost: FoodCost) => {
+    const plan = payFoodPlan(pool, cost);
+    if (!plan) return null;
+    const supply = { ...p.food };
+    const cacheLeft = cached.slice();
+    const foodPayments: FoodType[] = [];
+    const cachedFoodPayments: { bird: BirdRef; food: FoodType }[] = [];
+    for (const f of plan) {
+      if (supply[f] > 0) {
+        supply[f]--;
+        foodPayments.push(f);
+      } else {
+        const idx = cacheLeft.findIndex((x) => x.food === f);
+        if (idx < 0) return null;
+        cachedFoodPayments.push(cacheLeft[idx]!);
+        cacheLeft.splice(idx, 1);
+      }
+    }
+    return { foodPayments, cachedFoodPayments };
+  };
+  const straight = planFor(card.cost);
+  if (straight) {
+    return {
+      foodPayments: straight.foodPayments,
+      cachedFoodPayments: straight.cachedFoodPayments.length ? straight.cachedFoodPayments : undefined,
+    };
+  }
+  // European "1 card per [rodent]" predator: cover rodent items with hand cards.
+  if (!isCardCostBird(card) || card.cost.kind !== 'and') return null;
+  const others = p.hand.filter((id) => id !== cardId);
+  const rodents = card.cost.items
+    .filter((i) => i.food === 'rodent')
+    .reduce((n, i) => n + i.count, 0);
+  for (let n = 1; n <= Math.min(rodents, others.length); n++) {
+    let left = n;
+    const items = card.cost.items
+      .map((i) => {
+        if (i.food !== 'rodent') return i;
+        const u = Math.min(left, i.count);
+        left -= u;
+        return { ...i, count: i.count - u };
+      })
+      .filter((i) => i.count > 0);
+    const eff: FoodCost = items.length ? { kind: 'and', items } : { kind: 'none' };
+    const plan = planFor(eff);
+    if (plan) {
+      return {
+        foodPayments: plan.foodPayments,
+        cachedFoodPayments: plan.cachedFoodPayments.length ? plan.cachedFoodPayments : undefined,
+        cardPayments: others.slice(0, n),
+      };
+    }
+  }
+  return null;
 }

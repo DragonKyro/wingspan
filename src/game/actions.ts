@@ -17,6 +17,9 @@ import {
   canHoldEggs,
   columnEggCost,
   getPlayer,
+  isCardCostBird,
+  isCoverBird,
+  isSideways,
   nextSlot,
   payFoodPlan,
   rowFull,
@@ -36,9 +39,12 @@ import {
   takeDieFromFeeder,
 } from './powers';
 import type {
+  BirdCard,
   BirdRef,
+  CubeTrack,
   DieFace,
   DrawCardsAction,
+  FoodCost,
   FoodType,
   GainFoodAction,
   GameState,
@@ -60,9 +66,16 @@ function requireTurn(state: GameState, playerId: PlayerId): void {
   if (p.actionCubes <= 0) throw new Error('no action cubes left');
 }
 
-function spendCube(state: GameState, playerId: PlayerId): GameState {
+function spendCube(state: GameState, playerId: PlayerId, track: CubeTrack): GameState {
   const p = getPlayer(state, playerId);
-  return { ...setPlayer(state, { ...p, actionCubes: p.actionCubes - 1 }), turnTookAction: true };
+  return {
+    ...setPlayer(state, {
+      ...p,
+      actionCubes: p.actionCubes - 1,
+      roundCubes: { ...p.roundCubes, [track]: p.roundCubes[track] + 1 },
+    }),
+    turnTookAction: true,
+  };
 }
 
 /** Start the activation track for a habitat row: brown powers, right to left. */
@@ -70,6 +83,7 @@ function startActivation(state: GameState, playerId: PlayerId, habitat: Habitat)
   const p = getPlayer(state, playerId);
   const remaining: number[] = [];
   for (let i = p.board[habitat].length - 1; i >= 0; i--) {
+    if (p.board[habitat][i]!.ghost) continue;
     const c = bird(p.board[habitat][i]!.cardId);
     if (c.powerColor === 'brown' && c.powerText && hasPowerImpl(c.id)) remaining.push(i);
   }
@@ -123,32 +137,84 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
   const p = getPlayer(state, action.playerId);
   const card = bird(action.cardId);
   if (!p.hand.includes(action.cardId)) throw new Error('card not in hand');
+  if (action.coverBird) return playOnTop(state, action, card);
   if (!card.habitats.includes(action.habitat)) throw new Error(`this bird can't live in the ${action.habitat}`);
   if (rowFull(p, action.habitat)) throw new Error('row is full');
   const slot = nextSlot(p, action.habitat);
+  // European sideways birds cover a second space when two are free (the
+  // power can be forgone; a single free space also means a normal play).
+  const coversTwo = isSideways(card) && action.coverTwo !== false && slot <= 3;
+  // "Pay the lower egg cost": the lower of the two covered columns' costs —
+  // column costs are non-decreasing, so that is the left covered slot's cost.
   const eggCost = columnEggCost(slot);
   if (action.eggPayments.length !== eggCost) throw new Error(`column ${slot + 1} costs ${eggCost} eggs`);
   for (const ref of action.eggPayments) {
     const b = birdAt(state, action.playerId, ref);
+    if (b.ghost) throw new Error('that space is covered');
     if (b.eggs <= 0) throw new Error('that bird has no eggs');
   }
-  // Validate the food payment covers the cost (exact tokens, incl. 2-for-1 and nectar).
+  // European predators: hand cards may replace [rodent] cost items; the paid
+  // cards tuck behind the bird (counts as a tuck + a predator succeeding).
+  const cardPayments = action.cardPayments ?? [];
+  for (const id of cardPayments) {
+    if (id === action.cardId || !p.hand.includes(id)) throw new Error('card not in hand');
+  }
+  let effCost: FoodCost = card.cost;
+  if (cardPayments.length > 0) {
+    if (!isCardCostBird(card) || card.cost.kind !== 'and') {
+      throw new Error('this bird cannot be paid with cards');
+    }
+    const rodents = card.cost.items
+      .filter((i) => i.food === 'rodent')
+      .reduce((n, i) => n + i.count, 0);
+    if (cardPayments.length > rodents) throw new Error('more cards paid than [rodent] in cost');
+    let left = cardPayments.length;
+    effCost = {
+      kind: 'and',
+      items: card.cost.items
+        .map((i) => {
+          if (i.food !== 'rodent') return i;
+          const use = Math.min(left, i.count);
+          left -= use;
+          return { ...i, count: i.count - use };
+        })
+        .filter((i) => i.count > 0),
+    };
+    if (effCost.kind === 'and' && effCost.items.length === 0) effCost = { kind: 'none' };
+  }
+  // Cached food on birds can be spent like supply food (european caching).
+  const cachedPayments = action.cachedFoodPayments ?? [];
+  for (const cp of cachedPayments) {
+    const b = birdAt(state, action.playerId, cp.bird);
+    if (b.ghost) throw new Error('that space is covered');
+    if (!b.cached.includes(cp.food)) throw new Error('that food is not cached there');
+  }
+  // Validate the food payment covers the (possibly card-reduced) cost.
   const paid: Record<FoodType, number> = {
     invertebrate: 0, seed: 0, fish: 0, fruit: 0, rodent: 0, nectar: 0,
   };
   for (const f of action.foodPayments) paid[f]++;
-  if (payFoodPlan(paid, card.cost) === null) throw new Error('food payment does not cover the cost');
+  for (const cp of cachedPayments) paid[cp.food]++;
+  if (payFoodPlan(paid, effCost) === null) throw new Error('food payment does not cover the cost');
   for (const f of action.foodPayments) {
     if (p.food[f] <= 0) throw new Error(`you don't have ${f}`);
   }
 
-  let s = spendCube(state, action.playerId);
+  let s = spendCube(state, action.playerId, 'playBird');
   let pl = getPlayer(s, action.playerId);
   // Pay eggs.
   for (const ref of action.eggPayments) {
     const row = [...pl.board[ref.habitat]];
     row[ref.index] = { ...row[ref.index]!, eggs: row[ref.index]!.eggs - 1 };
     pl = { ...pl, board: { ...pl.board, [ref.habitat]: row } };
+  }
+  // Spend cached food off the birds it sat on.
+  for (const cp of cachedPayments) {
+    const row = [...pl.board[cp.bird.habitat]];
+    const b = row[cp.bird.index]!;
+    const at = b.cached.indexOf(cp.food);
+    row[cp.bird.index] = { ...b, cached: b.cached.filter((_, i) => i !== at) };
+    pl = { ...pl, board: { ...pl.board, [cp.bird.habitat]: row } };
   }
   // Pay food (track nectar spent for Oceania scoring).
   const nectarPaid = action.foodPayments.filter((f) => f === 'nectar').length;
@@ -159,24 +225,72 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
       nectarSpent: { ...pl.nectarSpent, [action.habitat]: pl.nectarSpent[action.habitat] + nectarPaid },
     };
   }
-  // Play the bird.
+  // Play the bird (paid cards tuck behind it; sideways birds cover +1 slot).
+  const paidSet = new Set(cardPayments);
+  const newRow = [
+    ...pl.board[action.habitat],
+    { cardId: action.cardId, eggs: 0, tucked: [...cardPayments], cached: [] },
+  ];
+  if (coversTwo) {
+    newRow.push({ cardId: action.cardId, eggs: 0, tucked: [], cached: [], ghost: true });
+  }
   pl = {
     ...pl,
-    hand: pl.hand.filter((id) => id !== action.cardId),
-    board: {
-      ...pl.board,
-      [action.habitat]: [...pl.board[action.habitat], { cardId: action.cardId, eggs: 0, tucked: [], cached: [] }],
-    },
+    hand: pl.hand.filter((id) => id !== action.cardId && !paidSet.has(id)),
+    board: { ...pl.board, [action.habitat]: newRow },
     cubesOnPlayBird: pl.cubesOnPlayBird + 1,
   };
   s = setPlayer(s, pl);
 
   // When-played powers (white banner).
-  const ref: BirdRef = { habitat: action.habitat, index: pl.board[action.habitat].length - 1 };
+  const ref: BirdRef = { habitat: action.habitat, index: slot };
   if (card.powerColor === 'white' && card.powerText) {
     s = runPower(s, action.playerId, ref);
   }
+  if (cardPayments.length > 0) {
+    s = firePinkTriggers(s, action.playerId, { kind: 'tuck' });
+    s = firePinkTriggers(s, action.playerId, { kind: 'predatorSuccess' });
+  }
   s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: action.habitat });
+  return s;
+}
+
+/** European predators played "on top of another bird": no costs are paid,
+ *  the covered bird's eggs/cached food are discarded, and it (plus anything
+ *  already tucked under it) becomes tucked cards under the new bird. */
+function playOnTop(
+  state: GameState,
+  action: PlayBirdAction,
+  card: BirdCard,
+): GameState {
+  const ref = action.coverBird!;
+  if (!isCoverBird(card)) throw new Error('this bird cannot be played on top of another');
+  if (!card.habitats.includes(ref.habitat)) {
+    throw new Error(`this bird can't live in the ${ref.habitat}`);
+  }
+  const target = birdAt(state, action.playerId, ref);
+  if (target.ghost) throw new Error('that space is covered');
+  let s = spendCube(state, action.playerId, 'playBird');
+  let pl = getPlayer(s, action.playerId);
+  const row = [...pl.board[ref.habitat]];
+  row[ref.index] = {
+    cardId: action.cardId,
+    eggs: 0,
+    tucked: [...target.tucked, target.cardId],
+    cached: [],
+  };
+  pl = {
+    ...pl,
+    hand: pl.hand.filter((id) => id !== action.cardId),
+    board: { ...pl.board, [ref.habitat]: row },
+    cubesOnPlayBird: pl.cubesOnPlayBird + 1,
+  };
+  s = setPlayer(s, pl);
+  // Counts as a tuck and a predator succeeding; the covered slot still counts
+  // as playing a bird in that habitat for pink triggers.
+  s = firePinkTriggers(s, action.playerId, { kind: 'tuck' });
+  s = firePinkTriggers(s, action.playerId, { kind: 'predatorSuccess' });
+  s = firePinkTriggers(s, action.playerId, { kind: 'playBird', habitat: ref.habitat });
   return s;
 }
 
@@ -196,7 +310,7 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
     if (!p.hand.includes(action.bonusTradeCardId)) throw new Error('card not in hand');
     diceToTake += 1;
   }
-  let s = spendCube(state, action.playerId);
+  let s = spendCube(state, action.playerId, 'forest');
   if (action.bonusTradeCardId != null) {
     const pl = getPlayer(s, action.playerId);
     s = {
@@ -249,11 +363,12 @@ export function layEggs(state: GameState, action: LayEggsAction): GameState {
     const key = `${ref.habitat}:${ref.index}`;
     planned.set(key, (planned.get(key) ?? 0) + 1);
     const b = birdAt(state, action.playerId, ref);
+    if (b.ghost) throw new Error('that space is covered');
     if (!canHoldEggs(b.cardId)) throw new Error('that bird cannot hold eggs');
     const used = planned.get(key)!;
     if (b.eggs + used > bird(b.cardId).eggLimit) throw new Error('over the egg limit');
   }
-  let s = spendCube(state, action.playerId);
+  let s = spendCube(state, action.playerId, 'grassland');
   if (action.tradeFood != null) {
     s = setPlayer(s, spendFood(getPlayer(s, action.playerId), [action.tradeFood]));
   }
@@ -277,6 +392,7 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
   if (action.tradeEgg) {
     if (!TRADE_SLOTS.includes(slot)) throw new Error('this slot has no trade');
     const b = birdAt(state, action.playerId, action.tradeEgg);
+    if (b.ghost) throw new Error('that space is covered');
     if (b.eggs <= 0) throw new Error('that bird has no eggs');
     count += 1;
   }
@@ -286,7 +402,7 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
       throw new Error('that tray slot is empty');
     }
   }
-  let s = spendCube(state, action.playerId);
+  let s = spendCube(state, action.playerId, 'wetland');
   if (action.tradeEgg) {
     const pl = getPlayer(s, action.playerId);
     const row = [...pl.board[action.tradeEgg.habitat]];
@@ -339,8 +455,10 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
   if (state.pending.length > 0) throw new Error('resolve the pending choice first');
   if (state.activation) throw new Error('finish activating powers first');
   const p = getPlayer(state, playerId);
-  // End-of-turn discard powers trigger first.
-  if (p.endOfTurnDiscards > 0) {
+  // End-of-turn discard powers trigger first. When the hand is empty there
+  // is nothing to discard — clear the flag inline (a 0-count pending step
+  // would be dropped without running its continuation).
+  if (p.endOfTurnDiscards > 0 && p.hand.length > 0) {
     return pushPending(state, {
       kind: 'chooseHandDiscard',
       playerId,
@@ -349,6 +467,7 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
     });
   }
   let s = refillTray(state);
+  if (p.endOfTurnDiscards > 0) s = finishEndOfTurnDiscards(s, playerId);
   // Advance to the next player with cubes left.
   let next = state.currentPlayerIndex;
   let guard = 0;
@@ -374,6 +493,30 @@ export function finishEndOfTurnDiscards(state: GameState, playerId: PlayerId): G
 // === round / game end ===
 
 function endRound(state: GameState): GameState {
+  // End-of-round order (EE reference tile): 1. round-end (teal) bird powers,
+  // 2. score the end-of-round goal, 3. remove action cubes, 4. discard and
+  // replace the tray cards, 5. rotate the first-player marker. The teal
+  // powers therefore run BEFORE goal scoring — they can change it.
+  const tealQueue: { playerId: PlayerId; bird: BirdRef }[] = [];
+  for (const pid of state.playerOrder) {
+    const p = getPlayer(state, pid);
+    for (const h of HABITATS) {
+      p.board[h].forEach((b, index) => {
+        if (b.ghost) return;
+        const c = bird(b.cardId);
+        if (c.powerColor === 'teal' && c.powerText && hasPowerImpl(c.id)) {
+          tealQueue.push({ playerId: pid, bird: { habitat: h, index } });
+        }
+      });
+    }
+  }
+  return { ...state, phase: 'roundEnd', roundEndQueue: tealQueue };
+}
+
+/** Called by settle() once the roundEnd queue has drained: score the goal,
+ *  restock the tray, reset cubes, rotate the first player, and continue to
+ *  the next round — or begin game end after round 4. */
+export function finishRound(state: GameState): GameState {
   // Score this round's goal tile (green side: ranked).
   const tile = state.goalTiles[state.round];
   let s = state;
@@ -407,20 +550,6 @@ function endRound(state: GameState): GameState {
     tray: [null, null, null],
   };
   s = refillTray(s);
-  // Queue every teal-powered bird (in player order then board order); they
-  // drain during the 'roundEnd' phase, which settle() runs automatically.
-  const tealQueue: { playerId: PlayerId; bird: BirdRef }[] = [];
-  for (const pid of s.playerOrder) {
-    const p = getPlayer(s, pid);
-    for (const h of HABITATS) {
-      p.board[h].forEach((b, index) => {
-        const c = bird(b.cardId);
-        if (c.powerColor === 'teal' && c.powerText && hasPowerImpl(c.id)) {
-          tealQueue.push({ playerId: pid, bird: { habitat: h, index } });
-        }
-      });
-    }
-  }
 
   const nextRound = s.round + 1;
   if (nextRound < 4) {
@@ -431,13 +560,18 @@ function endRound(state: GameState): GameState {
       round: nextRound,
       currentPlayerIndex: (s.currentPlayerIndex + 1) % s.playerOrder.length,
       turnTookAction: false,
-      players: s.players.map((pl) => ({ ...pl, actionCubes: CUBES_PER_ROUND[nextRound]! })),
+      phase: 'main',
+      players: s.players.map((pl) => ({
+        ...pl,
+        actionCubes: CUBES_PER_ROUND[nextRound]!,
+        roundCubes: { forest: 0, grassland: 0, wetland: 0, playBird: 0 },
+        gainedThisTurn: [],
+      })),
     };
     s = resetPinkFlags(s, s.playerOrder[s.currentPlayerIndex]!);
-  } else {
-    s = { ...s, round: nextRound };
+    return s;
   }
-  return { ...s, phase: 'roundEnd', roundEndQueue: tealQueue };
+  return beginGameEnd({ ...s, round: nextRound });
 }
 
 export function beginGameEnd(state: GameState): GameState {
@@ -447,6 +581,7 @@ export function beginGameEnd(state: GameState): GameState {
     const p = getPlayer(state, pid);
     for (const h of HABITATS) {
       p.board[h].forEach((b, index) => {
+        if (b.ghost) return;
         const c = bird(b.cardId);
         if (c.powerColor === 'yellow' && c.powerText && hasPowerImpl(c.id)) {
           queue.push({ playerId: pid, bird: { habitat: h, index } });

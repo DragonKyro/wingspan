@@ -109,6 +109,12 @@ export interface PlayedBird {
   cached: FoodType[];
   /** Pink powers fire at most once between the owner's turns. */
   pinkUsed?: boolean;
+  /** European "cover 2 spaces" birds leave a placeholder entry in the slot
+   *  they cover to their right — it is not a real bird (no eggs, no powers,
+   *  does not count as a bird) but it does occupy the space for row length,
+   *  action-row slot position and the filled-columns goal. `cardId` mirrors
+   *  the covering bird for display purposes. */
+  ghost?: boolean;
 }
 
 /** Identifies a played bird: habitat + slot index. */
@@ -125,14 +131,37 @@ export type PendingStep =
   | { kind: 'pickDie'; playerId: PlayerId; count: number; faces?: DieFace[]; then?: PendingTag }
   /** From the supply: choose which food types to take (optionally cache on `cache`). */
   | { kind: 'chooseSupplyFood'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; cache?: BirdRef | null; then?: PendingTag }
-  /** Lay an egg on a chosen bird; `nest` = filter, 'any' or 'other'. */
-  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other'; exclude?: BirdRef; overLimit?: number; optional?: boolean; then?: PendingTag }
-  /** Discard eggs from chosen birds (power costs). */
-  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; then?: PendingTag }
-  /** Discard a card from hand (e.g. end-of-turn discard powers). */
-  | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; then?: PendingTag }
+  /** Lay an egg on a chosen bird; `nest` = filter, 'any' or 'other' (array = any listed type). */
+  | { kind: 'chooseBirdForEgg'; playerId: PlayerId; count: number; nest: NestType | 'any' | 'other' | NestType[]; exclude?: BirdRef; overLimit?: number; optional?: boolean; then?: PendingTag }
+  /** Discard eggs from chosen birds (power costs). `optional`: declining skips `then`. */
+  | { kind: 'chooseBirdForEggDiscard'; playerId: PlayerId; count: number; exclude?: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Discard a card from hand (e.g. end-of-turn discard powers). `optional`: declining skips `then`. */
+  | { kind: 'chooseHandDiscard'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Tuck a card from hand behind `bird`. `optional`: declining skips `then`. */
   | { kind: 'chooseHandTuck'; playerId: PlayerId; bird: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Pick a player; `other` excludes the chooser. */
+  | { kind: 'choosePlayer'; playerId: PlayerId; other?: boolean; then?: PendingTag }
+  /** Pick a habitat; `noEggs` restricts to habitats with zero eggs (any owner's birds). */
+  | { kind: 'chooseHabitat'; playerId: PlayerId; noEggs?: boolean; then?: PendingTag }
+  /** Discard food from the supply (up to `count` when `optional`). */
+  | { kind: 'chooseFoodDiscard'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; optional?: boolean; then?: PendingTag }
+  /** Steal 1 food of `food` type ('any' = chooser picks a type the victim has) from `from`. */
+  | { kind: 'chooseFoodSteal'; playerId: PlayerId; from: PlayerId; food: FoodType | 'any'; then?: PendingTag }
+  /** Take a face-up tray card (`habitat` restricts to cards that can live there). */
+  | { kind: 'chooseTrayCard'; playerId: PlayerId; habitat?: Habitat; then?: PendingTag }
+  /** Remove `count` dice from the feeder without gaining their food. */
+  | { kind: 'chooseDieRemove'; playerId: PlayerId; count: number; then?: PendingTag }
+  /** Pick `min`..`max` own birds (optionally within one habitat). */
+  | { kind: 'chooseBirds'; playerId: PlayerId; min: number; max: number; habitat?: Habitat; then?: PendingTag }
+  /** Tuck hand cards behind `targets`: card i goes behind targets[i]; 0..len may be picked. */
+  | { kind: 'assignHandTucks'; playerId: PlayerId; targets: BirdRef[]; then?: PendingTag }
+  /** Cache `count` food (`food`) from the supply on any of your birds (stackable).
+   *  'any' = the chooser picks which types. */
+  | { kind: 'chooseCacheOnBirds'; playerId: PlayerId; count: number; food: FoodType | 'any'; then?: PendingTag }
+  /** Name a food type (e.g. "all players gain 1 of the chosen food"). */
+  | { kind: 'chooseFoodType'; playerId: PlayerId; then?: PendingTag }
+  /** Pick one of several mutually exclusive effects. */
+  | { kind: 'chooseOption'; playerId: PlayerId; options: PowerOption[]; then?: PendingTag }
   /** Drew cards face-down to distribute: this player picks one of `cardIds`. */
   | { kind: 'chooseDrawnCard'; playerId: PlayerId; cardIds: number[]; then?: PendingTag }
   /** Keep `keep` of `cardIds` bonus cards, discard the rest. */
@@ -145,8 +174,8 @@ export type PendingStep =
   | { kind: 'chooseFirstPlayer'; playerId: PlayerId; effect: 'gainDie'; then?: PendingTag }
   /** Pick another bird in `habitat` whose brown/predator power to repeat. */
   | { kind: 'chooseRepeatPower'; playerId: PlayerId; habitat: Habitat; predatorOnly?: boolean; then?: PendingTag }
-  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. */
-  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same'; sourceBird?: BirdRef; optional?: boolean; then?: PendingTag }
+  /** Play an additional bird (normal cost) in `habitat`. `optional`: may decline. 'any': the resolver picks the habitat. */
+  | { kind: 'chooseAdditionalPlay'; playerId: PlayerId; habitat: Habitat | 'same' | 'any'; sourceBird?: BirdRef; optional?: boolean; then?: PendingTag }
   /** Cache up to `count` food from the supply onto `bird` (choose which types). */
   | { kind: 'chooseCacheFood'; playerId: PlayerId; bird: BirdRef; count: number; optional?: boolean; then?: PendingTag }
   /** Spend a wild food for any other type from the supply. */
@@ -186,6 +215,13 @@ export type Phase =
   | 'gameEnd'
   | 'gameOver';
 
+/** The four action columns action cubes are spent on (per round). */
+export type CubeTrack = Habitat | 'playBird';
+export const CUBE_TRACKS: CubeTrack[] = ['forest', 'grassland', 'wetland', 'playBird'];
+
+/** Options offered by european "choose one effect" powers. */
+export type PowerOption = 'gainDie' | 'drawCard' | 'layEgg';
+
 export interface PlayerState {
   id: PlayerId;
   name: string;
@@ -197,6 +233,11 @@ export interface PlayerState {
   food: Record<FoodType, number>;
   /** Eggs gained beyond capacity are lost — but the *spent* count is a goal metric. */
   actionCubes: number;
+  /** Action cubes spent this round per action column (reset each round) —
+   *  european teal powers count "action cubes on their [habitat]". */
+  roundCubes: Record<CubeTrack, number>;
+  /** Food types gained this turn (european robin-style powers). Reset when a turn starts. */
+  gainedThisTurn: FoodType[];
   /** Cards this player must discard at end of turn ("draw N, discard 1 at end of turn" powers). */
   endOfTurnDiscards: number;
   /** Cubes spent on the "play a bird" action (a goal tile counts these). */
@@ -283,8 +324,16 @@ export interface PlayBirdAction extends BaseAction {
   habitat: Habitat;
   /** Eggs spent for the column cost. */
   eggPayments: BirdRef[];
-  /** Food tokens spent (2-for-1 trades allowed: list actual tokens). */
+  /** Food tokens spent from the supply (2-for-1 trades allowed: list actual tokens). */
   foodPayments: FoodType[];
+  /** Food spent from birds' caches (european caching powers make cached food spendable). */
+  cachedFoodPayments?: { bird: BirdRef; food: FoodType }[];
+  /** European predators: hand cards paid instead of [rodent] cost items (tucked behind the bird). */
+  cardPayments?: number[];
+  /** European predators: play on top of this existing bird instead of paying any cost. */
+  coverBird?: BirdRef;
+  /** European sideways birds: cover 2 habitat spaces (default true when legal). */
+  coverTwo?: boolean;
 }
 
 export interface GainFoodAction extends BaseAction {
@@ -338,12 +387,15 @@ export type Choice =
   | { kind: 'dice'; picks: { die: number; take?: FoodType }[]; reroll?: boolean }
   | { kind: 'supplyFood'; foods: FoodType[] }
   | { kind: 'birds'; birds: BirdRef[] }
-  | { kind: 'handCards'; cardIds: number[] }
+  /** `habitat` disambiguates 'any'-habitat additional plays. */
+  | { kind: 'handCards'; cardIds: number[]; habitat?: Habitat }
   | { kind: 'bonusCards'; cardIds: number[] }
   | { kind: 'habitat'; habitat: Habitat }
   | { kind: 'player'; playerId: PlayerId }
   | { kind: 'boolean'; yes: boolean }
   | { kind: 'repeatTarget'; bird: BirdRef }
+  | { kind: 'option'; option: PowerOption }
+  | { kind: 'cacheAssign'; items: { bird: BirdRef; food: FoodType }[] }
   | { kind: 'wildTrade'; give: FoodType; to: FoodType };
 
 export interface EndTurnAction extends BaseAction {

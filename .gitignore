@@ -35,6 +35,13 @@ Thumbs.db
 
 # Test coverage
 coverage/
-
-# Rulebook PDFs (licensed, ~380MB, local-only)
+# Rulebook PDFs and agent research scratch (local-only)
 docs/
+*.pdf
+*_rules*.txt
+yt*.*
+resume.*
+dragon_*.txt
+wyrm_gallu.*
+automa.pdf
+academy_rules.txt

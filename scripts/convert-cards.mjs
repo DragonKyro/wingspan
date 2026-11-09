@@ -30,12 +30,16 @@ const BONUS_NAMES = new Set(bonusRaw.map((b) => b['Bonus card']));
 function foodCost(c) {
   const total = c['Total food cost'] ?? 0;
   if (total === 0) return { kind: 'none' };
-  if (c['* (food cost)']) return { kind: 'any', count: total };
   const listed = FOODS.flatMap((f) => Array(c[f] ?? 0).fill(foodId(f)));
   if (c['/ (food cost)']) return { kind: 'or', foods: listed };
   const items = FOODS.filter((f) => c[f]).map((f) => ({ food: foodId(f), count: c[f] }));
   const wild = c['Wild (food)'] ?? 0;
   if (wild) items.push({ food: 'any', count: wild });
+  // The '*' flag marks an alternative cost printed in the power text (e.g.
+  // European predators that may be played on top of another bird or paid with
+  // cards); the real food columns still describe the normal cost.
+  const listedTotal = items.reduce((n, i) => n + i.count, 0);
+  if (listedTotal < total) items.push({ food: 'any', count: total - listedTotal });
   return items.length ? { kind: 'and', items } : { kind: 'any', count: total };
 }
 

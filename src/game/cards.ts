@@ -42,7 +42,8 @@ export function birdsInSets(sets: string[]): number[] {
 }
 
 export function bonusCardsInSets(sets: string[]): number[] {
-  return BONUS_CARDS.filter((b) => sets.includes(b.set)).map((b) => b.id);
+  // "[automa] ..." cards are Automa-only — never dealt to human/AI players.
+  return BONUS_CARDS.filter((b) => sets.includes(b.set) && !b.name.startsWith('[automa]')).map((b) => b.id);
 }
 
 /** Goal tiles available for the given sets (only supported scorers are used). */

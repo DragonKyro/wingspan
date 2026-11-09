@@ -8,10 +8,10 @@ import {
 import {
   actingPlayerId,
   actionSlot,
-  canPayFood,
+  autoPayBird,
   columnEggCost,
   getPlayer,
-  payFoodPlan,
+  isCoverBird,
   playedBirds,
   rowFull,
   totalEggs,
@@ -284,6 +284,13 @@ function PlayerMatView({
             {Array.from({ length: 5 }, (_, i) => {
               const b = player.board[h][i];
               const playHere = playing && draft.habitat === h && i === player.board[h].length;
+              const coverTarget =
+                playing &&
+                draft.kind === 'playBird' &&
+                isCoverBird(bird(draft.cardId)) &&
+                b &&
+                !b.ghost &&
+                bird(draft.cardId).habitats.includes(h);
               const eggTarget =
                 laying &&
                 controls &&
@@ -292,17 +299,40 @@ function PlayerMatView({
               return (
                 <div
                   key={i}
-                  className={`slot${b ? '' : ' empty'}`}
+                  className={`slot${b ? '' : ' empty'}${b?.ghost ? ' ghost' : ''}`}
                   onClick={() => {
+                    if (!controls) return;
+                    // European cover predators: click an existing bird to play
+                    // on top of it (tucks the covered bird, pays nothing).
+                    if (playing && draft.kind === 'playBird') {
+                      const card = bird(draft.cardId);
+                      if (isCoverBird(card) && b && !b.ghost && card.habitats.includes(h)) {
+                        dispatch({
+                          type: 'playBird',
+                          playerId: player.id,
+                          cardId: draft.cardId,
+                          habitat: h,
+                          eggPayments: [],
+                          foodPayments: [],
+                          coverBird: { habitat: h, index: i },
+                        });
+                        setDraft(null);
+                        return;
+                      }
+                    }
                     if (playHere && controls) {
                       const col = i;
+                      const pay = autoPayBird(player, draft.cardId);
+                      if (!pay) return;
                       dispatch({
                         type: 'playBird',
                         playerId: player.id,
                         cardId: draft.cardId,
                         habitat: h,
                         eggPayments: autoEggs(player, columnEggCost(col)),
-                        foodPayments: payFoodPlan(player.food, bird(draft.cardId).cost) ?? [],
+                        foodPayments: pay.foodPayments,
+                        cachedFoodPayments: pay.cachedFoodPayments,
+                        cardPayments: pay.cardPayments,
                       });
                       setDraft(null);
                     } else if (eggTarget && laying && draft.kind === 'layEggs') {
@@ -312,12 +342,19 @@ function PlayerMatView({
                   style={
                     playHere
                       ? { borderColor: 'var(--accent)', borderStyle: 'solid', cursor: 'pointer' }
-                      : eggTarget
-                        ? { borderColor: '#f2d38a', cursor: 'pointer' }
-                        : undefined
+                      : coverTarget
+                        ? { borderColor: '#d98a8a', borderStyle: 'dashed', cursor: 'pointer' }
+                        : eggTarget
+                          ? { borderColor: '#f2d38a', cursor: 'pointer' }
+                          : undefined
                   }
                 >
-                  {b ? <BirdCardView cardId={b.cardId} played={b} /> : i === player.board[h].length ? 'next' : ''}
+                  {b ? (
+                    <>
+                      <BirdCardView cardId={b.cardId} played={b} />
+                      {b.ghost && <span className="muted">covered</span>}
+                    </>
+                  ) : i === player.board[h].length ? 'next' : ''}
                   {b && laying && draft.placements.filter((r) => r.habitat === h && r.index === i).length > 0 && (
                     <span className="badge">
                       +{draft.placements.filter((r) => r.habitat === h && r.index === i).length}
@@ -386,12 +423,18 @@ function HandArea({
           const playingThis = draft?.kind === 'playBird' && draft.cardId === id;
           const kept = setupDraft?.keepBirds.includes(id);
           const c = bird(id);
-          const playableHabitat = c.habitats.find((h) => !rowFull(player, h) && canPayFood(player.food, c.cost));
+          const payable = autoPayBird(player, id) != null;
+          const playableHabitat = c.habitats.find((h) => !rowFull(player, h) && payable);
+          // European cover predators are also playable on top of a bird.
+          const coverHabitat = isCoverBird(c)
+            ? c.habitats.find((h) => player.board[h].some((b) => !b.ghost))
+            : undefined;
+          const canUse = playableHabitat != null || coverHabitat != null;
           return (
             <BirdCardView
               key={id}
               cardId={id}
-              selectable={controls && (inSetup || playableHabitat != null || playingThis)}
+              selectable={controls && (inSetup || canUse || playingThis)}
               selected={playingThis || kept}
               onClick={() => {
                 if (!controls) return;
@@ -401,8 +444,8 @@ function HandArea({
                   setDraft({ kind: 'setup', keepBirds: next, keepBonus: setupDraft?.keepBonus ?? null });
                 } else if (playingThis) {
                   setDraft(null);
-                } else if (playableHabitat) {
-                  setDraft({ kind: 'playBird', cardId: id, habitat: playableHabitat });
+                } else if (canUse) {
+                  setDraft({ kind: 'playBird', cardId: id, habitat: playableHabitat ?? coverHabitat ?? null });
                 }
               }}
             />
@@ -548,7 +591,7 @@ function ActionsPanel({
           {bird(draft.cardId).habitats.map((h) => (
             <button
               key={h}
-              disabled={rowFull(p, h) || !canPayFood(p.food, bird(draft.cardId).cost)}
+              disabled={rowFull(p, h) || autoPayBird(p, draft.cardId) == null}
               onClick={() => setDraft({ ...draft, habitat: h })}
             >
               {h}
