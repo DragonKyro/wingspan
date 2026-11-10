@@ -1,14 +1,14 @@
 // Official Wingspan Automa solo mode (Base + European, Oceania, Asia, Americas).
 
-import { bird, BONUS_BY_ID, BONUS_CARDS, goalTile, hummingbird } from './cards';
+import { bird, BONUS_BY_ID, goalTile, hummingbird } from './cards';
 import { HUM_LADDER } from './constants';
 import { DUET_MAP, duetCriterionMatch, duetNeighbors } from './duetMap';
+import { costTotal } from './helpers';
 import type {
   AutomaCard,
   AutomaDifficulty,
   BirdCard,
   DieFace,
-  FoodCost,
   FoodType,
   GameState,
   HumGroup,
@@ -192,18 +192,6 @@ export function isAutomaBonusEligible(bonusCardId: number): boolean {
   return Boolean((b as { automa?: boolean }).automa);
 }
 
-export function automaBonusCardsInSets(sets: string[]): number[] {
-  return BONUS_CARDS.filter((b) => sets.includes(b.set) && isAutomaBonusEligible(b.id)).map(
-    (b) => b.id,
-  );
-}
-
-function costTotal(cost: FoodCost): number {
-  if (cost.kind === 'none') return 0;
-  if (cost.kind === 'any') return cost.count;
-  if (cost.kind === 'or') return 1;
-  return cost.items.reduce((n, i) => n + i.count, 0);
-}
 
 /** Does `card` satisfy the Automa's bonus card requirement? */
 export function birdMatchesAutomaBonus(

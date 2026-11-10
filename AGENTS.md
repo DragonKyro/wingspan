@@ -39,7 +39,9 @@ AI — and only Wingspan has a UI so far.
   Wyrmspan (+ Dragon Academy) engines + AIs. Engine-only: no UI/net yet.
 - `src/selfplay.test.ts` — AI self-play over every set/player count/mode of
   all three engines (`SELFPLAY_SEEDS=250` for a wide local sweep). Each
-  engine's `regressions.test.ts` pins the bugs it found.
+  engine's `regressions.test.ts` pins the bugs it found. Shared test
+  helpers (game factories, AI drivers, `autoResolve`/`edit`/`mkBird`…) live
+  in each engine's `testUtils.ts` — reuse them instead of redefining.
 - `src/wingspan/` — pure engine. No React/DOM/net imports. Every state mutation
   goes through `applyAction(state, action) => state` in `engine.ts`.
   Deterministic from `createGame(options)` + the action log; `state.rngState`
@@ -67,6 +69,13 @@ AI — and only Wingspan has a UI so far.
   rollback), `lobbyGame` (lobby→createGame settings).
 - `src/ui/` — React. `GameScreen` runs a draft model for multi-click actions;
   `PendingBar` renders each pending-step kind; `AIDriver` feeds AI seats.
+- `src/ui/art/` — procedural SVG card art (no image files). `core.tsx` holds
+  `<ArtDefs/>` (every shared gradient, mounted ONCE in App — reference as
+  `url(#ws-…)`, never add per-card <defs>), a seeded RNG over shared/rng and
+  colour helpers. `birdArt`/`dragonArt`/`fishArt` map the card NAME to a body
+  plan via ordered regex rules (first match wins; use word boundaries — "peafowl" contains
+  "owl") plus name colour/part words, and habitat/cave/zone to a seeded scene.
+  `svgArt.tsx` re-exports them alongside the small token icons.
 
 ## Engine invariants
 

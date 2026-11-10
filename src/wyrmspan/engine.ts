@@ -4,7 +4,7 @@
 
 import { entice, excavate, exchange, explore, nextTurnPlayer, pass } from './actions';
 import { buildAutomaRoundDeck, executeAutomaTurn } from './automa';
-import { cardAbilityTypes, dragonCard, parseIcons } from './cards';
+import { cardAbilityTypes, dragonCard, trainingTrackLength } from './cards';
 import { collectIncome, pushPending, resolveChoice, runAbility } from './effects';
 import { clone, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
 import { scoreObjective } from './objectives';
@@ -130,7 +130,7 @@ function endRound(state: GameState): GameState {
         if (!cardAbilityTypes(card).includes('OncePerRound')) continue;
         // Fledgling purple abilities are inactive until fully trained.
         if (card.size === 'Fledgling') {
-          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          const track = trainingTrackLength(card);
           if ((sp.dragon.training ?? 0) < track) continue;
         }
         queue.push({ playerId: pid, pos: [cave, space] });

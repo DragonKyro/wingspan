@@ -3,7 +3,6 @@
 // european bonus cards, and a full AI game on the combined deck.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/wingspan/ai/choices';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird } from './cards';
 import { createGame } from './createGame';
@@ -16,9 +15,7 @@ import {
 } from './helpers';
 import { bonusPoints } from './scoring';
 import { setPlayer } from './powers';
-import type { GameState, PlayerState } from './types';
-
-const COLORS = ['red', 'blue'] as const;
+import { autoResolve, autoSetup, edit, gameFactory, mkBird } from './testUtils';
 
 // european card ids used below (see src/wingspan/data/birds.json).
 const BLACKBIRD = 77; // Place sideways covering 2 [forest] spaces.
@@ -36,50 +33,7 @@ const BONUS_DIET = 1009; // birds costing 3 food.
 const BONUS_ETHOLOGIST = 1012; // per power color in one habitat.
 const BONUS_BEHAVIORIST = 1002; // per column with 3 power colors.
 
-function newGame(seed = 42, sets = ['core', 'european']): GameState {
-  return createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: [...COLORS],
-    seed,
-    settings: { sets },
-  });
-}
-
-function autoSetup(s: GameState): GameState {
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed', 'fish', 'fruit', 'rodent'],
-    });
-  }
-  return s;
-}
-
-/** Drain pending steps with the greedy AI answers. */
-function autoResolve(s: GameState): GameState {
-  let guard = 0;
-  while (s.pending.length > 0 && guard++ < 100) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
-
-function setHand(s: GameState, pid: `p${number}`, p: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...p });
-}
-
-function mkBird(cardId: number, extra: Partial<import('./types').PlayedBird> = {}) {
-  return { cardId, eggs: 0, tucked: [] as number[], cached: [] as import('./types').FoodType[], ...extra };
-}
+const newGame = gameFactory(['core', 'european']);
 
 describe('european expansion', () => {
   it('deals european birds and goals into the deck', () => {
@@ -93,9 +47,9 @@ describe('european expansion', () => {
   });
 
   it('plays a sideways bird covering 2 spaces for the lower egg cost', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
-    s = setHand(s, pid, {
+    s = edit(s, pid, {
       hand: [BLACKBIRD],
       food: { invertebrate: 1, seed: 0, fish: 0, fruit: 2, rodent: 0, nectar: 0 },
     });
@@ -120,9 +74,9 @@ describe('european expansion', () => {
   });
 
   it('lets a sideways bird be played normally when asked (coverTwo false)', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
-    s = setHand(s, pid, {
+    s = edit(s, pid, {
       hand: [BLACKBIRD],
       food: { invertebrate: 1, seed: 0, fish: 0, fruit: 2, rodent: 0, nectar: 0 },
     });
@@ -139,9 +93,9 @@ describe('european expansion', () => {
   });
 
   it('pays [rodent] cost items with hand cards that tuck behind the bird', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
-    s = setHand(s, pid, {
+    s = edit(s, pid, {
       hand: [SPARROWHAWK, WOODCOCK],
       food: { invertebrate: 0, seed: 0, fish: 0, fruit: 0, rodent: 0, nectar: 0 },
     });
@@ -161,9 +115,9 @@ describe('european expansion', () => {
   });
 
   it('rejects card payments on birds without the power', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
-    s = setHand(s, pid, {
+    s = edit(s, pid, {
       hand: [CHAFFINCH, WOODCOCK],
       food: { invertebrate: 0, seed: 0, fish: 0, fruit: 0, rodent: 0, nectar: 0 },
     });
@@ -181,7 +135,7 @@ describe('european expansion', () => {
   });
 
   it('plays a cover bird on top of another bird, tucking it', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
     // Existing bird with eggs + cached food gets buried: both are discarded.
     const p = getPlayer(s, pid);
@@ -211,7 +165,7 @@ describe('european expansion', () => {
   });
 
   it('spends cached food via cachedFoodPayments', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
     const p = getPlayer(s, pid);
     s = setPlayer(s, {
@@ -238,7 +192,7 @@ describe('european expansion', () => {
   });
 
   it('runs teal powers before goal scoring and lets them change the goal', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     // p1: Black Redstart (teal) + a forest bird; p2: one bird, no eggs.
     const p1 = getPlayer(s, 'p1');
     const p2 = getPlayer(s, 'p2');
@@ -283,7 +237,7 @@ describe('european expansion', () => {
   });
 
   it('counts a count-double bird twice toward the round goal', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const p1 = getPlayer(s, 'p1');
     const p2 = getPlayer(s, 'p2');
     s = setPlayer(s, {
@@ -309,7 +263,7 @@ describe('european expansion', () => {
   });
 
   it('tracks roundCubes per action column for teal powers', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const pid = actingPlayerId(s);
     const other = s.playerOrder.find((x) => x !== pid)!;
     const p = getPlayer(s, pid);
@@ -326,7 +280,7 @@ describe('european expansion', () => {
   });
 
   it('fires the Dunnock teal power per grassland cube on the chosen player', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     // p1 has Dunnock; p2 spent 2 cubes on grassland.
     const p1 = getPlayer(s, 'p1');
     const p2 = getPlayer(s, 'p2');
@@ -359,7 +313,7 @@ describe('european expansion', () => {
   });
 
   it('scores european bonus cards', () => {
-    let s = autoSetup(newGame());
+    let s = autoSetup(newGame(), 5);
     const p1 = getPlayer(s, 'p1');
     s = setPlayer(s, {
       ...p1,

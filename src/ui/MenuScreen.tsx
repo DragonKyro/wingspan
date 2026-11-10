@@ -1,7 +1,7 @@
 // Game picker + per-game local/online lobby screen, modeled on card-collecting
 // (GameLobby.tsx + App.tsx) and catan (HomeMenu.tsx + NewGame.tsx).
 
-import { useState } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore, warmUpNetwork } from '@/store/networkStore';
 import { GAME_TITLES, LOBBY_SETS } from '@/store/lobbyGame';
@@ -31,6 +31,38 @@ interface SeatDraft {
   name: string;
   color: PlayerColor;
   isAI: boolean;
+}
+
+/** A labelled row of option pills (menu + lobby settings). */
+export function OptionGroup({ label, style, children }: { label: string; style?: CSSProperties; children: ReactNode }) {
+  return (
+    <div className="option-group" style={style}>
+      <span className="option-label">{label}</span>
+      <div className="pill-group">{children}</div>
+    </div>
+  );
+}
+
+/** Option pill: highlighted when `on`; `check` adds a ✓ while it's on. */
+export function Pill({
+  on,
+  check,
+  disabled,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  check?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" className={on ? 'primary' : 'secondary'} disabled={disabled} onClick={onClick}>
+      {check && on ? '✓ ' : ''}
+      {children}
+    </button>
+  );
 }
 
 export function ColorSwatchPicker({
@@ -526,269 +558,148 @@ export function MenuScreen() {
 
             {/* Game-specific options */}
             <h4 className="lobby-section-h">Solo Automa & Game Options</h4>
-            <div className="option-group" style={{ marginBottom: 10 }}>
-              <span className="option-label">Solo Mode:</span>
-              <div className="pill-group">
-                <button
-                  type="button"
-                  className={!automaOn ? 'primary' : 'secondary'}
-                  onClick={() => setAutomaOn(false)}
-                >
-                  👥 Multiplayer / Standard AI Bots
-                </button>
-                <button
-                  type="button"
-                  className={automaOn ? 'primary' : 'secondary'}
-                  onClick={() => setAutomaOn(true)}
-                >
-                  ⚙️ Official Automa Solo Deck (1p vs Automa)
-                </button>
-              </div>
-            </div>
+            <OptionGroup label="Solo Mode:" style={{ marginBottom: 10 }}>
+              <Pill on={!automaOn} onClick={() => setAutomaOn(false)}>👥 Multiplayer / Standard AI Bots</Pill>
+              <Pill on={automaOn} onClick={() => setAutomaOn(true)}>
+                ⚙️ Official Automa Solo Deck (1p vs Automa)
+              </Pill>
+            </OptionGroup>
 
             {automaOn && selectedGame === 'wingspan' && (
               <div className="options-stack" style={{ marginBottom: 10 }}>
-                <div className="option-group">
-                  <span className="option-label">Automa Level:</span>
-                  <div className="pill-group">
-                    {(
-                      [
-                        { id: 'eaglet', label: 'Eaglet (3 pt / face-down bird)' },
-                        { id: 'eagle', label: 'Eagle — Normal (4 pt)' },
-                        { id: 'eagleEyed', label: 'Eagle-eyed Eagle (5 pt)' },
-                      ] as const
-                    ).map((d) => (
-                      <button
-                        key={d.id}
-                        type="button"
-                        className={wingAutomaDiff === d.id ? 'primary' : 'secondary'}
-                        onClick={() => setWingAutomaDiff(d.id)}
-                      >
-                        {d.label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className={wingAutomubon ? 'primary' : 'secondary'}
-                      onClick={() => setWingAutomubon((v) => !v)}
-                    >
-                      {wingAutomubon ? '✓ ' : ''}Automubon Society Card
-                    </button>
-                    <button
-                      type="button"
-                      className={wingHoard ? 'primary' : 'secondary'}
-                      onClick={() => setWingHoard((v) => !v)}
-                    >
-                      {wingHoard ? '✓ ' : ''}Automa&apos;s Hoard
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Automa Level:">
+                  {(
+                    [
+                      { id: 'eaglet', label: 'Eaglet (3 pt / face-down bird)' },
+                      { id: 'eagle', label: 'Eagle — Normal (4 pt)' },
+                      { id: 'eagleEyed', label: 'Eagle-eyed Eagle (5 pt)' },
+                    ] as const
+                  ).map((d) => (
+                    <Pill key={d.id} on={wingAutomaDiff === d.id} onClick={() => setWingAutomaDiff(d.id)}>
+                      {d.label}
+                    </Pill>
+                  ))}
+                  <Pill on={wingAutomubon} check onClick={() => setWingAutomubon((v) => !v)}>
+                    Automubon Society Card
+                  </Pill>
+                  <Pill on={wingHoard} check onClick={() => setWingHoard((v) => !v)}>
+                    Automa&apos;s Hoard
+                  </Pill>
+                </OptionGroup>
               </div>
             )}
 
             {automaOn && selectedGame === 'wyrmspan' && (
               <div className="options-stack" style={{ marginBottom: 10 }}>
-                <div className="option-group">
-                  <span className="option-label">Automa Level:</span>
-                  <div className="pill-group">
-                    {([1, 2, 3] as const).map((lv) => (
-                      <button
-                        key={lv}
-                        type="button"
-                        className={wyrmAutomaDiff === lv ? 'primary' : 'secondary'}
-                        onClick={() => setWyrmAutomaDiff(lv)}
-                      >
-                        Level {lv} {lv === 3 && !wyrmRavel ? '(8 VP/dragon)' : ''}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className={wyrmRavel ? 'primary' : 'secondary'}
-                      onClick={() => setWyrmRavel((v) => !v)}
-                    >
-                      {wyrmRavel ? '✓ ' : ''}Ravel Mode Variant
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Automa Level:">
+                  {([1, 2, 3] as const).map((lv) => (
+                    <Pill key={lv} on={wyrmAutomaDiff === lv} onClick={() => setWyrmAutomaDiff(lv)}>
+                      Level {lv} {lv === 3 && !wyrmRavel ? '(8 VP/dragon)' : ''}
+                    </Pill>
+                  ))}
+                  <Pill on={wyrmRavel} check onClick={() => setWyrmRavel((v) => !v)}>Ravel Mode Variant</Pill>
+                </OptionGroup>
               </div>
             )}
 
             {automaOn && selectedGame === 'finspan' && (
               <div className="options-stack" style={{ marginBottom: 10 }}>
-                <div className="option-group">
-                  <span className="option-label">Nautoma Diff:</span>
-                  <div className="pill-group">
-                    {([1, 2, 3, 4, 5] as const).map((lv) => (
-                      <button
-                        key={lv}
-                        type="button"
-                        className={finAutomaDiff === lv ? 'primary' : 'secondary'}
-                        onClick={() => setFinAutomaDiff(lv)}
-                      >
-                        ⭐ {lv} {lv <= 3 && lv >= 2 ? '(Calm)' : lv >= 4 ? '(Stormy)' : '(No Ach)'}
-                      </button>
+                <OptionGroup label="Nautoma Diff:">
+                  {([1, 2, 3, 4, 5] as const).map((lv) => (
+                    <Pill key={lv} on={finAutomaDiff === lv} onClick={() => setFinAutomaDiff(lv)}>
+                      ⭐ {lv} {lv <= 3 && lv >= 2 ? '(Calm)' : lv >= 4 ? '(Stormy)' : '(No Ach)'}
+                    </Pill>
+                  ))}
+                  <Pill on={finRavel} check onClick={() => setFinRavel((v) => !v)}>Ravel Mode</Pill>
+                  {finRavel &&
+                    ([2, 3, 4] as const).map((st) => (
+                      <Pill key={st} on={finRavelStrength === st} onClick={() => setFinRavelStrength(st)}>
+                        X={st}
+                      </Pill>
                     ))}
-                    <button
-                      type="button"
-                      className={finRavel ? 'primary' : 'secondary'}
-                      onClick={() => setFinRavel((v) => !v)}
-                    >
-                      {finRavel ? '✓ ' : ''}Ravel Mode
-                    </button>
-                    {finRavel &&
-                      ([2, 3, 4] as const).map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          className={finRavelStrength === st ? 'primary' : 'secondary'}
-                          onClick={() => setFinRavelStrength(st)}
-                        >
-                          X={st}
-                        </button>
-                      ))}
-                  </div>
-                </div>
+                </OptionGroup>
               </div>
             )}
 
             {selectedGame === 'wingspan' && (
               <div className="options-stack">
-                <div className="option-group">
-                  <span className="option-label">Mode:</span>
-                  <div className="pill-group">
-                    {(
-                      [
-                        { id: 'standard', label: 'Standard (1–5p)' },
-                        { id: 'duet', label: 'Asia Duet Map (2p)' },
-                        { id: 'flock', label: 'Asia Flock Mode (6–7p)' },
-                      ] as const
-                    ).map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={mode === m.id ? 'primary' : 'secondary'}
-                        onClick={() => changeMode(m.id)}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <OptionGroup label="Mode:">
+                  {(
+                    [
+                      { id: 'standard', label: 'Standard (1–5p)' },
+                      { id: 'duet', label: 'Asia Duet Map (2p)' },
+                      { id: 'flock', label: 'Asia Flock Mode (6–7p)' },
+                    ] as const
+                  ).map((m) => (
+                    <Pill key={m.id} on={mode === m.id} onClick={() => changeMode(m.id)}>{m.label}</Pill>
+                  ))}
+                </OptionGroup>
 
-                <div className="option-group">
-                  <span className="option-label">Goal Board:</span>
-                  <div className="pill-group">
-                    <button
-                      type="button"
-                      className={goalSide === 'green' ? 'primary' : 'secondary'}
-                      onClick={() => setGoalSide('green')}
-                    >
-                      🟩 Green (Ranked Majority: 4/1 → 7/4/3)
-                    </button>
-                    <button
-                      type="button"
-                      className={goalSide === 'blue' ? 'primary' : 'secondary'}
-                      onClick={() => setGoalSide('blue')}
-                    >
-                      🟦 Blue (1 pt per item, max 5)
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Goal Board:">
+                  <Pill on={goalSide === 'green'} onClick={() => setGoalSide('green')}>
+                    🟩 Green (Ranked Majority: 4/1 → 7/4/3)
+                  </Pill>
+                  <Pill on={goalSide === 'blue'} onClick={() => setGoalSide('blue')}>
+                    🟦 Blue (1 pt per item, max 5)
+                  </Pill>
+                </OptionGroup>
 
-                <div className="option-group">
-                  <span className="option-label">Card Sets:</span>
-                  <div className="pill-group">
-                    {OFFICIAL_SETS.filter((s) => (SETS as string[]).includes(s)).map((id) => {
-                      const lbl = LOBBY_SETS.find((x) => x.id === id)?.label ?? id;
-                      const on = sets.includes(id);
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          className={on ? 'primary' : 'secondary'}
-                          onClick={() => toggleSet(id)}
-                        >
-                          {on ? '✓ ' : ''}
-                          {lbl}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      className={PROMO_SETS.every((p) => sets.includes(p)) ? 'primary' : 'secondary'}
-                      onClick={() => {
-                        const allOn = PROMO_SETS.every((p) => sets.includes(p));
-                        if (allOn) {
-                          const filtered = sets.filter((s) => !PROMO_SETS.includes(s));
-                          setSets(filtered.length ? filtered : ['core']);
-                        } else {
-                          setSets([...new Set([...sets, ...PROMO_SETS])]);
-                        }
-                      }}
-                    >
-                      {PROMO_SETS.every((p) => sets.includes(p)) ? '✓ ' : ''}Promo Packs
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Card Sets:">
+                  {OFFICIAL_SETS.filter((s) => (SETS as string[]).includes(s)).map((id) => {
+                    const lbl = LOBBY_SETS.find((x) => x.id === id)?.label ?? id;
+                    const on = sets.includes(id);
+                    return (
+                      <Pill key={id} on={on} check onClick={() => toggleSet(id)}>
+                        {lbl}
+                      </Pill>
+                    );
+                  })}
+                  <Pill
+                    on={PROMO_SETS.every((p) => sets.includes(p))}
+                    check
+                    onClick={() => {
+                      const allOn = PROMO_SETS.every((p) => sets.includes(p));
+                      if (allOn) {
+                        const filtered = sets.filter((s) => !PROMO_SETS.includes(s));
+                        setSets(filtered.length ? filtered : ['core']);
+                      } else {
+                        setSets([...new Set([...sets, ...PROMO_SETS])]);
+                      }
+                    }}
+                  >
+                    Promo Packs
+                  </Pill>
+                </OptionGroup>
               </div>
             )}
 
             {selectedGame === 'wyrmspan' && (
               <div className="options-stack">
-                <div className="option-group">
-                  <span className="option-label">Expansions:</span>
-                  <div className="pill-group">
-                    <button type="button" className="primary" disabled>
-                      ✓ Base Wyrmspan
-                    </button>
-                    <button
-                      type="button"
-                      className={wyrmAcademy ? 'primary' : 'secondary'}
-                      onClick={() => setWyrmAcademy((v) => !v)}
-                    >
-                      {wyrmAcademy ? '✓ ' : ''}Dragon Academy (Fledglings, Pass Income & New Guilds)
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Expansions:">
+                  <Pill on check disabled>Base Wyrmspan</Pill>
+                  <Pill on={wyrmAcademy} check onClick={() => setWyrmAcademy((v) => !v)}>
+                    Dragon Academy (Fledglings, Pass Income & New Guilds)
+                  </Pill>
+                </OptionGroup>
               </div>
             )}
 
             {selectedGame === 'finspan' && (
               <div className="options-stack">
-                <div className="option-group">
-                  <span className="option-label">Expansions:</span>
-                  <div className="pill-group">
-                    <button type="button" className="primary" disabled>
-                      ✓ Base Finspan
-                    </button>
-                    <button
-                      type="button"
-                      className={finSr ? 'primary' : 'secondary'}
-                      onClick={() => setFinSr((v) => !v)}
-                    >
-                      {finSr ? '✓ ' : ''}Sharks & Reefs (Coral Reefs, Sharks & S&R Tiles)
-                    </button>
-                  </div>
-                </div>
-                <div className="option-group">
-                  <span className="option-label">Achievement Board:</span>
-                  <div className="pill-group">
-                    <button
-                      type="button"
-                      className={finSide === 'A' ? 'primary' : 'secondary'}
-                      onClick={() => setFinSide('A')}
-                    >
-                      Side A (Fixed Weekly Achievements)
-                    </button>
-                    <button
-                      type="button"
-                      className={finSide === 'B' ? 'primary' : 'secondary'}
-                      onClick={() => setFinSide('B')}
-                    >
-                      Side B (Random Tiles + 3 VP Weekly Leader Bonus)
-                    </button>
-                  </div>
-                </div>
+                <OptionGroup label="Expansions:">
+                  <Pill on check disabled>Base Finspan</Pill>
+                  <Pill on={finSr} check onClick={() => setFinSr((v) => !v)}>
+                    Sharks & Reefs (Coral Reefs, Sharks & S&R Tiles)
+                  </Pill>
+                </OptionGroup>
+                <OptionGroup label="Achievement Board:">
+                  <Pill on={finSide === 'A'} onClick={() => setFinSide('A')}>
+                    Side A (Fixed Weekly Achievements)
+                  </Pill>
+                  <Pill on={finSide === 'B'} onClick={() => setFinSide('B')}>
+                    Side B (Random Tiles + 3 VP Weekly Leader Bonus)
+                  </Pill>
+                </OptionGroup>
               </div>
             )}
 

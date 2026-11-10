@@ -2,13 +2,14 @@
 
 import * as shared from '../shared/state';
 import { bird } from './cards';
-import { COLUMN_EGG_COST, ROW_SIZE } from './constants';
+import { COLUMN_EGG_COST, HUM_LADDER, ROW_SIZE } from './constants';
 import type {
   BirdRef,
   FoodCost,
   FoodType,
   GameState,
   Habitat,
+  HumGroup,
   NestType,
   PlayedBird,
   PlayerId,
@@ -165,11 +166,17 @@ export function eggStepTargets(
   return refs;
 }
 
-/** Eggs the player can still spend from (any bird with ≥1 egg). */
-export function eggSources(p: PlayerState): BirdRef[] {
-  return playedBirds(p)
-    .filter(({ bird: b }) => b.eggs > 0)
-    .map(({ ref }) => ref);
+/** Total food units printed on a cost ('or' costs are 1 food). */
+export function costTotal(cost: FoodCost): number {
+  if (cost.kind === 'none') return 0;
+  if (cost.kind === 'any') return cost.count;
+  if (cost.kind === 'or') return 1;
+  return cost.items.reduce((n, i) => n + i.count, 0);
+}
+
+/** Victory points of `p`'s hummingbird token in `group`'s column. */
+export function humTrackValue(p: PlayerState, group: HumGroup): number {
+  return HUM_LADDER[p.humTrack[group]] ?? 0;
 }
 
 /**

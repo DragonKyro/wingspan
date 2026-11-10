@@ -34,12 +34,13 @@ import type {
   Habitat,
   HumGroup,
   PlayerId,
+  ScoreBreakdown,
   PlayerState,
 } from '@/wingspan/types';
 import { BASE_FOODS, FOOD_TYPES, HABITATS, HUM_GROUPS } from '@/wingspan/types';
 import { BirdCardView, BonusCardView, HummingbirdCardView } from './BirdCardView';
 import { ActionToastBanner, FlipProvider, useFlipAnchor } from './fx';
-import { StackedBarChart, StatsTabs } from './MatchCharts';
+import { GameOverModal } from './MatchCharts';
 import { PendingBar } from './PendingBar';
 import { RulesModal } from './RulesBook';
 import {
@@ -1097,83 +1098,25 @@ function GameOverCard({
   onPlayAgain: () => void;
   onMenu: () => void;
 }) {
-  const pids = game.playerOrder;
-  const labels = pids.map((pid) => getPlayer(game, pid).name);
   const scores = game.finalScores ?? {};
-
-  const series = [
-    {
-      id: 'birds',
-      label: 'Birds',
-      color: '#4a7c59',
-      values: pids.map((pid) => scores[pid]?.birdPoints ?? 0),
-    },
-    {
-      id: 'bonus',
-      label: 'Bonus Cards',
-      color: '#e0a458',
-      values: pids.map((pid) => scores[pid]?.bonusPoints ?? 0),
-    },
-    {
-      id: 'goals',
-      label: 'Round Goals',
-      color: '#4f8ba9',
-      values: pids.map((pid) => scores[pid]?.goalPoints ?? 0),
-    },
-    {
-      id: 'eggs',
-      label: 'Eggs',
-      color: '#bfe0e8',
-      values: pids.map((pid) => scores[pid]?.eggs ?? 0),
-    },
-    {
-      id: 'cached',
-      label: 'Cached Food',
-      color: '#c44569',
-      values: pids.map((pid) => scores[pid]?.cached ?? 0),
-    },
-    {
-      id: 'tucked',
-      label: 'Tucked Cards',
-      color: '#9a6ad0',
-      values: pids.map((pid) => scores[pid]?.tucked ?? 0),
-    },
-    {
-      id: 'nectar',
-      label: 'Nectar Majority',
-      color: '#e06397',
-      values: pids.map((pid) => scores[pid]?.nectar ?? 0),
-    },
-    {
-      id: 'duet',
-      label: 'Duet / Hummingbirds',
-      color: '#52b788',
-      values: pids.map((pid) => (scores[pid]?.duetTokens ?? 0) + (scores[pid]?.hummingbirds ?? 0)),
-    },
-  ];
-
-  const winners = (game.winner ?? []).map((pid) => getPlayer(game, pid).name).join(', ');
-
+  const pts = (k: Exclude<keyof ScoreBreakdown, 'total'>) => (pid: PlayerId) => scores[pid]?.[k] ?? 0;
   return (
-    <div className="rules-modal-backdrop">
-      <div className="rules-modal gameover-modal">
-        <div className="rules-modal-header">
-          <h3>🏆 Wingspan — Final Scores (Winner: {winners})</h3>
-          <div className="row">
-            <button type="button" className="primary" onClick={onPlayAgain}>
-              ↻ Play Again
-            </button>
-            <button type="button" className="secondary" onClick={onMenu}>
-              ⌂ Main Menu
-            </button>
-          </div>
-        </div>
-        <div className="rules-modal-content">
-          <StatsTabs tabs={[{ key: 'breakdown', label: 'Score Breakdown' }]}>
-            {() => <StackedBarChart xLabels={labels} series={series} />}
-          </StatsTabs>
-        </div>
-      </div>
-    </div>
+    <GameOverModal
+      title="Wingspan"
+      winners={(game.winner ?? []).map((pid) => getPlayer(game, pid).name).join(', ')}
+      players={game.playerOrder.map((pid) => ({ id: pid, name: getPlayer(game, pid).name }))}
+      parts={[
+        ['birds', 'Birds', '#4a7c59', pts('birdPoints')],
+        ['bonus', 'Bonus Cards', '#e0a458', pts('bonusPoints')],
+        ['goals', 'Round Goals', '#4f8ba9', pts('goalPoints')],
+        ['eggs', 'Eggs', '#bfe0e8', pts('eggs')],
+        ['cached', 'Cached Food', '#c44569', pts('cached')],
+        ['tucked', 'Tucked Cards', '#9a6ad0', pts('tucked')],
+        ['nectar', 'Nectar Majority', '#e06397', pts('nectar')],
+        ['duet', 'Duet / Hummingbirds', '#52b788', (pid) => pts('duetTokens')(pid) + pts('hummingbirds')(pid)],
+      ]}
+      onPlayAgain={onPlayAgain}
+      onMenu={onMenu}
+    />
   );
 }

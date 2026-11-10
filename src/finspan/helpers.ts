@@ -10,6 +10,7 @@ import type {
   FishCard,
   GameState,
   OceanState,
+  PendingStep,
   PlayerId,
   PlayerState,
   SiteColor,
@@ -24,6 +25,7 @@ import { DEEPWATER_ROW, ESTUARY_ROW, SITE_COLORS, zoneOfRow } from './types';
 
 export const getPlayer: (state: GameState, id: PlayerId) => PlayerState = shared.getPlayer;
 export const setPlayer: (state: GameState, p: PlayerState) => GameState = shared.setPlayer;
+export const pushPending: (state: GameState, ...steps: PendingStep[]) => GameState = shared.pushPending;
 
 export function appendLog(state: GameState, msg: string): GameState {
   return { ...state, log: [...state.log, { seq: state.log.length, msg }] };
@@ -60,13 +62,6 @@ export function* allSlots(ocean: OceanState): Generator<{ ref: SlotRef; slot: Sl
 }
 
 /** Iterate visible (top) fish in the ocean, optionally restricted. */
-export function* visibleFish(ocean: OceanState): Generator<{ ref: SlotRef; slot: SlotState; card: FishCard }> {
-  for (const { ref, slot } of allSlots(ocean)) {
-    const card = topFish(slot);
-    if (card) yield { ref, slot, card };
-  }
-}
-
 export function setSlot(ocean: OceanState, ref: SlotRef, slot: SlotState): OceanState {
   const slots = ocean.slots.map((r, ri) =>
     ri === ref.row ? r.map((s, ci) => (ci === ref.col ? slot : s)) : r,
@@ -408,30 +403,32 @@ export function tuckUnderFish(p: PlayerState, ref: SlotRef, cardId: number): Pla
 
 // === deck ===
 
-/** Draw `n` cards from the global deck into the player's hand. When the deck
- *  runs out, ALL players' discard piles are shuffled together into a new deck. */
+/** Pop the top card of the global deck. When the deck runs out, ALL
+ *  players' discard piles are shuffled together into a new deck. `id` is
+ *  null when the deck and every discard pile are empty. */
+export function drawTopFish(state: GameState): { s: GameState; id: number | null } {
+  let s = state;
+  if (s.deck.length === 0) {
+    const pool = s.players.flatMap((pl) => pl.discard);
+    if (pool.length === 0) return { s, id: null };
+    const [deck, rng] = shuffle(s.rngState, pool);
+    s = { ...s, deck, rngState: rng, players: s.players.map((pl) => ({ ...pl, discard: [] })) };
+    s = appendLog(s, 'fish deck reshuffled from all discard piles');
+  }
+  const id = s.deck[s.deck.length - 1]!;
+  return { s: { ...s, deck: s.deck.slice(0, -1) }, id };
+}
+
+/** Draw `n` cards from the global deck into the player's hand. */
 export function drawFromDeck(state: GameState, playerId: PlayerId, n: number): GameState {
   let s = state;
-  let p = getPlayer(s, playerId);
   for (let i = 0; i < n; i++) {
-    if (s.deck.length === 0) {
-      const pool = s.players.flatMap((pl) => pl.discard);
-      if (pool.length === 0) break;
-      const [deck, rng] = shuffle(s.rngState, pool);
-      s = {
-        ...s,
-        deck,
-        rngState: rng,
-        players: s.players.map((pl) => ({ ...pl, discard: [] })),
-      };
-      p = getPlayer(s, playerId);
-      s = appendLog(s, 'fish deck reshuffled from all discard piles');
-    }
-    const id = s.deck[s.deck.length - 1]!;
-    s = { ...s, deck: s.deck.slice(0, -1) };
-    p = { ...p, hand: [...p.hand, id] };
+    const top = drawTopFish(s);
+    if (top.id == null) break;
+    const p = getPlayer(top.s, playerId);
+    s = setPlayer(top.s, { ...p, hand: [...p.hand, top.id] });
   }
-  return setPlayer(s, p);
+  return s;
 }
 
 /** Take `cardIds` from the player's discard pile into hand. */

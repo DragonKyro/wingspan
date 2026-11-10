@@ -250,26 +250,19 @@ export const useNetworkStore = create<NetStore>((set, get) => {
     });
     addSystem(wasInLobby ? 'Game started' : isPlayer ? 'Rejoined the game' : 'Spectating');
     const gameId: GameId = rec.gameId ?? 'wingspan';
-    try {
-      if (gameId === 'wyrmspan' && rec.wyrmspanOptions) {
-        const g = createWyrmspan(rec.wyrmspanOptions);
-        if (gameChecksum(g) !== rec.check) {
-          addSystem("This device set up a different game from the host's. Reload every device's page.");
-        }
-        useGameStore.getState().setWyrmspanState(g, rec.startedAt);
-      } else if (gameId === 'finspan' && rec.finspanOptions) {
-        const g = createFinspan(rec.finspanOptions);
-        if (gameChecksum(g) !== rec.check) {
-          addSystem("This device set up a different game from the host's. Reload every device's page.");
-        }
-        useGameStore.getState().setFinspanState(g, rec.startedAt);
-      } else {
-        const g = createWingspan(rec.options);
-        if (gameChecksum(g) !== rec.check) {
-          addSystem("This device set up a different game from the host's. Reload every device's page.");
-        }
-        useGameStore.getState().setGameState(g, rec.startedAt);
+    // Every device builds the game from the host's options; the checksum
+    // catches a device whose build or data differs from the host's.
+    const install = <S>(g: S, setState: (g: S, startedAt?: number) => void) => {
+      if (gameChecksum(g) !== rec.check) {
+        addSystem("This device set up a different game from the host's. Reload every device's page.");
       }
+      setState(g, rec.startedAt);
+    };
+    const store = useGameStore.getState();
+    try {
+      if (gameId === 'wyrmspan' && rec.wyrmspanOptions) install(createWyrmspan(rec.wyrmspanOptions), store.setWyrmspanState);
+      else if (gameId === 'finspan' && rec.finspanOptions) install(createFinspan(rec.finspanOptions), store.setFinspanState);
+      else install(createWingspan(rec.options), store.setGameState);
     } catch (e) {
       addSystem(`This device couldn't set up the game (${(e as Error).message}). Reload the page.`);
       return;

@@ -166,7 +166,7 @@ function sameItemKey(it: GainItem): string {
 }
 
 /** Parse a training-track icon string into per-box costs. Each [icon] = one box. */
-export function parseTrainingTrack(text: string | null): GainItem[][] {
+export function parseTrainingTrack(text: string | null): GainItem[] {
   if (!text) return [];
   return parseIcons(text)
     .map((t): GainItem | null => {
@@ -183,8 +183,18 @@ export function parseTrainingTrack(text: string | null): GainItem[][] {
           return null;
       }
     })
-    .filter((i): i is GainItem => i !== null)
-    .map((i) => [i]);
+    .filter((i): i is GainItem => i !== null);
+}
+
+/** Boxes on a fledgling's training track: one per cost ICON (not string length). */
+export function trainingTrackLength(card: DragonCard): number {
+  return card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+}
+
+/** A Fledgling whose (non-empty) training track is fully trained. */
+export function isFullyTrained(card: DragonCard, training = 0): boolean {
+  const track = trainingTrackLength(card);
+  return card.size === 'Fledgling' && track > 0 && training >= track;
 }
 
 // Re-export for convenience
@@ -218,8 +228,4 @@ export function caveIdFromName(name: string): CaveId | null {
     if (n === name) return id;
   }
   return null;
-}
-
-export function dragonCavePrefs(card: DragonCard): CaveId[] {
-  return card.caves.map(caveIdFromName).filter((c): c is CaveId => c !== null);
 }

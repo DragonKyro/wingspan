@@ -3,7 +3,6 @@
 // spread of the new pending-step power mechanics.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/wingspan/ai/choices';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird } from './cards';
 import { createGame } from './createGame';
@@ -16,9 +15,7 @@ import {
 } from './helpers';
 import { runPower, setPlayer } from './powers';
 import { nectarPoints } from './scoring';
-import type { BirdRef, FoodType, GameState, PlayerState } from './types';
-
-const COLORS = ['red', 'blue'] as const;
+import { autoResolve, autoSetup, edit, gameFactory, mkBird, ref } from './testUtils';
 
 // oceania card ids used below (see src/wingspan/data/birds.json).
 const TUI = 350; // copy a brown power on a forest bird of the player to your left.
@@ -34,61 +31,7 @@ const EASTERN_ROSELLA = 284; // all players gain 1 nectar; you also gain 1 seed.
 const WOODCOCK = 13; // core, no power.
 const GREY_WARBLER = 294; // oceania or-cost invertebrate/seed/fruit.
 
-function newGame(seed = 42): GameState {
-  return createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: [...COLORS],
-    seed,
-    settings: { sets: ['core', 'oceania'] },
-  });
-}
-
-function autoSetup(s: GameState): GameState {
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(0, 2),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed'],
-    });
-  }
-  return s;
-}
-
-/** Drain pending steps with the greedy AI answers. */
-function autoResolve(s: GameState): GameState {
-  let guard = 0;
-  while (s.pending.length > 0 && guard++ < 100) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
-
-function edit(s: GameState, pid: `p${number}`, patch: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...patch });
-}
-
-function mkBird(cardId: number, extra: Partial<import('./types').PlayedBird> = {}) {
-  return {
-    cardId,
-    eggs: 0,
-    tucked: [] as number[],
-    cached: [] as FoodType[],
-    ...extra,
-  };
-}
-
-const ref = (habitat: 'forest' | 'grassland' | 'wetland', index: number): BirdRef => ({
-  habitat,
-  index,
-});
+const newGame = gameFactory(['core', 'oceania']);
 
 describe('oceania expansion', () => {
   it('starts each player with 1 nectar and uses nectar dice (no split face)', () => {

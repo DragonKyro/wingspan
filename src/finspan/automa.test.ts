@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { parseAbility } from './abilities';
-import { chooseAction } from './ai/chooseAction';
 import {
   NAUTOMA_DECISION_CARDS,
   RAVEL_SCORING_CARDS,
@@ -15,6 +14,7 @@ import { fireAbility } from './powers';
 import { finalScores, scorePlayer } from './scoring';
 import { DIVERS_PER_WEEK } from './types';
 import type { GameSettings, GameState } from './types';
+import { runAI } from './testUtils';
 
 function soloGame(
   seed = 1,
@@ -42,16 +42,7 @@ function runSoloGame(
   achievementSide: 'A' | 'B' = 'A',
   maxActions = 5000,
 ): GameState {
-  let s = soloGame(seed, automaOpts, sets, achievementSide);
-  let n = 0;
-  while (s.phase !== 'gameOver' && n < maxActions) {
-    const pid = s.pending.length ? s.pending[0]!.playerId : s.playerOrder[s.currentPlayerIndex]!;
-    const a = chooseAction(s, pid);
-    if (!a) throw new Error(`Solo AI stuck at action ${n} (phase ${s.phase})`);
-    s = applyAction(s, a);
-    n++;
-  }
-  return s;
+  return runAI(soloGame(seed, automaOpts, sets, achievementSide), maxActions);
 }
 
 describe('Nautoma setup & components', () => {

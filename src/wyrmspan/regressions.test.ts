@@ -2,23 +2,17 @@
 // keep/discard the other N" draw abilities (cards 321 and 322).
 
 import { describe, expect, it } from 'vitest';
-import { chooseAction } from './ai';
 import { CAVES, DRAGONS, isDragonCard } from './cards';
 import { createGame } from './createGame';
 import { applyAction } from './engine';
+import { player } from './helpers';
+import { toMain } from './testUtils';
 import type { GameState, PendingStep, PlayerId } from './types';
 
 /** Reach the 'main' phase of a fresh 2-player game. */
-function inMain(): GameState {
-  let s = createGame({ seed: 3, playerNames: ['P1', 'P2'] });
-  while (s.pending.length) {
-    s = applyAction(s, chooseAction(s, s.pending[0]!.playerId)!);
-  }
-  expect(s.phase).toBe('main');
-  return s;
-}
+const inMain = (): GameState => toMain(createGame({ seed: 3, playerNames: ['P1', 'P2'] }));
 
-const me = (s: GameState, pid: PlayerId) => s.players.find((p) => p.id === pid)!;
+const me = player;
 const excavated = (s: GameState, pid: PlayerId) =>
   me(s, pid).caves.reduce((n, row) => n + row.spaces.filter((sp) => sp.excavated).length, 0);
 

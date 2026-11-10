@@ -5,7 +5,9 @@ import { bonusCard, BIRD_BY_ID, goalTile, hummingbird } from './cards';
 import { HUM_BONUS_SPACES, HUM_LADDER, NECTAR_POINTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS, duetIsEdge, duetNeighbors } from './duetMap';
 import {
+  costTotal,
   humIdsOnMat,
+  humTrackValue,
   isAmericas,
   isAutoma,
   isFlock,
@@ -48,7 +50,6 @@ function duetTokens(state: GameState, playerId: PlayerId, f: (i: number) => bool
 
 /** Units for a duet goal tile (the "winner takes the round points" tiles). */
 function duetGoalUnits(state: GameState, playerId: PlayerId, tileId: number): number {
-  const spacesOf = (habitat: Habitat) => DUET_MAP.map((s, i) => ({ s, i })).filter(({ s }) => s.habitat === habitat).map(({ i }) => i);
   switch (tileId) {
     case 2034:
       return duetTokens(state, playerId, (i) => DUET_MAP[i]!.habitat === 'forest');
@@ -107,7 +108,6 @@ function duetGoalUnits(state: GameState, playerId: PlayerId, tileId: number): nu
     case 2045:
       return duetTokens(state, playerId, () => true);
     default:
-      void spacesOf;
       return 0;
   }
 }
@@ -288,9 +288,9 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
       // Blue side (Americas p.8): point value of your best hummingbird track.
       if (!isAmericas(state)) return 0;
       if (state.settings.goalSide === 'blue') {
-        return Math.max(0, ...HUM_GROUPS.map((grp) => HUM_LADDER[p.humTrack[grp]] ?? 0));
+        return Math.max(0, ...HUM_GROUPS.map((grp) => humTrackValue(p, grp)));
       }
-      return HUM_GROUPS.reduce((n, grp) => n + (HUM_LADDER[p.humTrack[grp]] ?? 0), 0);
+      return HUM_GROUPS.reduce((n, grp) => n + humTrackValue(p, grp), 0);
     }
     case 'eggLimitTotal': {
       // Green side: sum the printed egg limits; blue side: divide by 5 (round down).
@@ -301,18 +301,12 @@ export function goalScore(state: GameState, playerId: PlayerId, tileId: number):
       // Green side: how far the token has advanced in this column (index).
       // Blue side (Americas p.8): point value of your token in this column.
       return state.settings.goalSide === 'blue'
-        ? Math.max(0, HUM_LADDER[p.humTrack[g.group]] ?? 0)
+        ? Math.max(0, humTrackValue(p, g.group))
         : p.humTrack[g.group];
     case 'noGoal':
     case 'unsupported':
       return 0;
   }
-}
-
-function costTotal(cost: { kind: string; items?: { count: number }[]; count?: number }): number {
-  if (cost.kind === 'none') return 0;
-  if (cost.kind === 'any' || cost.kind === 'or') return cost.count ?? 1;
-  return (cost.items ?? []).reduce((n, i) => n + i.count, 0);
 }
 
 /** Bonus-card weight of a played bird: Western Yellow Wagtail (id 570) counts
@@ -530,12 +524,12 @@ export function bonusUnits(p: PlayerState, name: string): number {
       // hummingbird track ladder (negative at START scores nothing via tiers).
       const group: HumGroup =
         name === 'Apiarist' ? 'bee' : (name.split(' ')[0]!.toLowerCase() as HumGroup);
-      return HUM_LADDER[p.humTrack[group]] ?? 0;
+      return humTrackValue(p, group);
     }
     case 'Ecolodge Owner': {
       // "Score more if your hummingbirds are close in value" — the difference
       // between the highest and lowest token point values is the unit count.
-      const vals = HUM_GROUPS.map((g) => HUM_LADDER[p.humTrack[g]] ?? 0);
+      const vals = HUM_GROUPS.map((g) => humTrackValue(p, g));
       return Math.max(...vals) - Math.min(...vals);
     }
     case 'Hummingbird Counter':
@@ -545,7 +539,7 @@ export function bonusUnits(p: PlayerState, name: string): number {
         0,
       );
     case 'Hummingbird Gardener':
-      return HUM_GROUPS.filter((g) => (HUM_LADDER[p.humTrack[g]] ?? 0) >= 4).length;
+      return HUM_GROUPS.filter((g) => humTrackValue(p, g) >= 4).length;
     default:
       // Hummingbird names count toward name-based bonus cards too.
       return (
@@ -685,7 +679,7 @@ export function finalScore(state: GameState, playerId: PlayerId): ScoreBreakdown
   // Americas: each hummingbird-track token is worth the printed point value
   // of the space it rests on (the START space is worth -3).
   const hummingbirds = isAmericas(state)
-    ? HUM_GROUPS.reduce((n, g) => n + (HUM_LADDER[p.humTrack[g]] ?? 0), 0)
+    ? HUM_GROUPS.reduce((n, g) => n + humTrackValue(p, g), 0)
     : 0;
   const total =
     birdPoints + bonus + eggs + cached + tucked + goalPoints + nectar + duetTokens + hummingbirds;

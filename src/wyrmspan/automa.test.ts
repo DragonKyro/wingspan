@@ -18,46 +18,20 @@ import {
   scoreObjective,
 } from './objectives';
 import { scoreGame, scorePlayer } from './scoring';
-import type { AutomaCardId, GameState, PlayerId } from './types';
+import { player } from './helpers';
+import { aiPlay, toMain } from './testUtils';
+import type { AutomaCardId, GameState } from './types';
 
-function inAutomaMain(opts: CreateGameOptions = {}): GameState {
-  let s = createGame({ seed: 11, playerNames: ['Solo'], automa: { difficulty: 1 }, ...opts });
-  while (s.pending.length) {
-    const pid = s.pending[0]!.playerId;
-    s = applyAction(s, chooseAction(s, pid)!);
-  }
-  expect(s.phase).toBe('main');
-  return s;
-}
+const inAutomaMain = (opts: CreateGameOptions = {}): GameState =>
+  toMain(createGame({ seed: 11, playerNames: ['Solo'], automa: { difficulty: 1 }, ...opts }));
 
 function playAutomaGame(seed: number, opts: CreateGameOptions = {}): GameState {
-  let s = createGame({
-    seed,
-    playerNames: ['Solo'],
-    automa: { difficulty: 1 },
-    ...opts,
-  });
-  let steps = 0;
-  while (s.phase !== 'gameEnd' && steps < 20000) {
-    steps++;
-    if (s.pending.length) {
-      const pid = s.pending[0]!.playerId;
-      const a = chooseAction(s, pid);
-      if (!a) throw new Error(`AI stuck on pending ${JSON.stringify(s.pending[0])}`);
-      s = applyAction(s, a);
-      continue;
-    }
-    const a = chooseAction(s, s.turn);
-    if (!a) throw new Error(`AI stuck on turn ${s.turn} round ${s.round}`);
-    s = applyAction(s, a);
-  }
+  const s = aiPlay(createGame({ seed, playerNames: ['Solo'], automa: { difficulty: 1 }, ...opts }));
   expect(s.phase).toBe('gameEnd');
   return s;
 }
 
-function playerOf(s: GameState, pid: PlayerId) {
-  return s.players.find((p) => p.id === pid)!;
-}
+const playerOf = player;
 
 describe('wyrmspan automa — deck & setup', () => {
   it('defines all 16 official Automa decision cards', () => {

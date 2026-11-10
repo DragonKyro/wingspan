@@ -34,6 +34,10 @@ import {
 import {
   cacheOnBird,
   costHasFood,
+  drawBonusKeep,
+  drawBonusKeep1,
+  drawBonusPool,
+  drawBonusToHand,
   drawFromDeck,
   drawHumCard,
   drawToPool,
@@ -52,6 +56,7 @@ import {
   queueRowHumAction,
   refillFeeder,
   refillTray,
+  resetTray,
   rollDice,
   runPower,
   setPlayer,
@@ -251,15 +256,8 @@ function feasible(state: GameState, step: PendingStep): number {
     // === oceania expansion steps ===
     case 'chooseCopyPower': {
       const target = getPlayer(state, step.target);
-      const copyable = (b: { ghost?: boolean; cardId: number }) => {
-        if (b.ghost) return false;
-        const c = bird(b.cardId);
-        return c.powerColor === 'brown' && !!c.powerText && hasPowerImpl(c.id);
-      };
-      if (step.habitat === 'any') {
-        return HABITATS.some((h) => target.board[h].some(copyable)) ? 1 : 0;
-      }
-      return target.board[step.habitat].some(copyable) ? 1 : 0;
+      const habitats = step.habitat === 'any' ? HABITATS : [step.habitat];
+      return habitats.some((h) => target.board[h].some(isCopyableBrown)) ? 1 : 0;
     }
     case 'chooseTrayCardEx': {
       if (state.tray.some((id) => id != null && trayCardMatches(step, id))) return 1;
@@ -313,19 +311,8 @@ function feasible(state: GameState, step: PendingStep): number {
       if (step.cardIds.length < (step.min ?? step.count)) return 0;
       return Math.min(step.count, step.cardIds.length);
     }
-    case 'chooseCopyPlayed': {
-      const neighbors = new Set<PlayerId>();
-      for (const n of [playerToLeft(state, step.playerId), playerToRight(state, step.playerId)]) {
-        if (n) neighbors.add(n);
-      }
-      for (const n of neighbors) {
-        for (const { bird: b } of playedBirds(getPlayer(state, n))) {
-          const c = bird(b.cardId);
-          if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) return 1;
-        }
-      }
-      return 0;
-    }
+    case 'chooseCopyPlayed':
+      return copyPlayedTargets(state, step.playerId).length > 0 ? 1 : 0;
     case 'chooseReroll':
       return state.feederIn.length > 0 ? 1 : 0;
     case 'drawUpTo':
@@ -346,7 +333,30 @@ function feasible(state: GameState, step: PendingStep): number {
 }
 
 /** The birds eligible under a chooseBirds step's filters. */
-function chooseBirdsEligible(
+/** A live bird whose brown power can be copied (Tūī / Lyrebird). */
+export function isCopyableBrown(b: { ghost?: boolean; cardId: number }): boolean {
+  if (b.ghost) return false;
+  const c = bird(b.cardId);
+  return c.powerColor === 'brown' && !!c.powerText && hasPowerImpl(c.id);
+}
+
+/** Neighbours' birds with a copyable white (when played) power. */
+export function copyPlayedTargets(state: GameState, playerId: PlayerId): { player: PlayerId; bird: BirdRef }[] {
+  const neighbors = new Set<PlayerId>();
+  for (const n of [playerToLeft(state, playerId), playerToRight(state, playerId)]) {
+    if (n) neighbors.add(n);
+  }
+  const out: { player: PlayerId; bird: BirdRef }[] = [];
+  for (const n of neighbors) {
+    for (const { ref, bird: b } of playedBirds(getPlayer(state, n))) {
+      const c = bird(b.cardId);
+      if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) out.push({ player: n, bird: ref });
+    }
+  }
+  return out;
+}
+
+export function chooseBirdsEligible(
   state: GameState,
   step: Extract<PendingStep, { kind: 'chooseBirds' }>,
 ): BirdRef[] {
@@ -371,7 +381,7 @@ function chooseBirdsEligible(
 /** Legal attract sources: garden slot indices with a pickable top card,
  *  plus 'deck' (not for group-named attracts — a blind draw can't target
  *  a group). A hummingbird the player returned this turn can't be re-attracted. */
-function humSourceOptions(
+export function humSourceOptions(
   state: GameState,
   step: Extract<PendingStep, { kind: 'chooseHumSource' }>,
 ): (number | 'deck')[] {
@@ -413,7 +423,7 @@ function humHabitatOptions(
 }
 
 /** Does a tray card satisfy a chooseTrayCardEx step's filters? */
-function trayCardMatches(step: Extract<PendingStep, { kind: 'chooseTrayCardEx' }>, id: number): boolean {
+export function trayCardMatches(step: Extract<PendingStep, { kind: 'chooseTrayCardEx' }>, id: number): boolean {
   const c = bird(id);
   if (step.nests && !step.nests.includes(c.nest)) return false;
   if (step.wingspanLt != null && c.wingspan !== '*' && c.wingspan >= step.wingspanLt) return false;
@@ -1153,12 +1163,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
         }
       } else if (choice.option === 'resetTrayTuckDraw') {
         const ref = step.then?.bird;
-        s = {
-          ...s,
-          discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
-          tray: [null, null, null],
-        };
-        s = refillTray(s);
+        s = resetTray(s);
         if (ref) {
           s = pushPending(s, {
             kind: 'chooseHandTuck',
@@ -1218,14 +1223,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       if (choice.kind !== 'trayPick') throw new Error('expected trayPick');
       if (choice.mode === 'reset' || choice.mode === 'refill') {
         if (!step.mayResetTray) throw new Error('cannot reset the tray here');
-        if (choice.mode === 'reset') {
-          s = {
-            ...s,
-            discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
-            tray: [null, null, null],
-          };
-        }
-        s = refillTray(s);
+        s = choice.mode === 'reset' ? resetTray(s) : refillTray(s);
         // Re-queue the pick against the new tray (reset allowed only once).
         return dropImpossiblePending(pushPending(s, { ...step, mayResetTray: false }));
       }
@@ -1903,13 +1901,9 @@ function continueEffect(
     }
     case 'kiwiDraw': {
       // Draw 4 bonus cards, keep 2, discard the rest.
-      const pool: number[] = [];
-      for (let i = 0; i < 4 && s.bonusDeck.length > 0; i++) {
-        pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
-        s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-      }
-      if (pool.length === 0) return s;
-      return pushPending(s, {
+      const { s: out, ids: pool } = drawBonusPool(s, 4);
+      if (pool.length === 0) return out;
+      return pushPending(out, {
         kind: 'chooseBonusCards',
         playerId,
         cardIds: pool,
@@ -2008,13 +2002,10 @@ function continueEffect(
     case 'keaDraw': {
       // 1 pre-drawn bonus card + 1 per discarded food; keep 1 of the pool.
       const n = choice.kind === 'supplyFood' ? choice.foods.length : 0;
-      const pool = [...(tag.ids ?? [])];
-      for (let i = 0; i < n && s.bonusDeck.length > 0; i++) {
-        pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
-        s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-      }
-      if (pool.length === 0) return s;
-      return pushPending(s, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+      const { s: out, ids } = drawBonusPool(s, n);
+      const pool = [...(tag.ids ?? []), ...ids];
+      if (pool.length === 0) return out;
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
     }
     case 'allGainFoodType': {
       const f = FOOD_TYPES[tag.ids?.[0] ?? -1];
@@ -2230,13 +2221,7 @@ function continueEffect(
       if ((tag.n?.[0] ?? 0) === 1) {
         const p = getPlayer(s, playerId);
         s = setPlayer(s, { ...p, bonusHand: p.bonusHand.filter((x) => x !== id) });
-        s = { ...s, bonusDiscard: [...s.bonusDiscard, id] };
-        if (s.bonusDeck.length > 0) {
-          const nb = s.bonusDeck[s.bonusDeck.length - 1]!;
-          s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-          const p2 = getPlayer(s, playerId);
-          s = setPlayer(s, { ...p2, bonusHand: [...p2.bonusHand, nb] });
-        }
+        s = drawBonusToHand({ ...s, bonusDiscard: [...s.bonusDiscard, id] }, playerId, 1).s;
       }
       if (vp <= 0) return s;
       const fIdx = tag.ids?.[0] ?? -1;
@@ -2250,31 +2235,19 @@ function continueEffect(
     }
     case 'asiaDrawBonus21': {
       // Draw 2 bonus cards, keep 1 (queued for an "other players may" payer).
-      const pool: number[] = [];
-      for (let i = 0; i < 2 && s.bonusDeck.length > 0; i++) {
-        pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
-        s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-      }
-      if (pool.length === 0) return s;
-      return pushPending(s, {
-        kind: 'chooseBonusCards',
-        playerId,
-        cardIds: pool,
-        keep: 1,
-      });
+      const { s: out, ids: pool } = drawBonusPool(s, 2);
+      if (pool.length === 0) return out;
+      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
     }
     case 'asiaEagleEval': {
       // After the reroll chain: ≥3 rodents in the feeder → draw 2 bonus keep 1;
       // then reset the birdfeeder.
       const n = s.feederIn.filter((f) => f === 'rodent').length;
       if (n >= 3) {
-        const pool: number[] = [];
-        for (let i = 0; i < 2 && s.bonusDeck.length > 0; i++) {
-          pool.push(s.bonusDeck[s.bonusDeck.length - 1]!);
-          s = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-        }
-        if (pool.length > 0) {
-          s = pushPending(s, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+        const drawn = drawBonusPool(s, 2);
+        s = drawn.s;
+        if (drawn.ids.length > 0) {
+          s = pushPending(s, { kind: 'chooseBonusCards', playerId, cardIds: drawn.ids, keep: 1 });
         }
       }
       s = { ...s, feederOut: [...s.feederOut, ...s.feederIn], feederIn: [] };
@@ -2726,12 +2699,10 @@ function continueEffect(
           bonusDiscard: [...out.bonusDiscard, lastId],
         };
       }
-      if (out.bonusDeck.length === 0) return out;
-      const newId = out.bonusDeck[out.bonusDeck.length - 1]!;
-      out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      const p2 = getPlayer(out, playerId);
-      out = setPlayer(out, { ...p2, bonusHand: [...p2.bonusHand, newId] });
-      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      const drawn = drawBonusToHand(out, playerId, 1);
+      const newId = drawn.ids[0];
+      if (newId == null) return out;
+      out = firePinkTriggers(drawn.s, playerId, { kind: 'drawBonus' });
       if (left <= 0 || out.bonusDeck.length === 0) return out;
       return pushPending(out, {
         kind: 'confirm',
@@ -2768,15 +2739,8 @@ function continueEffect(
     }
     case 'promoBonusIfPlayed': {
       if (choice.kind !== 'handCards' || choice.cardIds.length === 0) return s;
-      if (s.bonusDeck.length === 0) return s;
-      const id = s.bonusDeck[s.bonusDeck.length - 1]!;
-      const out: GameState = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-      const p = getPlayer(out, playerId);
-      return firePinkTriggers(
-        setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] }),
-        playerId,
-        { kind: 'drawBonus' },
-      );
+      const { s: out, ids } = drawBonusToHand(s, playerId, 1);
+      return ids.length === 0 ? out : firePinkTriggers(out, playerId, { kind: 'drawBonus' });
     }
     case 'promoBrahminyStarling': {
       if (!tag.bird || choice.kind !== 'supplyFood' || choice.foods.length === 0) return s;
@@ -2863,20 +2827,7 @@ function continueEffect(
     }
     case 'promoWhipPoorWill': {
       const paid = choice.kind === 'supplyFood' ? choice.foods.length : 0;
-      let out = s;
-      const drawn: number[] = [];
-      for (let i = 0; i < 2 && out.bonusDeck.length > 0; i++) {
-        drawn.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
-      if (drawn.length === 0) return out;
-      const p = getPlayer(out, playerId);
-      out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, ...drawn] });
-      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
-      const keep = paid >= 2 ? 2 : 1;
-      const discard = drawn.length - keep;
-      if (discard <= 0) return out;
-      return pushPending(out, { kind: 'discardBonusCards', playerId, count: discard });
+      return drawBonusKeep(s, playerId, 2, paid >= 2 ? 2 : 1);
     }
     case 'promoGoldenPlover':
       return pushPending(s, {
@@ -2971,28 +2922,12 @@ function continueEffect(
       let out = setPlayer(s, { ...p, bonusHand: p.bonusHand.filter((x) => x !== gift) });
       const tp = getPlayer(out, choice.playerId);
       out = setPlayer(out, { ...tp, bonusHand: [...tp.bonusHand, gift] });
-      const drawn: number[] = [];
-      for (let i = 0; i < 2 && out.bonusDeck.length > 0; i++) {
-        drawn.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
-      if (drawn.length > 0) {
-        const p2 = getPlayer(out, playerId);
-        out = setPlayer(out, { ...p2, bonusHand: [...p2.bonusHand, ...drawn] });
-        out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
-      }
+      const drawn = drawBonusToHand(out, playerId, 2);
+      out = drawn.ids.length > 0 ? firePinkTriggers(drawn.s, playerId, { kind: 'drawBonus' }) : drawn.s;
       return setPlayer(out, addEggs(getPlayer(out, playerId), tag.bird, 1));
     }
     case 'promoMedShearwater': {
-      let out = drawFromDeck(s, playerId, 1);
-      const pool: number[] = [];
-      for (let i = 0; i < 4 && out.bonusDeck.length > 0; i++) {
-        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
-      if (pool.length === 0) return out;
-      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
-      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+      return drawBonusKeep1(drawFromDeck(s, playerId, 1), playerId, 4);
     }
     case 'promoDabchick': {
       if (choice.kind !== 'handCards' || !tag.ids) return s;
@@ -3010,24 +2945,15 @@ function continueEffect(
       const n = choice.kind === 'bonusCards' ? choice.cardIds.length * 3 : 0;
       let out = s;
       for (let i = 0; i < n; i++) out = cacheOnBird(out, playerId, tag.bird, 'fish');
-      if (out.bonusDeck.length > 0) {
-        const id = out.bonusDeck[out.bonusDeck.length - 1]!;
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-        const p = getPlayer(out, playerId);
-        out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] });
-        out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
-      }
-      return out;
+      const drawn = drawBonusToHand(out, playerId, 1);
+      return drawn.ids.length > 0 ? firePinkTriggers(drawn.s, playerId, { kind: 'drawBonus' }) : drawn.s;
     }
     case 'promoCacheRodent':
       return tag.bird ? cacheOnBird(s, playerId, tag.bird, 'rodent') : s;
     case 'promoDraw1BonusChain': {
-      if (s.bonusDeck.length === 0) return s;
-      const id = s.bonusDeck[s.bonusDeck.length - 1]!;
-      let out: GameState = { ...s, bonusDeck: s.bonusDeck.slice(0, -1) };
-      const p = getPlayer(out, playerId);
-      out = setPlayer(out, { ...p, bonusHand: [...p.bonusHand, id] });
-      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
+      const drawn = drawBonusToHand(s, playerId, 1);
+      if (drawn.ids.length === 0) return s;
+      const out = firePinkTriggers(drawn.s, playerId, { kind: 'drawBonus' });
       const left = (tag.n?.[0] ?? 1) - 1;
       if (left <= 0 || out.bonusDeck.length === 0) return out;
       return pushPending(out, {
@@ -3050,15 +2976,7 @@ function continueEffect(
     case 'promoQupanuaq': {
       const n = choice.kind === 'handCards' ? choice.cardIds.length : 0;
       if (n <= 0) return s;
-      let out = s;
-      const pool: number[] = [];
-      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
-        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
-      if (pool.length === 0) return out;
-      out = firePinkTriggers(out, playerId, { kind: 'drawBonus' });
-      return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
+      return drawBonusKeep1(s, playerId, n);
     }
     case 'promoGain1Die':
       return pushPending(s, { kind: 'pickDie', playerId, count: 1 });
@@ -3092,12 +3010,8 @@ function continueEffect(
     }
     case 'promoShorePlover': {
       const n = choice.kind === 'supplyFood' ? choice.foods.length * 2 : 0;
-      const pool = [...(tag.ids ?? [])];
-      let out = s;
-      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
-        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
+      const { s: out, ids } = drawBonusPool(s, n);
+      const pool = [...(tag.ids ?? []), ...ids];
       if (pool.length === 0) return out;
       return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
     }
@@ -3134,12 +3048,7 @@ function continueEffect(
       const target = getPlayer(s, choice.playerId);
       const n = playedBirds(target).filter(({ bird: b }) => bird(b.cardId).bonusPower).length;
       if (n <= 0) return s;
-      let out = s;
-      const pool: number[] = [];
-      for (let i = 0; i < n && out.bonusDeck.length > 0; i++) {
-        pool.push(out.bonusDeck[out.bonusDeck.length - 1]!);
-        out = { ...out, bonusDeck: out.bonusDeck.slice(0, -1) };
-      }
+      const { s: out, ids: pool } = drawBonusPool(s, n);
       if (pool.length === 0) return out;
       return pushPending(out, { kind: 'chooseBonusCards', playerId, cardIds: pool, keep: 1 });
     }

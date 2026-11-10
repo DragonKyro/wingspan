@@ -7,62 +7,27 @@ import { isDragonCard } from './cards';
 import { GUILD_TILES, INCOME_SECTIONS } from './guild';
 import type { GameState, PlayerId } from './types';
 import type { CreateGameOptions } from './createGame';
+import { player } from './helpers';
+import { aiPlay, toMain } from './testUtils';
 
 /** Drive the game with the AI until it ends or we hit a safety cap. */
 function playOut(seed: number, players = 2, opts: CreateGameOptions = {}): GameState {
   const names = Array.from({ length: players }, (_, i) => `P${i + 1}`);
-  let s = createGame({ seed, playerNames: names, ...opts });
-  let steps = 0;
-  while (s.phase !== 'gameEnd' && steps < 20000) {
-    steps++;
-    if (s.pending.length) {
-      const pid = s.pending[0]!.playerId;
-      const a = chooseAction(s, pid);
-      if (!a) throw new Error(`AI stuck on pending ${JSON.stringify(s.pending[0])}`);
-      s = applyAction(s, a);
-      continue;
-    }
-    if (s.phase === 'setup' || s.phase === 'roundEnd') {
-      throw new Error(`${s.phase} phase with no pending steps`);
-    }
-    const a = chooseAction(s, s.turn);
-    if (!a) throw new Error(`AI stuck on turn ${s.turn} round ${s.round}`);
-    s = applyAction(s, a);
-  }
+  const s = aiPlay(createGame({ seed, playerNames: names, ...opts }), undefined, true);
   expect(s.phase).toBe('gameEnd');
   return s;
 }
 
 /** Drive with the AI until `pred` holds (or a step cap). */
 function playUntil(s: GameState, pred: (s: GameState) => boolean): GameState {
-  let steps = 0;
-  while (s.phase !== 'gameEnd' && !pred(s) && steps < 20000) {
-    steps++;
-    if (s.pending.length) {
-      const pid = s.pending[0]!.playerId;
-      const a = chooseAction(s, pid);
-      if (!a) throw new Error(`AI stuck on pending ${JSON.stringify(s.pending[0])}`);
-      s = applyAction(s, a);
-      continue;
-    }
-    const a = chooseAction(s, s.turn);
-    if (!a) throw new Error(`AI stuck on turn ${s.turn} round ${s.round}`);
-    s = applyAction(s, a);
-  }
+  s = aiPlay(s, pred);
   expect(pred(s) || s.phase === 'gameEnd').toBe(true);
   return s;
 }
 
 /** Reach the 'main' phase of a fresh game (resolves setup offers via AI). */
-function inMain(opts: CreateGameOptions = {}): GameState {
-  let s = createGame({ seed: 3, playerNames: ['P1', 'P2'], ...opts });
-  while (s.pending.length) {
-    const pid = s.pending[0]!.playerId;
-    s = applyAction(s, chooseAction(s, pid)!);
-  }
-  expect(s.phase).toBe('main');
-  return s;
-}
+const inMain = (opts: CreateGameOptions = {}): GameState =>
+  toMain(createGame({ seed: 3, playerNames: ['P1', 'P2'], ...opts }));
 
 /** `pid` passes and answers the income-space choice their pass produces. */
 function passAndAnswer(s: GameState, pid: PlayerId): GameState {
@@ -74,9 +39,7 @@ function passAndAnswer(s: GameState, pid: PlayerId): GameState {
   return s;
 }
 
-function playerOf(s: GameState, pid: PlayerId) {
-  return s.players.find((p) => p.id === pid)!;
-}
+const playerOf = player;
 
 describe('wyrmspan engine', () => {
   it('creates a game with setup pending', () => {

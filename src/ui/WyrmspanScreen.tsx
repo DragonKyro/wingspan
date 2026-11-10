@@ -37,7 +37,7 @@ import type {
   Resource,
 } from '@/wyrmspan/types';
 import { ActionToastBanner, FlipProvider, useFlipAnchor, useFlipCard, useValuePulse } from './fx';
-import { StackedBarChart, StatsTabs } from './MatchCharts';
+import { GameOverModal } from './MatchCharts';
 import { RulesModal } from './RulesBook';
 import {
   AdventurerMeepleSvg,
@@ -764,8 +764,8 @@ export function WyrmDragonCardView({
         </div>
       </div>
 
-      <div className="bcard-art" style={{ height: 46 }}>
-        <DragonIllustration id={card.id} personality={pers} size={card.size} />
+      <div className="bcard-art">
+        <DragonIllustration id={card.id} name={card.name} personality={pers} size={card.size} caves={card.caves} />
       </div>
 
       {card.trainingTrack && (
@@ -1104,84 +1104,26 @@ function WyrmspanGameOverModal({
   onPlayAgain: () => void;
   onMenu: () => void;
 }) {
-  const scores = state.finalScores!;
-  const labels = state.players.map((p) => p.name);
-  const byId = new Map(scores.map((s) => [s.playerId, s]));
-  const series = [
-    {
-      id: 'guild',
-      label: 'Dragon Guild',
-      color: '#9b5de5',
-      values: state.players.map((p) => byId.get(p.id)?.guildTile ?? 0),
-    },
-    {
-      id: 'dragons',
-      label: 'Printed Dragon VP',
-      color: '#e07a5f',
-      values: state.players.map((p) => byId.get(p.id)?.printedDragonVp ?? 0),
-    },
-    {
-      id: 'endgame',
-      label: 'End-Game Abilities',
-      color: '#f4a261',
-      values: state.players.map((p) => byId.get(p.id)?.endGameAbilities ?? 0),
-    },
-    {
-      id: 'eggs',
-      label: 'Eggs',
-      color: '#ffd166',
-      values: state.players.map((p) => byId.get(p.id)?.eggs ?? 0),
-    },
-    {
-      id: 'cached',
-      label: 'Cached Resources',
-      color: '#52b788',
-      values: state.players.map((p) => byId.get(p.id)?.cached ?? 0),
-    },
-    {
-      id: 'tucked',
-      label: 'Tucked Cards',
-      color: '#48cae4',
-      values: state.players.map((p) => byId.get(p.id)?.tucked ?? 0),
-    },
-    {
-      id: 'objectives',
-      label: 'Public Objectives',
-      color: '#3a86ff',
-      values: state.players.map((p) => byId.get(p.id)?.objectives ?? 0),
-    },
-    {
-      id: 'leftovers',
-      label: 'Coins & Items',
-      color: '#adb5bd',
-      values: state.players.map(
-        (p) => (byId.get(p.id)?.coins ?? 0) + (byId.get(p.id)?.leftovers ?? 0) + (byId.get(p.id)?.bonusVP ?? 0),
-      ),
-    },
-  ];
-
-  const winners = (state.winners ?? []).map((id) => player(state, id).name).join(', ');
-
+  const byId = new Map(state.finalScores!.map((s) => [s.playerId, s]));
+  type Part = 'guildTile' | 'printedDragonVp' | 'endGameAbilities' | 'eggs' | 'cached' | 'tucked' | 'objectives' | 'coins' | 'leftovers' | 'bonusVP';
+  const pts = (k: Part) => (id: PlayerId) => byId.get(id)?.[k] ?? 0;
   return (
-    <div className="rules-modal-backdrop">
-      <div className="rules-modal gameover-modal">
-        <div className="rules-modal-header">
-          <h3>🏆 Wyrmspan — Final Scores (Winner: {winners})</h3>
-          <div className="row">
-            <button type="button" className="primary" onClick={onPlayAgain}>
-              ↻ Play Again
-            </button>
-            <button type="button" className="secondary" onClick={onMenu}>
-              ⌂ Main Menu
-            </button>
-          </div>
-        </div>
-        <div className="rules-modal-content">
-          <StatsTabs tabs={[{ key: 'breakdown', label: 'Score Breakdown' }]}>
-            {() => <StackedBarChart xLabels={labels} series={series} />}
-          </StatsTabs>
-        </div>
-      </div>
-    </div>
+    <GameOverModal
+      title="Wyrmspan"
+      winners={(state.winners ?? []).map((id) => player(state, id).name).join(', ')}
+      players={state.players}
+      parts={[
+        ['guild', 'Dragon Guild', '#9b5de5', pts('guildTile')],
+        ['dragons', 'Printed Dragon VP', '#e07a5f', pts('printedDragonVp')],
+        ['endgame', 'End-Game Abilities', '#f4a261', pts('endGameAbilities')],
+        ['eggs', 'Eggs', '#ffd166', pts('eggs')],
+        ['cached', 'Cached Resources', '#52b788', pts('cached')],
+        ['tucked', 'Tucked Cards', '#48cae4', pts('tucked')],
+        ['objectives', 'Public Objectives', '#3a86ff', pts('objectives')],
+        ['leftovers', 'Coins & Items', '#adb5bd', (id) => pts('coins')(id) + pts('leftovers')(id) + pts('bonusVP')(id)],
+      ]}
+      onPlayAgain={onPlayAgain}
+      onMenu={onMenu}
+    />
   );
 }

@@ -16,7 +16,6 @@ export const CAVE_NAMES: Record<CaveId, string> = {
 };
 
 export type Personality = 'Shy' | 'Playful' | 'Helpful' | 'Aggressive';
-export const PERSONALITIES: Personality[] = ['Shy', 'Playful', 'Helpful', 'Aggressive'];
 
 export type Size = 'Small' | 'Medium' | 'Large' | 'Hatchling' | 'Fledgling';
 export type AbilityType = 'Adventurer' | 'WhenPlayed' | 'OncePerRound' | 'EndGame';

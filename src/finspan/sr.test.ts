@@ -5,28 +5,20 @@
 
 import { describe, expect, it } from 'vitest';
 import { parseAbility } from './abilities';
-import { chooseAction } from './ai/chooseAction';
 import { FISH, sideBTilePool } from './cards';
 import { REEF_DISCARD_ITEMS, REEF_OVERLAY_SIDES, MAX_CORAL, REEF_COMPLETION_BONUS } from './constants';
-import { createGame } from './createGame';
 import { applyAction } from './engine';
 import { addEgg, addYoung, allSlots, getPlayer, placeCoral, setPlayer, slotAt } from './helpers';
 import { fireAbility } from './powers';
 import { achievementUnits, scoreAchievement, scorePlayer } from './scoring';
 import { DIVERS_PER_WEEK } from './types';
 import type { GameState, SlotRef } from './types';
+import { aiGame, runAI } from './testUtils';
 
 type ReefCosts = ('egg' | 'young' | 'card')[][];
 
-function srGame(seed = 1, players = 2, side: 'A' | 'B' = 'A', reefCosts?: ReefCosts): GameState {
-  return createGame({
-    playerNames: Array.from({ length: players }, (_, i) => `P${i + 1}`),
-    playerTypes: Array.from({ length: players }, () => 'ai' as const),
-    playerColors: Array.from({ length: players }, (_, i) => `c${i}`),
-    seed,
-    settings: { sets: ['base', 'sr'], achievementSide: side, reefCosts },
-  });
-}
+const srGame = (seed = 1, players = 2, side: 'A' | 'B' = 'A', reefCosts?: ReefCosts): GameState =>
+  aiGame(seed, players, { sets: ['base', 'sr'], achievementSide: side, reefCosts });
 
 /** Both players on the same fixed overlay: blue=egg, purple=young, green=card. */
 const FIXED_REEF: ReefCosts = [
@@ -34,34 +26,10 @@ const FIXED_REEF: ReefCosts = [
   ['egg', 'young', 'card'],
 ];
 
-function baseGame(seed = 1, players = 2): GameState {
-  return createGame({
-    playerNames: Array.from({ length: players }, (_, i) => `P${i + 1}`),
-    playerTypes: Array.from({ length: players }, () => 'ai' as const),
-    playerColors: Array.from({ length: players }, (_, i) => `c${i}`),
-    seed,
-    settings: { sets: ['base'], achievementSide: 'A' },
-  });
-}
+const baseGame = (seed = 1, players = 2): GameState => aiGame(seed, players, { sets: ['base'], achievementSide: 'A' });
 
-function runGame(seed: number, players: number, sets: string[], side: 'A' | 'B', maxActions = 8000) {
-  let s = createGame({
-    playerNames: Array.from({ length: players }, (_, i) => `P${i + 1}`),
-    playerTypes: Array.from({ length: players }, () => 'ai' as const),
-    playerColors: Array.from({ length: players }, (_, i) => `c${i}`),
-    seed,
-    settings: { sets, achievementSide: side },
-  });
-  let n = 0;
-  while (s.phase !== 'gameOver' && n < maxActions) {
-    const pid = s.pending.length ? s.pending[0]!.playerId : s.playerOrder[s.currentPlayerIndex]!;
-    const a = chooseAction(s, pid);
-    if (!a) throw new Error(`AI stuck at action ${n} (phase ${s.phase})`);
-    s = applyAction(s, a as never);
-    n++;
-  }
-  return s;
-}
+const runGame = (seed: number, players: number, sets: string[], side: 'A' | 'B', maxActions = 8000) =>
+  runAI(aiGame(seed, players, { sets, achievementSide: side }), maxActions);
 
 const firstSlotWith = (s: GameState, pid: 'p1', pred: (slot: { eggs: number; young: number; school: boolean }) => boolean): SlotRef => {
   for (const { ref, slot } of allSlots(getPlayer(s, pid).ocean)) if (pred(slot)) return ref;

@@ -360,7 +360,6 @@ export type Phase =
 
 /** The four action columns action cubes are spent on (per round). */
 export type CubeTrack = Habitat | 'playBird';
-export const CUBE_TRACKS: CubeTrack[] = ['forest', 'grassland', 'wetland', 'playBird'];
 
 /** Options offered by "choose one effect" powers. */
 export type PowerOption =

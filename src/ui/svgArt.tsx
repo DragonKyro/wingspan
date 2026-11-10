@@ -1,8 +1,16 @@
 // Hand-crafted thematic SVG artwork, icons, card illustrations, and inline
 // text-token iconizers for Wingspan, Wyrmspan, and Finspan.
-// Pure vector SVG with no external image files and no global <defs> ID clashes.
+// Pure vector SVG, no image files. Shared gradients live once in <ArtDefs/>
+// (art/core.tsx, mounted in App) and are referenced as url(#ws-…).
 
 import type { ReactNode } from 'react';
+
+import { BirdIllustration } from './art/birdArt';
+import { DragonIllustration } from './art/dragonArt';
+import { FishIllustration } from './art/fishArt';
+
+export { ArtDefs } from './art/core';
+export { BirdIllustration, DragonIllustration, FishIllustration };
 
 // ============================================================================
 // PLAYER COLOR PALETTE
@@ -34,56 +42,49 @@ export function playerColorHex(color: string): string {
 // GAME PICKER THUMBNAILS (280 x 140)
 // ============================================================================
 
+/** Fanned mini card used by the menu thumbnails; `children` is a 120×56 portrait. */
+function MiniCard({
+  x, y, a, head, band, face = '#f7efe0', edge = '#bba67d', children,
+}: {
+  x: number; y: number; a: number; head: string; band: string; face?: string; edge?: string; children: ReactNode;
+}) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${a})`}>
+      <rect x="-31" y="-43" width="66" height="90" rx="6" fill="#000" opacity="0.25" />
+      <rect x="-33" y="-45" width="66" height="90" rx="6" fill={face} stroke={edge} strokeWidth="1.4" />
+      <rect x="-29" y="-41" width="58" height="9" rx="2.5" fill={head} />
+      <svg x="-29" y="-29" width="58" height="34" overflow="hidden">{children}</svg>
+      <rect x="-29" y="-29" width="58" height="34" fill="none" stroke="#000" strokeOpacity="0.25" />
+      <rect x="-29" y="9" width="58" height="14" rx="2.5" fill={band} />
+      <path d="M-25 30h40M-25 35.5h30" stroke={edge} strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+    </g>
+  );
+}
+
 export function WingspanThumbnail() {
   return (
     <svg viewBox="0 0 280 140" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Wingspan">
-      {/* Dawn sky to wetland water */}
-      <rect width="280" height="140" fill="#234236" />
-      <rect y="0" width="280" height="56" fill="#e8c382" opacity="0.22" />
-      <circle cx="224" cy="36" r="22" fill="#f6d892" opacity="0.85" />
-      {/* Rolling forest & meadow hills */}
-      <path d="M0 92 Q70 64 150 86 T280 78 L280 140 L0 140 Z" fill="#3a6b4c" />
-      <path d="M0 108 Q95 88 185 104 T280 98 L280 140 L0 140 Z" fill="#8fa347" opacity="0.85" />
-      <path d="M0 120 Q110 112 280 118 L280 140 L0 140 Z" fill="#3d7a96" />
-      {/* Pine trees on left */}
-      {[22, 42, 60].map((x, i) => (
-        <g key={x} transform={`translate(${x}, ${72 + (i % 2) * 6})`}>
-          <polygon points="0,-24 -11,0 11,0" fill="#244a34" />
-          <polygon points="0,-15 -9,6 9,6" fill="#2e5c41" />
-        </g>
-      ))}
-      {/* Mini bird card fan */}
-      <g transform="translate(88, 22) rotate(-8)">
-        <rect width="58" height="78" rx="6" fill="#f7efe0" stroke="#bba67d" strokeWidth="1.5" />
-        <rect x="4" y="4" width="50" height="14" rx="3" fill="#4a7c59" />
-        <circle cx="30" cy="40" r="14" fill="#d96b43" opacity="0.25" />
-        <path d="M18 44 Q28 26 40 34 Q46 32 49 35 Q43 39 39 43 Q29 50 18 44 Z" fill="#c84b31" />
-        <rect x="4" y="58" width="50" height="14" rx="3" fill="#8b6239" />
-      </g>
-      <g transform="translate(132, 18) rotate(7)">
-        <rect width="58" height="78" rx="6" fill="#f7efe0" stroke="#bba67d" strokeWidth="1.5" />
-        <rect x="4" y="4" width="50" height="14" rx="3" fill="#4f8ba9" />
-        <path d="M16 42 Q28 24 44 36 Q36 48 16 42 Z" fill="#3a7ca5" />
-        <rect x="4" y="58" width="50" height="14" rx="3" fill="#d97b93" />
-      </g>
-      {/* Soaring bird silhouette */}
-      <path
-        d="M196 42 Q210 26 226 36 Q242 24 256 38 Q238 34 226 43 Q212 34 196 42 Z"
-        fill="#1e352b"
-      />
-      {/* Speckled eggs & nectar blossom in foreground */}
-      <g transform="translate(36, 114)">
-        <ellipse cx="0" cy="0" rx="8" ry="10" fill="#bfe0e8" stroke="#4a6b74" strokeWidth="1.2" />
-        <circle cx="-2" cy="-3" r="1.2" fill="#4a6b74" />
-        <circle cx="3" cy="2" r="1" fill="#4a6b74" />
-      </g>
-      <g transform="translate(54, 117)">
-        <ellipse cx="0" cy="0" rx="7.5" ry="9.5" fill="#f2d794" stroke="#7a5e24" strokeWidth="1.2" />
-        <circle cx="2" cy="-2" r="1.1" fill="#7a5e24" />
-      </g>
-      <g transform="translate(232, 110)">
-        <FoodIcon food="nectar" size={24} />
-      </g>
+      <rect width="280" height="140" fill="url(#ws-sky-grassland-1)" />
+      <circle cx="232" cy="30" r="24" fill="url(#ws-sun)" />
+      <path d="M8 92L18 62L28 92ZM26 94L38 54L50 94ZM46 92L55 68L64 92ZM236 90L245 66L254 90ZM252 92L262 60L272 92Z" fill="#4f7a5a" opacity="0.8" />
+      <path d="M0 96Q70 72 150 90T280 82V140H0Z" fill="#5d8a64" />
+      <path d="M0 112Q95 92 185 108T280 102V140H0Z" fill="#a9a85a" />
+      <path d="M0 124Q110 116 280 122V140H0Z" fill="url(#ws-water)" />
+      <path d="M150 128h30M196 132h22M40 131h18" stroke="#e8f6fb" strokeWidth="1" opacity="0.7" />
+      <path d="M44 24q6 -6 12 0q6 -6 12 0M72 14q4 -4 8 0q4 -4 8 0" stroke="#3a4038" strokeWidth="1.2" fill="none" />
+      <MiniCard x={96} y={74} a={-11} head="#3d7352" band="#7d5330">
+        <BirdIllustration cardId={11} name="Barn Owl" habitats={['forest']} wingspan={107} predator />
+      </MiniCard>
+      <MiniCard x={184} y={74} a={11} head="#3f84a6" band="#2f7f87">
+        <BirdIllustration cardId={7} name="Great Blue Heron" habitats={['wetland']} wingspan={183} />
+      </MiniCard>
+      <MiniCard x={140} y={66} a={0} head="#9ba843" band="#c96480">
+        <BirdIllustration cardId={3} name="Northern Cardinal" habitats={['forest']} wingspan={30} />
+      </MiniCard>
+      <g transform="translate(30 116)"><EggTokenSvg index={0} size={20} /></g>
+      <g transform="translate(46 119)"><EggTokenSvg index={1} size={18} /></g>
+      <g transform="translate(236 110)"><FoodIcon food="nectar" size={22} /></g>
+      <g transform="translate(212 114)"><FoodIcon food="seed" size={18} /></g>
     </svg>
   );
 }
@@ -91,40 +92,25 @@ export function WingspanThumbnail() {
 export function WyrmspanThumbnail() {
   return (
     <svg viewBox="0 0 280 140" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Wyrmspan">
-      <rect width="280" height="140" fill="#1e1429" />
-      {/* Three glowing cavern arches: Crimson, Golden, Amethyst */}
-      <ellipse cx="56" cy="76" rx="44" ry="52" fill="#7c2334" opacity="0.55" />
-      <ellipse cx="140" cy="72" rx="48" ry="56" fill="#9c6b21" opacity="0.48" />
-      <ellipse cx="224" cy="76" rx="44" ry="52" fill="#5b348a" opacity="0.55" />
-      {/* Stalactites */}
-      <polygon points="18,0 28,36 38,0" fill="#2c1d3d" />
-      <polygon points="74,0 82,28 90,0" fill="#2c1d3d" />
-      <polygon points="190,0 198,32 206,0" fill="#2c1d3d" />
-      <polygon points="242,0 252,40 262,0" fill="#2c1d3d" />
-      {/* Dragon silhouette with spread wings in center */}
-      <g transform="translate(140, 68)">
-        <path
-          d="M0,-28 L-8,-14 L-52,-32 L-38,-4 L-56,10 L-22,8 L-12,26 L0,18 L12,26 L22,8 L56,10 L38,-4 L52,-32 L8,-14 Z"
-          fill="#e09f3e"
-          stroke="#4a2511"
-          strokeWidth="1.6"
-        />
-        <circle cx="-3" cy="-20" r="1.8" fill="#fff3b0" />
-        <circle cx="3" cy="-20" r="1.8" fill="#fff3b0" />
-      </g>
-      {/* Crystals & coins at bottom */}
-      <g transform="translate(42, 112)">
-        <WyrmResourceIcon kind="crystal" size={24} />
-      </g>
-      <g transform="translate(72, 114)">
-        <WyrmResourceIcon kind="coin" size={22} />
-      </g>
-      <g transform="translate(208, 112)">
-        <WyrmResourceIcon kind="guild" size={24} />
-      </g>
-      <g transform="translate(238, 112)">
-        <WyrmResourceIcon kind="egg" size={22} />
-      </g>
+      <rect width="280" height="140" fill="#1a1224" />
+      <ellipse cx="50" cy="80" rx="60" ry="70" fill="url(#ws-cave-crimson)" opacity="0.8" />
+      <ellipse cx="140" cy="76" rx="64" ry="72" fill="url(#ws-cave-golden)" opacity="0.75" />
+      <ellipse cx="230" cy="80" rx="60" ry="70" fill="url(#ws-cave-amethyst)" opacity="0.8" />
+      <path d="M8 0L16 30L24 0ZM60 0L66 20L72 0ZM100 0L106 26L112 0ZM170 0L176 22L182 0ZM212 0L220 34L228 0ZM256 0L262 24L268 0Z" fill="#120a18" />
+      <path d="M0 126Q70 118 140 124T280 122V140H0Z" fill="#0f0a14" />
+      <path d="M226 140L232 112L238 140ZM236 140L242 120L246 140Z" fill="#b48ae8" />
+      <MiniCard x={96} y={74} a={-11} head="#7c2334" band="#7d5330" face="#2a2036" edge="#6a5a7a">
+        <DragonIllustration id={4} name="Redwood Lung Dragon" personality="Playful" size="Medium" caves={['Crimson Cavern']} />
+      </MiniCard>
+      <MiniCard x={184} y={74} a={11} head="#5b348a" band="#7d5330" face="#2a2036" edge="#6a5a7a">
+        <DragonIllustration id={8} name="Resplendent Coatl" personality="Helpful" size="Medium" caves={['Amethyst Abyss']} />
+      </MiniCard>
+      <MiniCard x={140} y={66} a={0} head="#9c6b21" band="#7d5330" face="#2a2036" edge="#6a5a7a">
+        <DragonIllustration id={2} name="Crimson Dragon" personality="Aggressive" size="Large" caves={['Golden Grotto']} />
+      </MiniCard>
+      <g transform="translate(26 112)"><WyrmResourceIcon kind="crystal" size={22} /></g>
+      <g transform="translate(50 114)"><WyrmResourceIcon kind="coin" size={20} /></g>
+      <g transform="translate(208 112)"><WyrmResourceIcon kind="egg" size={20} /></g>
     </svg>
   );
 }
@@ -132,41 +118,79 @@ export function WyrmspanThumbnail() {
 export function FinspanThumbnail() {
   return (
     <svg viewBox="0 0 280 140" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Finspan">
-      {/* Sunlight -> Twilight -> Midnight depth bands */}
-      <rect x="0" y="0" width="280" height="46" fill="#2b8cbe" />
-      <rect x="0" y="46" width="280" height="48" fill="#16537e" />
-      <rect x="0" y="94" width="280" height="46" fill="#0b2239" />
-      {/* Sunbeams */}
-      <polygon points="40,0 80,0 110,90 20,90" fill="#a6e1fa" opacity="0.14" />
-      <polygon points="150,0 195,0 230,90 130,90" fill="#a6e1fa" opacity="0.12" />
-      {/* Coral reef silhouettes at bottom */}
-      <path d="M16 140 Q12 118 24 112 Q28 124 34 114 Q42 122 38 140 Z" fill="#e06388" opacity="0.85" />
-      <path d="M226 140 Q222 116 234 108 Q242 120 250 110 Q258 122 252 140 Z" fill="#9b6bd6" opacity="0.85" />
-      {/* Swimming fish & manta ray */}
-      <g transform="translate(76, 26)">
-        <path d="M-18,0 Q-4,-11 14,0 Q22,-7 26,-9 L23,0 L26,9 Q22,7 14,0 Q-4,11 -18,0 Z" fill="#f6c85f" />
-        <circle cx="-10" cy="-2" r="1.6" fill="#132a3e" />
-      </g>
-      <g transform="translate(156, 68)">
-        <path
-          d="M-32,0 L-6,-22 L18,-4 L34,0 L18,4 L-6,22 Z"
-          fill="#4cc9f0"
-          stroke="#0b2239"
-          strokeWidth="1.3"
-        />
-        <circle cx="-18" cy="-3" r="1.6" fill="#0b2239" />
-      </g>
-      {/* Bioluminescent angler in midnight zone */}
-      <g transform="translate(112, 116)">
-        <ellipse cx="0" cy="0" rx="16" ry="10" fill="#1f3b5c" stroke="#4ea8de" strokeWidth="1.2" />
-        <path d="M-8,-8 Q-18,-18 -24,-10" fill="none" stroke="#90e0ef" strokeWidth="1.5" />
-        <circle cx="-24" cy="-10" r="3.5" fill="#caf0f8" />
-        <circle cx="-8" cy="-2" r="2" fill="#caf0f8" />
-      </g>
-      {/* School token on right */}
-      <g transform="translate(216, 30)">
-        <FinIcon kind="school" size={28} />
-      </g>
+      <rect width="280" height="48" fill="url(#ws-sea-sunlight)" />
+      <rect y="48" width="280" height="46" fill="url(#ws-sea-twilight)" />
+      <rect y="94" width="280" height="46" fill="url(#ws-sea-midnight)" />
+      <path d="M36 0h24l46 94H40ZM150 0h18l40 94h-30Z" fill="url(#ws-ray)" opacity="0.45" />
+      <path d="M10 140q-4 -16 6 -22q4 10 8 2q8 8 4 20ZM240 140q-4 -18 8 -26q6 12 12 2q8 12 2 24Z" fill="#e06388" opacity="0.85" />
+      <path d="M30 112h0.01M60 126h0.01M222 104h0.01M252 120h0.01M120 132h0.01" stroke="#7af0ff" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+      <MiniCard x={96} y={74} a={-11} head="#2b8cbe" band="#16537e" face="#16324a" edge="#4d7fa3">
+        <FishIllustration id={1} name="Tomato Clownfish" size="small" zones={{ sunlight: true }} coral="purple" />
+      </MiniCard>
+      <MiniCard x={184} y={74} a={11} head="#0b2239" band="#16537e" face="#16324a" edge="#4d7fa3">
+        <FishIllustration id={2} name="Abyssal Anglerfish" size="medium" zones={{ midnight: true }} tags={{ bioluminescent: 1 }} />
+      </MiniCard>
+      <MiniCard x={140} y={66} a={0} head="#16537e" band="#16537e" face="#16324a" edge="#4d7fa3">
+        <FishIllustration id={4} name="Great Hammerhead" size="large" zones={{ twilight: true }} />
+      </MiniCard>
+      <g transform="translate(222 18)"><FinIcon kind="school" size={26} /></g>
+    </svg>
+  );
+}
+
+// ============================================================================
+// TOKEN ICONS (replace emoji chips — consistent across platforms)
+// ============================================================================
+
+export type TokenKind = 'card' | 'die' | 'feather' | 'predator' | 'flock' | 'bonus';
+
+export function TokenIcon({ kind, size = 14, title }: { kind: TokenKind; size?: number; title?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={title ?? kind}>
+      {title && <title>{title}</title>}
+      {kind === 'card' && (
+        <>
+          <rect x="6.5" y="3" width="13" height="18" rx="2" fill="#d8c8a8" stroke="#7a5a32" strokeWidth="1.1" transform="rotate(8 13 12)" />
+          <rect x="4.5" y="3" width="13" height="18" rx="2" fill="#f7efe0" stroke="#7a5a32" strokeWidth="1.3" />
+          <rect x="6.6" y="5.2" width="8.8" height="6" rx="1" fill="#5d8a64" />
+          <path d="M8 10q2 -3.4 5 -1.4" stroke="#f7efe0" strokeWidth="1.1" fill="none" />
+          <path d="M6.8 14.2h8.4M6.8 17h5.6" stroke="#a88a5a" strokeWidth="1.2" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'die' && (
+        <>
+          <rect x="3.5" y="4.5" width="17" height="17" rx="4" fill="#c8b48c" />
+          <rect x="3.5" y="3" width="17" height="17" rx="4" fill="#f7efe0" stroke="#7a6a4a" strokeWidth="1.2" />
+          <path d="M8 7.5h0.01M12 11.5h0.01M16 15.5h0.01" stroke="#3a2e1e" strokeWidth="3" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'feather' && (
+        <>
+          <path d="M19.5 2.5C12 3.5 6.6 9 6.2 16.4L4.6 21.4L5.8 21.8L8 17.4C15 16 19.6 10 19.5 2.5Z" fill="#e8b84a" stroke="#7a5a1a" strokeWidth="1" />
+          <path d="M19 3.2Q12.5 10.5 5.4 21.4" stroke="#7a5a1a" strokeWidth="0.9" fill="none" />
+          <path d="M14 8.6l-3.6 -1.2M12 11.4l-4 -0.6M10.4 14l-3.4 0.4M15.4 9.2l1.4 2.6M13.2 12.4l1.2 2.4" stroke="#9a7424" strokeWidth="0.7" />
+        </>
+      )}
+      {kind === 'predator' && (
+        <>
+          <circle cx="12" cy="12" r="10.5" fill="#a8452a" stroke="#4a1a0e" strokeWidth="1.2" />
+          <path d="M6 8Q13 5 16.4 10.6Q18.6 15 14.6 19.6Q15.4 15.2 12.4 12.6Q9.6 10.4 6 8Z" fill="#f7efe0" />
+          <path d="M8.4 12.6Q11.6 12 12.6 15.4Q11 14.4 8.4 12.6Z" fill="#f7efe0" />
+        </>
+      )}
+      {kind === 'flock' && (
+        <>
+          <circle cx="12" cy="12" r="10.5" fill="#3f84a6" stroke="#183f54" strokeWidth="1.2" />
+          <path d="M4.6 11q2.4 -3 4.8 0q2.4 -3 4.8 0M10 16q2 -2.6 4 0q2 -2.6 4 0M12 7.4q1.6 -2 3.2 0q1.6 -2 3.2 0" stroke="#f7efe0" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'bonus' && (
+        <>
+          <path d="M6 4h11a2 2 0 0 1 2 2v12a3 3 0 0 1 -3 3H7a3 3 0 0 1 -3 -3V6a2 2 0 0 1 2 -2Z" fill="#cde0ee" stroke="#3a5a74" strokeWidth="1.2" />
+          <path d="M7.5 8.5h8M7.5 11.5h8M7.5 14.5h5" stroke="#3a5a74" strokeWidth="1.2" strokeLinecap="round" />
+          <circle cx="16.4" cy="17" r="2.4" fill="#e5a952" stroke="#7a4a1a" strokeWidth="0.8" />
+        </>
+      )}
     </svg>
   );
 }
@@ -264,6 +288,7 @@ export function FoodIcon({ food, size = 18 }: { food: string; size?: number }) {
           <circle cx="12" cy="12" r="3.2" fill="#f7efe0" />
         </>
       )}
+      <circle cx="12" cy="12" r="10.6" fill="url(#ws-sheen)" />
     </svg>
   );
 }
@@ -306,6 +331,7 @@ export function HabitatIcon({ habitat, size = 18 }: { habitat: string; size?: nu
           <path d="M5 17 Q8.5 14.5 12 17 T19 17" fill="none" stroke="#90e0ef" strokeWidth="2" strokeLinecap="round" />
         </>
       )}
+      <polygon points="12,1 22,7 22,17 12,23 2,17 2,7" fill="url(#ws-sheen)" />
     </svg>
   );
 }
@@ -370,6 +396,7 @@ export function EggTokenSvg({ index = 0, size = 16 }: { index?: number; size?: n
         stroke={c.stroke}
         strokeWidth="1.4"
       />
+      <ellipse cx="7" cy="8" rx="4" ry="5" fill="url(#ws-sheen)" />
       <circle cx="6.5" cy="9" r="1.1" fill={c.stroke} opacity="0.65" />
       <circle cx="11.5" cy="13" r="1.3" fill={c.stroke} opacity="0.65" />
       <circle cx="8" cy="15.5" r="0.9" fill={c.stroke} opacity="0.65" />
@@ -384,123 +411,6 @@ export function ActionCubeSvg({ color = 'orange', size = 18 }: { color?: string;
       <polygon points="11,2 20,7 11,12 2,7" fill={hex} stroke="#1a1a1a" strokeWidth="1.1" />
       <polygon points="2,7 11,12 11,20 2,15" fill={hex} filter="brightness(0.85)" stroke="#1a1a1a" strokeWidth="1.1" />
       <polygon points="20,7 11,12 11,20 20,15" fill={hex} filter="brightness(0.7)" stroke="#1a1a1a" strokeWidth="1.1" />
-    </svg>
-  );
-}
-
-/** Procedural vector bird illustration drawn from card metadata. */
-export function BirdIllustration({
-  cardId,
-  name,
-  habitats,
-  wingspan,
-  predator,
-  beakLeft,
-}: {
-  cardId: number;
-  name: string;
-  habitats: readonly string[];
-  wingspan: number | string;
-  predator?: boolean;
-  beakLeft?: boolean | null;
-}) {
-  const palettes = [
-    { body: '#c84b31', wing: '#8c2d19', belly: '#f4d8b8', crest: '#e07a5f' },
-    { body: '#3a7ca5', wing: '#1d4e6e', belly: '#e2eff7', crest: '#61a5c2' },
-    { body: '#d99b26', wing: '#8c5e0a', belly: '#faedcd', crest: '#f4a261' },
-    { body: '#4a7c59', wing: '#284b33', belly: '#e9f5db', crest: '#74c69d' },
-    { body: '#7b5283', wing: '#4a2c52', belly: '#f2e8f5', crest: '#b5838d' },
-    { body: '#5c5446', wing: '#363027', belly: '#e8dfd1', crest: '#a68a64' },
-    { body: '#2b5876', wing: '#183446', belly: '#f5f7fa', crest: '#e63946' },
-  ];
-  const pal = palettes[cardId % palettes.length]!;
-  const lower = name.toLowerCase();
-  const isOwl = /owl/.test(lower);
-  const isDuck = /duck|goose|swan|teal|mallard|pochard|grebe|loon|cormorant|pelican/.test(lower);
-  const isWader = /heron|egret|crane|stork|ibis|spoonbill|bittern|flamingo|avocet|stilt|plover|sandpiper|curlew/.test(lower);
-  const isRaptor = predator || /hawk|eagle|falcon|kite|harrier|vulture|osprey|buzzard|kestrel/.test(lower);
-  const hab = habitats[0] ?? 'forest';
-  const dir = beakLeft === false ? -1 : 1; // 1 = facing left, -1 = facing right
-  const wsNum = typeof wingspan === 'number' ? wingspan : 45;
-  const scale = wsNum < 30 ? 0.85 : wsNum > 100 ? 1.12 : 1;
-
-  return (
-    <svg viewBox="0 0 120 56" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      {/* Subtle habitat backdrop */}
-      {hab === 'forest' && (
-        <path d="M8 46 Q45 38 112 42" fill="none" stroke="#6c5234" strokeWidth="2.5" strokeLinecap="round" />
-      )}
-      {hab === 'grassland' && (
-        <path d="M12 50 Q60 44 108 50" fill="none" stroke="#b59431" strokeWidth="2" opacity="0.6" />
-      )}
-      {hab === 'wetland' && (
-        <ellipse cx="64" cy="48" rx="44" ry="5" fill="#4f8ba9" opacity="0.28" />
-      )}
-
-      <g transform={`translate(62, 30) scale(${dir * scale}, ${scale})`}>
-        {isOwl ? (
-          <>
-            {/* Upright owl silhouette */}
-            <ellipse cx="0" cy="4" rx="11" ry="15" fill={pal.body} />
-            <ellipse cx="-2" cy="6" rx="7" ry="11" fill={pal.belly} />
-            <ellipse cx="4" cy="4" rx="6" ry="11" fill={pal.wing} />
-            <circle cx="-2" cy="-10" r="8.5" fill={pal.body} />
-            <polygon points="-8,-16 -5,-21 -2,-16" fill={pal.wing} />
-            <polygon points="1,-16 4,-21 6,-16" fill={pal.wing} />
-            <circle cx="-5" cy="-10" r="3" fill="#ffd166" />
-            <circle cx="-5" cy="-10" r="1.4" fill="#1a1a1a" />
-            <circle cx="1" cy="-10" r="3" fill="#ffd166" />
-            <circle cx="1" cy="-10" r="1.4" fill="#1a1a1a" />
-            <polygon points="-2,-9 -4,-5 0,-5" fill="#e09f3e" />
-          </>
-        ) : isDuck ? (
-          <>
-            {/* Swimming waterfowl silhouette */}
-            <path d="M-16,6 Q-14,16 4,15 Q18,14 22,5 Q12,4 -16,6 Z" fill={pal.body} />
-            <ellipse cx="3" cy="8" rx="10" ry="4.5" fill={pal.wing} />
-            <path d="M-12,7 Q-16,-4 -12,-10 Q-7,-12 -6,-7 Q-8,2 -6,7 Z" fill={pal.crest} />
-            <circle cx="-11" cy="-9" r="5" fill={pal.crest} />
-            <path d="M-15,-10 L-24,-8 Q-23,-6 -15,-7 Z" fill="#e09f3e" />
-            <circle cx="-12.5" cy="-10" r="1.2" fill="#1a1a1a" />
-          </>
-        ) : isWader ? (
-          <>
-            {/* Long-legged wading bird */}
-            <line x1="-1" y1="8" x2="-3" y2="21" stroke="#c28d2e" strokeWidth="1.6" />
-            <line x1="4" y1="8" x2="6" y2="21" stroke="#c28d2e" strokeWidth="1.6" />
-            <ellipse cx="2" cy="1" rx="13" ry="7.5" fill={pal.body} />
-            <ellipse cx="4" cy="0" rx="9" ry="5" fill={pal.wing} />
-            <path d="M-9,-1 Q-16,-10 -12,-17 Q-9,-17 -9,-12 Q-11,-5 -6,1 Z" fill={pal.body} />
-            <circle cx="-12" cy="-16" r="4" fill={pal.body} />
-            <polygon points="-15,-17 -28,-15 -15,-14" fill="#e09f3e" />
-            <circle cx="-13" cy="-16.5" r="1.1" fill="#1a1a1a" />
-          </>
-        ) : isRaptor ? (
-          <>
-            {/* Hook-beaked raptor with broad wings */}
-            <polygon points="10,4 24,13 18,16 6,7" fill={pal.wing} />
-            <ellipse cx="0" cy="1" rx="13" ry="8.5" fill={pal.body} />
-            <path d="M-10,2 Q-4,9 6,7 Q0,-2 -10,2 Z" fill={pal.belly} />
-            <path d="M-3,-5 Q10,-14 22,-4 Q10,4 -3,-5 Z" fill={pal.wing} />
-            <circle cx="-11" cy="-6" r="6" fill={pal.crest} />
-            <path d="M-16,-8 Q-23,-7 -21,-2 L-16,-4 Z" fill="#e09f3e" />
-            <circle cx="-13" cy="-7" r="1.3" fill="#1a1a1a" />
-          </>
-        ) : (
-          <>
-            {/* Perched songbird */}
-            <polygon points="10,3 25,9 22,14 8,6" fill={pal.wing} />
-            <ellipse cx="0" cy="2" rx="13" ry="8" fill={pal.body} />
-            <path d="M-11,2 Q-4,10 8,6 Q1,-1 -11,2 Z" fill={pal.belly} />
-            <ellipse cx="2" cy="1" rx="9" ry="5" fill={pal.wing} transform="rotate(-10 2 1)" />
-            <circle cx="-10" cy="-5" r="6" fill={pal.crest} />
-            <polygon points="-15,-6 -23,-4 -15,-2" fill="#362819" />
-            <circle cx="-12" cy="-6" r="1.3" fill="#1a1a1a" />
-            <line x1="-2" y1="9" x2="-4" y2="16" stroke="#5c4938" strokeWidth="1.4" />
-            <line x1="3" y1="9" x2="2" y2="16" stroke="#5c4938" strokeWidth="1.4" />
-          </>
-        )}
-      </g>
     </svg>
   );
 }
@@ -533,37 +443,27 @@ export function renderWingspanText(text: string | null | undefined): ReactNode {
     if (tag === 'egg') return <EggTokenSvg key={idx} index={0} size={14} />;
     if (tag === 'card' || tag === 'bird_with_tucked_card') {
       return (
-        <span key={idx} className="inline-chip chip-card" title="Bird card">
-          🂠
-        </span>
+        <TokenIcon key={idx} kind="card" title="Bird card" />
       );
     }
     if (tag === 'die') {
       return (
-        <span key={idx} className="inline-chip chip-die" title="Birdfeeder die">
-          🎲
-        </span>
+        <TokenIcon key={idx} kind="die" title="Birdfeeder die" />
       );
     }
     if (tag === 'point' || tag === 'feather') {
       return (
-        <span key={idx} className="inline-chip chip-vp" title="Victory points">
-          🪶
-        </span>
+        <TokenIcon key={idx} kind="feather" title="Victory points" />
       );
     }
     if (tag === 'predator') {
       return (
-        <span key={idx} className="inline-chip chip-pred" title="Predator">
-          🦅
-        </span>
+        <TokenIcon key={idx} kind="predator" title="Predator" />
       );
     }
     if (tag === 'flocking') {
       return (
-        <span key={idx} className="inline-chip chip-flock" title="Flocking">
-          🐦
-        </span>
+        <TokenIcon key={idx} kind="flock" title="Flocking" />
       );
     }
     return (
@@ -663,74 +563,6 @@ export function AdventurerMeepleSvg({ color = 'orange', size = 22 }: { color?: s
       <circle cx="12" cy="6.5" r="4" fill={hex} stroke="#1a1a1a" strokeWidth="1.4" />
       <path d="M5,21 C5,14 8,11.5 12,11.5 C16,11.5 19,14 19,21 Z" fill={hex} stroke="#1a1a1a" strokeWidth="1.4" />
       <circle cx="18.5" cy="14" r="2.5" fill="#ffd166" stroke="#1a1a1a" strokeWidth="1" />
-    </svg>
-  );
-}
-
-export function DragonIllustration({
-  id,
-  personality,
-  size: dragonSize,
-}: {
-  id: number;
-  personality: string;
-  size: string;
-}) {
-  const p = personality.toLowerCase();
-  const pal =
-    p === 'aggressive'
-      ? { primary: '#c1121f', wing: '#780000', accent: '#ffb703' }
-      : p === 'helpful'
-        ? { primary: '#2d6a4f', wing: '#1b4332', accent: '#95d5b2' }
-        : p === 'playful'
-          ? { primary: '#e07a5f', wing: '#9c4129', accent: '#f2cc8f' }
-          : { primary: '#3d5a80', wing: '#293241', accent: '#98c1d9' };
-  const isHatchling = dragonSize === 'Hatchling';
-  const isFledgling = dragonSize === 'Fledgling';
-  const s = isHatchling ? 0.78 : isFledgling ? 0.88 : dragonSize === 'Large' ? 1.1 : 0.96;
-
-  return (
-    <svg viewBox="0 0 120 56" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <g transform={`translate(60, 29) scale(${s})`}>
-        {isHatchling ? (
-          <>
-            {/* Hatchling emerging from cracked dragon egg */}
-            <path d="M-14,6 L-9,1 L-4,7 L2,1 L8,7 L14,2 C14,14 8,19 0,19 C-8,19 -14,14 -14,6 Z" fill="#e0a96d" stroke="#5c3a18" strokeWidth="1.3" />
-            <circle cx="0" cy="-4" r="8" fill={pal.primary} />
-            <polygon points="-6,-10 -9,-17 -2,-11" fill={pal.accent} />
-            <polygon points="6,-10 9,-17 2,-11" fill={pal.accent} />
-            <circle cx="-3" cy="-5" r="1.6" fill="#fff" />
-            <circle cx="3" cy="-5" r="1.6" fill="#fff" />
-          </>
-        ) : (
-          <>
-            {/* Winged dragon */}
-            <path
-              d="M-6,-2 L-42,-20 L-32,-2 L-44,9 L-16,6 Z"
-              fill={pal.wing}
-              stroke={pal.accent}
-              strokeWidth="0.9"
-            />
-            <path
-              d="M6,-2 L42,-20 L32,-2 L44,9 L16,6 Z"
-              fill={pal.wing}
-              stroke={pal.accent}
-              strokeWidth="0.9"
-            />
-            <ellipse cx="0" cy="4" rx="11" ry="12" fill={pal.primary} />
-            <ellipse cx="0" cy="6" rx="6.5" ry="8.5" fill={pal.accent} opacity="0.7" />
-            <circle cx="0" cy="-10" r="6.5" fill={pal.primary} />
-            <polygon points="-4,-15 -8,-22 -1,-16" fill={pal.accent} />
-            <polygon points="4,-15 8,-22 1,-16" fill={pal.accent} />
-            <circle cx="-2.4" cy="-10.5" r="1.3" fill="#ffd166" />
-            <circle cx="2.4" cy="-10.5" r="1.3" fill="#ffd166" />
-            <path d="M0,15 Q16,22 26,12" fill="none" stroke={pal.primary} strokeWidth="3" strokeLinecap="round" />
-            {(id % 3 === 0 || p === 'aggressive') && (
-              <circle cx="0" cy="-21" r="2.5" fill="#ffb703" opacity="0.85" />
-            )}
-          </>
-        )}
-      </g>
     </svg>
   );
 }
@@ -850,77 +682,6 @@ export function DiverMeepleSvg({ color = 'c0', size = 20 }: { color?: string; si
       <circle cx="12" cy="6" r="4.2" fill={hex} stroke="#0b2239" strokeWidth="1.4" />
       <rect x="9.5" y="4.5" width="5" height="3" rx="1" fill="#caf0f8" />
       <path d="M8,10.5 L16,10.5 L15,17 L18,21 L14,21 L12,17 L10,21 L6,21 L9,17 Z" fill={hex} stroke="#0b2239" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function FishIllustration({
-  id,
-  name,
-  size: fishSize,
-  tags,
-  forage,
-}: {
-  id: number;
-  name: string;
-  size: 'small' | 'medium' | 'large';
-  tags?: {
-    bioluminescent?: number;
-    camouflage?: number;
-    electric?: number;
-    predator?: number;
-    venomous?: number;
-  };
-  forage?: boolean;
-}) {
-  const palettes = [
-    { body: '#48cae4', fin: '#0077b6', accent: '#caf0f8' },
-    { body: '#f4a261', fin: '#e76f51', accent: '#e9c46a' },
-    { body: '#9b5de5', fin: '#5a189a', accent: '#f15bb5' },
-    { body: '#52b788', fin: '#2d6a4f', accent: '#b7e4c7' },
-    { body: '#e63946', fin: '#9d0208', accent: '#ffd166' },
-  ];
-  const pal = forage
-    ? { body: '#adb5bd', fin: '#6c757d', accent: '#dee2e6' }
-    : palettes[id % palettes.length]!;
-  const lower = name.toLowerCase();
-  const isRay = /ray|skate|manta|sawfish/.test(lower);
-  const isShark = /shark/.test(lower) || (tags?.predator ?? 0) >= 2;
-  const isEel = /eel|moray|oarfish|hagfish|lamprey/.test(lower);
-  const sc = fishSize === 'small' ? 0.8 : fishSize === 'large' ? 1.12 : 0.96;
-
-  return (
-    <svg viewBox="0 0 120 48" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <g transform={`translate(60, 24) scale(${sc})`}>
-        {isRay ? (
-          <>
-            <polygon points="-32,0 -6,-18 16,-3 36,0 16,3 -6,18" fill={pal.body} stroke={pal.fin} strokeWidth="1.2" />
-            <circle cx="-18" cy="-3" r="1.5" fill="#0b2239" />
-          </>
-        ) : isEel ? (
-          <>
-            <path d="M-34,-2 Q-18,-12 0,0 T34,2" fill="none" stroke={pal.body} strokeWidth="7" strokeLinecap="round" />
-            <circle cx="-31" cy="-3" r="1.4" fill="#0b2239" />
-          </>
-        ) : isShark ? (
-          <>
-            <path d="M-30,0 Q-12,-11 16,-4 L28,-13 L23,0 L28,13 L16,4 Q-12,11 -30,0 Z" fill={pal.body} />
-            <polygon points="-4,-7 2,-18 8,-6" fill={pal.fin} />
-            <circle cx="-20" cy="-2" r="1.6" fill="#0b2239" />
-          </>
-        ) : (
-          <>
-            <polygon points="12,0 26,-11 23,0 26,11" fill={pal.fin} />
-            <ellipse cx="-2" cy="0" rx="18" ry="10.5" fill={pal.body} />
-            <polygon points="-4,-10 3,-17 8,-9" fill={pal.fin} />
-            <path d="M-8,-4 Q2,0 -8,4" fill="none" stroke={pal.accent} strokeWidth="1.6" />
-            <circle cx="-13" cy="-2" r="1.8" fill="#0b2239" />
-          </>
-        )}
-        {(tags?.bioluminescent ?? 0) > 0 && (
-          <circle cx="-24" cy="-9" r="3" fill="#90e0ef" stroke="#caf0f8" strokeWidth="1.2" />
-        )}
-      </g>
     </svg>
   );
 }

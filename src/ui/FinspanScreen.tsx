@@ -34,7 +34,7 @@ import type {
 } from '@/finspan/types';
 import { DEEPWATER_ROW, DIVERS_PER_WEEK, ESTUARY_ROW, SITE_COLORS, zoneOfRow } from '@/finspan/types';
 import { ActionToastBanner, FlipProvider, useFlipAnchor, useFlipCard, useValuePulse } from './fx';
-import { StackedBarChart, StatsTabs } from './MatchCharts';
+import { GameOverModal } from './MatchCharts';
 import { RulesModal } from './RulesBook';
 import {
   DiverMeepleSvg,
@@ -666,6 +666,8 @@ export function FishCardView({
           size={card.size}
           tags={card.tags}
           forage={card.forage}
+          zones={card.zones}
+          coral={card.coralCost && card.coralCost.site !== 'any' ? card.coralCost.site : null}
         />
       </div>
 
@@ -820,74 +822,23 @@ function FinspanGameOverModal({
   onMenu: () => void;
 }) {
   const scores = state.finalScores!;
-  const labels = state.players.map((p) => p.name);
-  const series = [
-    {
-      id: 'fish',
-      label: 'Visible Fish',
-      color: '#48cae4',
-      values: state.players.map((p) => scores[p.id]!.fishPoints),
-    },
-    {
-      id: 'consumed',
-      label: 'Consumed Fish',
-      color: '#e76f51',
-      values: state.players.map((p) => scores[p.id]!.consumedPoints),
-    },
-    {
-      id: 'tokens',
-      label: 'Eggs & Young',
-      color: '#ffd166',
-      values: state.players.map((p) => scores[p.id]!.eggYoungPoints),
-    },
-    {
-      id: 'schools',
-      label: 'Schools (6pt)',
-      color: '#0077b6',
-      values: state.players.map((p) => scores[p.id]!.schoolPoints),
-    },
-    {
-      id: 'achievements',
-      label: 'Achievements',
-      color: '#52b788',
-      values: state.players.map((p) => scores[p.id]!.achievementPoints),
-    },
-    {
-      id: 'wave',
-      label: 'Game-End Abilities',
-      color: '#9b5de5',
-      values: state.players.map((p) => scores[p.id]!.gameEndAbilityPoints),
-    },
-    {
-      id: 'coral',
-      label: 'Coral & Reefs',
-      color: '#f15bb5',
-      values: state.players.map((p) => scores[p.id]!.coralPoints),
-    },
-  ];
-
-  const winners = (state.winner ?? []).map((id) => getPlayer(state, id).name).join(', ');
-
+  const pts = (k: Exclude<keyof (typeof scores)[PlayerId], 'total'>) => (id: PlayerId) => scores[id]![k];
   return (
-    <div className="rules-modal-backdrop">
-      <div className="rules-modal gameover-modal">
-        <div className="rules-modal-header">
-          <h3>🏆 Finspan — Final Scores (Winner: {winners})</h3>
-          <div className="row">
-            <button type="button" className="primary" onClick={onPlayAgain}>
-              ↻ Play Again
-            </button>
-            <button type="button" className="secondary" onClick={onMenu}>
-              ⌂ Main Menu
-            </button>
-          </div>
-        </div>
-        <div className="rules-modal-content">
-          <StatsTabs tabs={[{ key: 'breakdown', label: 'Score Breakdown' }]}>
-            {() => <StackedBarChart xLabels={labels} series={series} />}
-          </StatsTabs>
-        </div>
-      </div>
-    </div>
+    <GameOverModal
+      title="Finspan"
+      winners={(state.winner ?? []).map((id) => getPlayer(state, id).name).join(', ')}
+      players={state.players}
+      parts={[
+        ['fish', 'Visible Fish', '#48cae4', pts('fishPoints')],
+        ['consumed', 'Consumed Fish', '#e76f51', pts('consumedPoints')],
+        ['tokens', 'Eggs & Young', '#ffd166', pts('eggYoungPoints')],
+        ['schools', 'Schools (6pt)', '#0077b6', pts('schoolPoints')],
+        ['achievements', 'Achievements', '#52b788', pts('achievementPoints')],
+        ['wave', 'Game-End Abilities', '#9b5de5', pts('gameEndAbilityPoints')],
+        ['coral', 'Coral & Reefs', '#f15bb5', pts('coralPoints')],
+      ]}
+      onPlayAgain={onPlayAgain}
+      onMenu={onMenu}
+    />
   );
 }

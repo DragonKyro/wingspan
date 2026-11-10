@@ -41,7 +41,6 @@ export interface CreateGameOptions {
   automa?: AutomaOptions;
 }
 
-const CAVE_COUNT = 3;
 const SPACES_PER_CAVE = 4;
 
 function emptyMat(): [CaveRow, CaveRow, CaveRow] {
@@ -161,7 +160,6 @@ export function createGame(opts: CreateGameOptions = {}): GameState {
     return p;
   });
   state = { ...state, players };
-  void CAVE_COUNT;
 
   // Deal 3 dragons + 3 caves to each human/normal player; they keep 4 of 6
   // (pending choice), then each picks any 3 resources. Automa gets no player

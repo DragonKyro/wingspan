@@ -32,7 +32,7 @@ import {
   takeFromDisplay,
   type Pos,
 } from './helpers';
-import { parseIcons } from './cards';
+import { parseTrainingTrack, trainingTrackLength } from './cards';
 import type {
   AbilityCandidate,
   ChoiceAnswer,
@@ -237,9 +237,7 @@ export function fireRecurring(
   }
   s = setPlayer(s, q);
   if (triggeredSteps.length) {
-    const before = s.pending.length;
     s = runSteps(s, triggeredSteps, { playerId, dragon: [pos.cave, pos.space], sourceCardId: dq.cardId });
-    void before;
   }
   return s;
 }
@@ -720,7 +718,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
         const types = cardAbilityTypes(card);
         let canActivate = types.includes('Adventurer') && !!card.ability;
         if (canActivate && card.size === 'Fledgling') {
-          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          const track = trainingTrackLength(card);
           if ((sp.dragon.training ?? 0) < track) canActivate = false;
         }
         const abilitySteps: Step[] = [];
@@ -750,7 +748,7 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
         const walked = p.caves[step.cave]?.spaces[step.space]?.dragon;
         if (walked && walked.cardId >= 0) {
           const card = dragonCard(walked.cardId);
-          const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+          const track = trainingTrackLength(card);
           if (card.size === 'Fledgling' && track > 0 && (walked.training ?? 0) < track) {
             s = pushPending(s, {
               kind: 'chooseTrain',
@@ -890,7 +888,7 @@ function abilityCandidates(
     const types = cardAbilityTypes(card);
     // Fledgling purple abilities are inactive until fully trained.
     if (card.size === 'Fledgling') {
-      const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+      const track = trainingTrackLength(card);
       if ((d.dragon.training ?? 0) < track) continue;
     }
     const kinds = step.kinds.filter((k) => types.includes(k));
@@ -959,26 +957,12 @@ export const MAT_ICONS: Step[][][] = [
  * Column 4 (index 3) of every cave allows spending 3 items (resources, dragon
  * cards, or cave cards in any combination) to gain 1 coin.
  */
-export const MAT_COVERED_ICONS: Step[][][] = [
-  [
-    [],
-    [],
-    [],
-    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
-  ],
-  [
-    [],
-    [],
-    [],
-    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
-  ],
-  [
-    [],
-    [],
-    [],
-    [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
-  ],
-];
+export const MAT_COVERED_ICONS: Step[][][] = [0, 1, 2].map(() => [
+  [],
+  [],
+  [],
+  [{ op: 'pay', cost: [{ kind: 'item', count: 3 }], then: [{ op: 'gain', items: [{ kind: 'coin', count: 1 }] }] }],
+]);
 
 // ---------------------------------------------------------------------------
 // Pending-step resolution
@@ -1004,9 +988,6 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         else s = { ...s, caveDiscard: [...s.caveDiscard, id] };
       }
       s = setPlayer(s, q);
-      if (!s.pending.length && !Object.values(state.setupOffers).length) {
-        // handled by engine settle
-      }
       delete s.setupOffers[playerId];
       return s;
     }
@@ -1608,7 +1589,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
       if (handPos >= 0) q.hand.splice(handPos, 1);
       q.hand.push(old.cardId);
       const newCard = dragonCard(newCardId);
-      const newTrackLen = newCard.trainingTrack ? parseIcons(newCard.trainingTrack).length : 0;
+      const newTrackLen = trainingTrackLength(newCard);
       const nd: PlayedDragon = {
         cardId: newCardId,
         eggs: Math.min(old.eggs, newCard.capacity),
@@ -1920,7 +1901,7 @@ function placeDragonAt(state: GameState, playerId: PlayerId, cardId: number, pos
       eggs: Math.min(old.eggs, card.capacity),
       tucked: [...old.tucked, old.cardId],
       cached: old.cached,
-      training: Math.min(old.training ?? 0, card.trainingTrack ? parseIcons(card.trainingTrack).length : 0),
+      training: Math.min(old.training ?? 0, trainingTrackLength(card)),
       recurCount: old.recurCount,
     };
     ensureDragonHooks(nd, true);
@@ -2029,7 +2010,7 @@ function tryPlayFree(state: GameState, playerId: PlayerId, cardId: number, ctx?:
     return excavateAt(state, playerId, cave, cardId);
   }
   const r = tryPlayDragonAt(state, playerId, cardId, {}, undefined);
-  if (!r.ok && isDragonCard(cardId)) {
+  if (!r.ok) {
     if (orKeep) {
       const q = clone(player(state, playerId));
       q.hand.push(cardId);
@@ -2055,7 +2036,7 @@ export function runAbility(
   if (!card.ability) return state;
   // Fledgling purple ability requires full training.
   if (card.size === 'Fledgling') {
-    const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
+    const track = trainingTrackLength(card);
     if ((d.training ?? 0) < track) return state;
   }
   const def = parseAbility(card);
@@ -2078,17 +2059,7 @@ function trainAt(
   if (!d0) return s;
   const card = dragonCard(d0.cardId);
   if (card.size !== 'Fledgling' || !card.trainingTrack) return s;
-  const track = parseIcons(card.trainingTrack)
-    .map((t): GainItem | null => {
-      switch (t.kind) {
-        case 'resource': return { kind: 'resource', res: t.res, count: 1 };
-        case 'card': return { kind: 'card', deck: t.deck, count: 1 };
-        case 'coin': return { kind: 'coin', count: 1 };
-        case 'egg': return { kind: 'egg', count: 1 };
-        default: return null;
-      }
-    })
-    .filter((i): i is GainItem => i !== null);
+  const track = parseTrainingTrack(card.trainingTrack);
   const times = head.times === 'full' ? track.length - (d0.training ?? 0) : head.times;
   for (let i = 0; i < times; i++) {
     const d = dragon();

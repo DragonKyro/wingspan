@@ -1,7 +1,7 @@
 // Greedy heuristic AI: resolves pending choices sensibly, otherwise prefers
 // entice > excavate > explore > pass.
 
-import { dragonCard, dragonMatchesCond, isDragonCard, parseIcons } from './cards';
+import { dragonCard, dragonMatchesCond, isDragonCard, trainingTrackLength } from './cards';
 import { dragonCost, excavateEggCost, exploreCost, nextEmptySpace } from './actions';
 import { GUILD_TILES, INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import { allDragons, canPay, player } from './helpers';
@@ -197,7 +197,7 @@ export function answerFor(state: GameState, playerId: PlayerId): ChoiceAnswer {
       const fl = allDragons(p).find((d) => {
         const c = dragonCard(d.dragon.cardId);
         // The track length is the number of cost ICONS, not the string length.
-        const track = c.trainingTrack ? parseIcons(c.trainingTrack).length : 0;
+        const track = trainingTrackLength(c);
         return c.size === 'Fledgling' && track > 0 && (d.dragon.training ?? 0) < track;
       });
       if (!fl) return { kind: 'decline' };

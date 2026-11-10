@@ -12,15 +12,11 @@ export type SiteColor = 'blue' | 'purple' | 'green';
 export const SITE_COLORS: SiteColor[] = ['blue', 'purple', 'green'];
 
 /** Number of slot rows on the ocean mat (0-2 sunlight, 3 twilight, 4-5 midnight). */
-export const ROWS = 6;
-export const COLS = 3;
 export const TWILIGHT_ROW = 3;
-export const MIDNIGHT_START_ROW = 4;
 /** Top row (estuaries) and bottom row (deepwater) special slots. */
 export const ESTUARY_ROW = 0;
 export const DEEPWATER_ROW = 5;
 export const DIVERS_PER_WEEK = 6;
-export const WEEKS = 4;
 
 /** A slot on a player's ocean mat: row (0-5) and column (0-2 = blue/purple/green). */
 export interface SlotRef {

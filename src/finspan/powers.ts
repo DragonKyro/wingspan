@@ -14,6 +14,7 @@ import {
   placeCoral,
   setPlayer,
   drawFromDeck,
+  pushPending,
 } from './helpers';
 import { siteIndex } from './helpers';
 import type { GameState, PlayerId, SlotFilter, SlotRef } from './types';
@@ -27,10 +28,6 @@ export function benefitOrder(state: GameState, activeId: PlayerId): PlayerId[] {
     out.push(state.playerOrder[(idx + i) % state.playerOrder.length]!);
   }
   return out;
-}
-
-function push(state: GameState, step: GameState['pending'][number]): GameState {
-  return { ...state, pending: [...state.pending, step] };
 }
 
 /** Does this egg step have any legal target right now? */
@@ -98,30 +95,30 @@ function applyEffect(
       // "Gain any card from your discard pile to your hand. If you have none
       //  remaining, draw the top card of the deck instead." (fish_p12.png)
       if (!canRecoverOrDraw(state, playerId) && !hasPending) return state;
-      return push(state, { kind: 'chooseRecover', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseRecover', playerId, count: 1, optional });
     case 'egg': {
       if (e.onEach) return eggsOnEach(state, playerId, e.filter);
       if (!eggTargetExists(state, playerId, e.filter) && !hasPending) return state;
-      return push(state, { kind: 'chooseEggTargets', playerId, count: 1, filter: e.filter, optional });
+      return pushPending(state, { kind: 'chooseEggTargets', playerId, count: 1, filter: e.filter, optional });
     }
     case 'hatch':
       if (!hasAnyEgg(state, playerId) && !hasPending) return state;
-      return push(state, { kind: 'chooseHatch', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseHatch', playerId, count: 1, optional });
     case 'young':
-      return push(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
     case 'move':
       if (!hasAnyYoung(state, playerId) && !hasPending) return state;
-      return push(state, { kind: 'chooseMove', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseMove', playerId, count: 1, optional });
     case 'consume': {
       // Skip when nothing in hand could be tucked and no prior step is pending.
       const p = getPlayer(state, playerId);
       if (p.hand.length === 0 && !hasPending) return state;
       const onto = e.onto === 'self' ? source : undefined;
-      return push(state, { kind: 'chooseConsume', playerId, count: e.n, onto, optional });
+      return pushPending(state, { kind: 'chooseConsume', playerId, count: e.n, onto, optional });
     }
     case 'playFromHand':
       if (getPlayer(state, playerId).hand.length === 0 && !hasPending) return state;
-      return push(state, {
+      return pushPending(state, {
         kind: 'choosePlayFromHand',
         playerId,
         free: false,
@@ -130,7 +127,7 @@ function applyEffect(
       });
     case 'freePlayFromHand':
       if (getPlayer(state, playerId).hand.length === 0 && !hasPending) return state;
-      return push(state, {
+      return pushPending(state, {
         kind: 'choosePlayFromHand',
         playerId,
         free: true,
@@ -140,10 +137,10 @@ function applyEffect(
       });
     case 'unSchool':
       if (hasAnySchool(state, playerId) || hasPending) {
-        return push(state, { kind: 'chooseUnSchool', playerId, count: 1, optional });
+        return pushPending(state, { kind: 'chooseUnSchool', playerId, count: 1, optional });
       }
       // "or place 1 young instead if you don't have a school token to discard"
-      return push(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional });
     case 'coral': {
       const p = getPlayer(state, playerId);
       if (e.site !== 'any') {
@@ -151,7 +148,7 @@ function applyEffect(
         return p.ocean.corals[col]! >= MAX_CORAL ? state : setPlayer(state, placeCoral(p, col));
       }
       if (p.ocean.corals.every((c) => c >= MAX_CORAL)) return state;
-      return push(state, { kind: 'chooseCoralSite', playerId, count: 1, optional });
+      return pushPending(state, { kind: 'chooseCoralSite', playerId, count: 1, optional });
     }
   }
 }

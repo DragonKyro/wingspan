@@ -4,8 +4,7 @@
 // rotate the first-player token); the final week hands off to the gameEnd
 // phase, whose queue drains in engine.settle().
 
-import { shuffle } from '../shared/rng';
-import { parseAbility } from './abilities';
+import { hasGameEndEffect, parseAbility } from './abilities';
 import {
   dealNautomaDeck,
   getNautomaDecisionCard,
@@ -19,10 +18,12 @@ import {
   appendLog,
   applyPayments,
   drawFromDeck,
+  drawTopFish,
   getPlayer,
   placeCoral,
   placeFish,
   placementError,
+  pushPending,
   setPlayer,
   siteIndex,
   slotAt,
@@ -40,7 +41,6 @@ import type {
   GameState,
   NautomaState,
   NautomaTurnAction,
-  PendingStep,
   PlayFishAction,
   PlayerId,
   SlotRef,
@@ -56,10 +56,6 @@ function requireTurn(state: GameState, action: Action): void {
   if (state.pending.length) throw new Error('resolve pending choices first');
   if (state.turnTookAction) throw new Error('already took an action this turn');
   if (action.playerId !== actor(state)) throw new Error('not your turn');
-}
-
-function pushStep(state: GameState, step: PendingStep): GameState {
-  return { ...state, pending: [...state.pending, step] };
 }
 
 // === play a fish ==========================================================
@@ -105,41 +101,41 @@ export function grantBenefit(state: GameState, playerId: PlayerId, benefit: Bene
       return drawFromDeck(state, playerId, 1);
     case 'discardCard': {
       if (p.hand.length === 0 && !hasPending) return state;
-      return pushStep(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseHandDiscard', playerId, count: 1, optional: true });
     }
     case 'egg': {
       const hasTarget = slots.some(({ slot }) => slot.stack.length > 0 && slot.eggs === 0);
       if (!hasTarget && !hasPending) return state;
-      return pushStep(state, { kind: 'chooseEggTargets', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseEggTargets', playerId, count: 1, optional: true });
     }
     case 'hatch': {
       if (!slots.some(({ slot }) => slot.eggs > 0) && !hasPending) return state;
-      return pushStep(state, { kind: 'chooseHatch', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseHatch', playerId, count: 1, optional: true });
     }
     case 'young':
-      return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
     case 'move': {
       if (!slots.some(({ slot }) => slot.young > 0 || slot.school) && !hasPending) return state;
-      return pushStep(state, { kind: 'chooseMove', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseMove', playerId, count: 1, optional: true });
     }
     case 'consumeHand': {
       if (p.hand.length === 0 && !hasPending) return state;
-      return pushStep(state, { kind: 'chooseConsume', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseConsume', playerId, count: 1, optional: true });
     }
     case 'recoverCard': {
       if (p.discard.length === 0 && !hasPending) {
         // Official FAQ: with an empty discard pile, draw from the deck instead.
         return drawFromDeck(state, playerId, 1);
       }
-      return pushStep(state, { kind: 'chooseRecover', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseRecover', playerId, count: 1, optional: true });
     }
     case 'unSchool': {
       // "Discard a school token, then place 1 young in each of four different
       //  slots. If you do not have a school token to discard, place 1 young."
       if (slots.some(({ slot }) => slot.school) || hasPending) {
-        return pushStep(state, { kind: 'chooseUnSchool', playerId, count: 1, optional: true });
+        return pushPending(state, { kind: 'chooseUnSchool', playerId, count: 1, optional: true });
       }
-      return pushStep(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseYoungSlots', playerId, count: 1, optional: true });
     }
     case 'coralBlue':
     case 'coralPurple':
@@ -150,7 +146,7 @@ export function grantBenefit(state: GameState, playerId: PlayerId, benefit: Bene
     }
     case 'coralAny': {
       if (p.ocean.corals.every((c) => c >= MAX_CORAL)) return state;
-      return pushStep(state, { kind: 'chooseCoralSite', playerId, count: 1, optional: true });
+      return pushPending(state, { kind: 'chooseCoralSite', playerId, count: 1, optional: true });
     }
     default: {
       console.warn(`finspan: unhandled benefit kind ${benefit as string} — benefit dropped`);
@@ -187,7 +183,7 @@ export function doDive(state: GameState, a: DiveAction): GameState {
           (item === 'egg' && pl.some((x) => x.slot.eggs > 0)) ||
           (item === 'young' && pl.some((x) => x.slot.young > 0)) ||
           (item === 'card' && p.hand.length > 0);
-        if (feasible) s = pushStep(s, { kind: 'chooseReefDiscard', playerId: a.playerId, col, item });
+        if (feasible) s = pushPending(s, { kind: 'chooseReefDiscard', playerId: a.playerId, col, item });
       }
     } else if (zoneHasFish(p.ocean, col, zone)) {
       s = grantBenefit(s, a.playerId, bonuses.zones[zi]!);
@@ -274,24 +270,10 @@ export function doNautomaTurn(state: GameState, a: NautomaTurnAction): GameState
   // 3. Play a Fish Card (draw 1 fish; if (all players), human gains benefit once).
   let drawnFishId: number | null = null;
   if (card.playFish) {
-    if (s.deck.length === 0) {
-      const pool = s.players.flatMap((pl) => pl.discard);
-      if (pool.length > 0) {
-        const [deck, rng] = shuffle(s.rngState, pool);
-        s = {
-          ...s,
-          deck,
-          rngState: rng,
-          players: s.players.map((pl) => ({ ...pl, discard: [] })),
-        };
-        s = appendLog(s, 'fish deck reshuffled from all discard piles');
-      }
-    }
-    if (s.deck.length > 0) {
-      drawnFishId = s.deck[s.deck.length - 1]!;
-      s = { ...s, deck: s.deck.slice(0, -1) };
-      nautoma.fish = [...nautoma.fish, drawnFishId];
-    }
+    const top = drawTopFish(s);
+    s = top.s;
+    drawnFishId = top.id;
+    if (drawnFishId != null) nautoma.fish = [...nautoma.fish, drawnFishId];
   }
 
   s = { ...s, nautoma, turnTookAction: true };
@@ -414,12 +396,7 @@ export function doEndTurn(state: GameState, a: EndTurnAction): GameState {
     if (s.nautoma && pid === 'p2') continue;
     const p = getPlayer(s, pid);
     for (const { ref } of allSlots(p.ocean)) {
-      const card = topFish(slotAt(p.ocean, ref));
-      if (!card || card.abilityType !== 'GameEnd' || !card.ability) continue;
-      const parsed = parseAbility(card.ability);
-      if (parsed && !parsed.wave && parsed.effects.length > 0) {
-        queue.push({ playerId: pid, slot: ref });
-      }
+      if (hasGameEndEffect(topFish(slotAt(p.ocean, ref)))) queue.push({ playerId: pid, slot: ref });
     }
   }
   return appendLog(

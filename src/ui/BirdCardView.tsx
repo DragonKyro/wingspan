@@ -11,7 +11,9 @@ import {
   HabitatIcon,
   NestIcon,
   renderWingspanText,
+  TokenIcon,
 } from './svgArt';
+import { shade } from './art/core';
 
 function CostIcons({ card }: { card: BirdCard }) {
   const cost = card.cost;
@@ -114,7 +116,7 @@ export function BirdCardView({
         <div className="bcard-left-stats">
           <div className="bcard-vp" title={`${c.points} Victory Points`}>
             <span className="bcard-vp-num">{c.points}</span>
-            <span className="bcard-feather">🪶</span>
+            <span className="bcard-feather"><TokenIcon kind="feather" size={13} /></span>
           </div>
           <div className="bcard-nest" title={`Nest: ${c.nest} (limit ${c.eggLimit})`}>
             <NestIcon nest={c.nest} size={17} />
@@ -137,6 +139,8 @@ export function BirdCardView({
             wingspan={c.wingspan}
             predator={c.predator}
             beakLeft={c.beakLeft}
+            nest={c.nest}
+            flocking={c.flocking}
           />
           <div className="bcard-wingspan">
             <span>↔ {c.wingspan === '*' ? '*' : `${c.wingspan}cm`}</span>
@@ -149,9 +153,9 @@ export function BirdCardView({
         <div className={`bcard-power pband-${c.powerColor ?? 'white'}`}>
           <div className="bcard-power-head">
             <span>{POWER_LABEL[c.powerColor ?? 'white'] ?? 'POWER'}:</span>
-            {c.predator && <span title="Predator">🦅</span>}
-            {c.flocking && <span title="Flocking">🐦</span>}
-            {c.bonusPower && <span title="Bonus-card power">📜</span>}
+            {c.predator && <TokenIcon kind="predator" size={12} title="Predator" />}
+            {c.flocking && <TokenIcon kind="flock" size={12} title="Flocking" />}
+            {c.bonusPower && <TokenIcon kind="bonus" size={12} title="Bonus-card power" />}
           </div>
           <div className="bpower">{renderWingspanText(c.powerText)}</div>
         </div>
@@ -187,7 +191,7 @@ export function BirdCardView({
                 className="tucked-bar"
                 style={{ width: `${Math.min(100, 18 + played.tucked.length * 14)}%` }}
               />
-              <span className="tucked-count">🂠 ×{played.tucked.length}</span>
+              <span className="tucked-count"><TokenIcon kind="card" size={12} /> ×{played.tucked.length}</span>
             </div>
           )}
         </div>
@@ -217,7 +221,7 @@ export function BonusCardView({
       title={`${c.name}\n${c.condition}\n${c.vpText}`}
     >
       <div className="bonus-head">
-        <b>📜 {c.name}</b>
+        <b><TokenIcon kind="bonus" size={13} /> {c.name}</b>
         {scorePreview !== undefined && <span className="badge">{scorePreview} VP</span>}
       </div>
       <div className="bonus-cond">{renderWingspanText(c.condition)}</div>
@@ -259,6 +263,17 @@ export function HummingbirdCardView({
       <div className="hum-head" style={{ background: accent }}>
         <span className="hum-group">{h.group}</span>
         <span className="hum-beak">{h.beakLeft === false ? '→' : '←'}</span>
+      </div>
+      <div className="hum-art">
+        <BirdIllustration
+          cardId={h.id}
+          name={h.name}
+          habitats={['forest']}
+          wingspan={10}
+          beakLeft={h.beakLeft}
+          form="hum"
+          palette={{ b: accent, h: accent, w: shade(accent, -0.3), u: shade(accent, 0.55), t: shade(accent, -0.35), throat: shade(accent, -0.25) }}
+        />
       </div>
       <div className="hum-name">{h.name}</div>
       <div className="hum-benefit">

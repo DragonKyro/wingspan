@@ -3,7 +3,7 @@
 
 import { shuffle as shuffleSeeded } from '../shared/rng';
 import * as shared from '../shared/state';
-import { dragonCard, dragonMatchesCond, isDragonCard, parseIcons } from './cards';
+import { dragonCard, dragonMatchesCond, isDragonCard, isFullyTrained } from './cards';
 import type {
   Cond,
   Counter,
@@ -160,10 +160,12 @@ export function eggTargetSpots(
     case 'here':
       return ctxPos ? spotsFor([{ cave: ctxPos[0], space: ctxPos[1] }]) : [];
     case 'thisCave':
+    case 'eachInRow':
       return ctxPos
         ? spotsFor(allDragons(p).filter((d) => d.cave === ctxPos[0]).map((d) => ({ cave: d.cave, space: d.space })))
         : [];
     case 'thisColumn':
+    case 'eachInColumn':
       return ctxPos
         ? spotsFor(allDragons(p).filter((d) => d.space === ctxPos[1]).map((d) => ({ cave: d.cave, space: d.space })))
         : [];
@@ -187,14 +189,6 @@ export function eggTargetSpots(
               .map((d) => ({ cave: d.cave, space: d.space })),
           )
         : [];
-    case 'eachInColumn':
-      return ctxPos
-        ? spotsFor(allDragons(p).filter((d) => d.space === ctxPos[1]).map((d) => ({ cave: d.cave, space: d.space })))
-        : [];
-    case 'eachInRow':
-      return ctxPos
-        ? spotsFor(allDragons(p).filter((d) => d.cave === ctxPos[0]).map((d) => ({ cave: d.cave, space: d.space })))
-        : [];
     case 'eachFledgling':
       return spotsFor(
         allDragons(p)
@@ -204,11 +198,7 @@ export function eggTargetSpots(
     case 'eachFullyTrainedFledgling':
       return spotsFor(
         allDragons(p)
-          .filter((d) => {
-            const c = dragonCard(d.dragon.cardId);
-            const track = c.trainingTrack ? parseIcons(c.trainingTrack).length : 0;
-            return c.size === 'Fledgling' && track > 0 && (d.dragon.training ?? 0) >= track;
-          })
+          .filter((d) => isFullyTrained(dragonCard(d.dragon.cardId), d.dragon.training))
           .map((d) => ({ cave: d.cave, space: d.space })),
       );
   }
@@ -482,11 +472,7 @@ export function countCounter(_state: GameState, p: PlayerState, counter: Counter
     case 'trainingTokens':
       return all.reduce((a, d) => a + (d.dragon.training ?? 0), 0);
     case 'fullyTrainedFledglings':
-      return all.filter((d) => {
-        const c = dragonCard(d.dragon.cardId);
-        const track = c.trainingTrack ? parseIcons(c.trainingTrack).length : 0;
-        return c.size === 'Fledgling' && track > 0 && (d.dragon.training ?? 0) >= track;
-      }).length;
+      return all.filter((d) => isFullyTrained(dragonCard(d.dragon.cardId), d.dragon.training)).length;
     case 'filledColumns':
       return [0, 1, 2, 3].filter((col) => p.caves.every((row) => row.spaces[col]!.dragon)).length;
     case 'printedResourceCost': {
@@ -573,30 +559,3 @@ export function evalCond(
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// Item descriptions (for logs)
-
-export function describeItems(items: GainItem[]): string {
-  return items
-    .map((it) => {
-      switch (it.kind) {
-        case 'resource':
-          return `${it.count} ${it.res}`;
-        case 'card':
-          return `${it.count} ${it.deck} card${it.count > 1 ? 's' : ''}`;
-        case 'coin':
-          return `${it.count} coin${it.count > 1 ? 's' : ''}`;
-        case 'guild':
-          return `${it.count} guild advance${it.count > 1 ? 's' : ''}`;
-        case 'egg':
-          return `${it.count} egg${it.count > 1 ? 's' : ''}`;
-        case 'tithe':
-          return `${it.count} tithe${it.count > 1 ? 's' : ''}`;
-        case 'item':
-          return `${it.count} item${it.count > 1 ? 's' : ''}`;
-        case 'vp':
-          return `${it.count} VP`;
-      }
-    })
-    .join(', ');
-}

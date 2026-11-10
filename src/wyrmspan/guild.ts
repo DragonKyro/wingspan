@@ -415,7 +415,6 @@ export const GUILD_TILES: Record<GuildTileId, { name: string; squares: GuildTile
 };
 
 export const BASE_GUILD_TILE_IDS: GuildTileId[] = ['seafarers', 'highlands', 'plains', 'rainforest'];
-export const ACADEMY_GUILD_TILE_IDS: GuildTileId[] = ['merchants', 'gamblers', 'kings', 'veterinary', 'magicians'];
 export const GUILD_TILE_IDS = Object.keys(GUILD_TILES) as GuildTileId[];
 
 // ---------------------------------------------------------------------------

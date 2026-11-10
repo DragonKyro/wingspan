@@ -272,107 +272,47 @@ export function StackedBarChart({
   );
 }
 
-/** Grouped bar chart for comparing players side-by-side across rounds or metrics. */
-export function GroupedBarChart({
-  xLabels,
-  series,
-  yLabel = 'Value',
+/** One stacked-bar segment: [id, label, color, points for a player id]. */
+export type ScorePart<K extends string> = [id: string, label: string, color: string, value: (id: K) => number];
+
+/** End-of-game modal shared by every game: winners, a stacked score
+ *  breakdown per player, and Play Again / Main Menu. */
+export function GameOverModal<K extends string>({
+  title,
+  winners,
+  players,
+  parts,
+  onPlayAgain,
+  onMenu,
 }: {
-  xLabels: string[];
-  series: Series[];
-  yLabel?: string;
+  title: string;
+  winners: string;
+  players: { id: K; name: string }[];
+  parts: ScorePart<K>[];
+  onPlayAgain: () => void;
+  onMenu: () => void;
 }) {
-  const view = useContext(ViewContext);
-  if (view === 'table') {
-    return <StackedBarChart xLabels={xLabels} series={series} yLabel={yLabel} />;
-  }
-
-  const W = 580;
-  const H = 220;
-  const padL = 44;
-  const padR = 18;
-  const padT = 18;
-  const padB = 34;
-  const plotW = W - padL - padR;
-  const plotH = H - padT - padB;
-
-  const allVals = series.flatMap((s) => s.values);
-  const maxVal = Math.max(5, ...allVals, 1);
-  const yTicks = 4;
-
+  const labels = players.map((p) => p.name);
+  const series = parts.map(([id, label, color, value]) => ({ id, label, color, values: players.map((p) => value(p.id)) }));
   return (
-    <div className="ms-chart-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} className="ms-svg" role="img" aria-label={yLabel}>
-        {Array.from({ length: yTicks + 1 }, (_, t) => {
-          const val = Math.round((maxVal * t) / yTicks);
-          const y = padT + plotH - (val / maxVal) * plotH;
-          return (
-            <g key={t}>
-              <line
-                x1={padL}
-                y1={y}
-                x2={W - padR}
-                y2={y}
-                stroke="rgba(255,255,255,0.1)"
-                strokeDasharray={t === 0 ? undefined : '3 3'}
-              />
-              <text x={padL - 8} y={y + 4} textAnchor="end" fill="var(--muted)" fontSize="10">
-                {val}
-              </text>
-            </g>
-          );
-        })}
-
-        {xLabels.map((lbl, ci) => {
-          const slotW = plotW / Math.max(1, xLabels.length);
-          const groupW = slotW * 0.72;
-          const barW = Math.min(34, groupW / Math.max(1, series.length) - 3);
-          const startX = padL + slotW * ci + (slotW - (barW + 3) * series.length) / 2;
-
-          return (
-            <g key={ci}>
-              {series.map((s, si) => {
-                const v = Math.max(0, s.values[ci] ?? 0);
-                const h = (v / maxVal) * plotH;
-                const x = startX + si * (barW + 3);
-                const y = padT + plotH - h;
-                return (
-                  <g key={s.id}>
-                    <rect x={x} y={y} width={barW} height={Math.max(2, h)} rx={2} fill={s.color} />
-                    <text
-                      x={x + barW / 2}
-                      y={y - 4}
-                      textAnchor="middle"
-                      fill="var(--ink)"
-                      fontSize="9.5"
-                      fontWeight="700"
-                    >
-                      {s.values[ci] ?? 0}
-                    </text>
-                  </g>
-                );
-              })}
-              <text
-                x={padL + slotW * (ci + 0.5)}
-                y={H - 10}
-                textAnchor="middle"
-                fill="var(--ink)"
-                fontSize="11"
-                fontWeight="600"
-              >
-                {lbl}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="ms-legend">
-        {series.map((s) => (
-          <span key={s.id} className="ms-legend-item">
-            <span className="ms-swatch" style={{ background: s.color }} />
-            <span>{s.label}</span>
-          </span>
-        ))}
+    <div className="rules-modal-backdrop">
+      <div className="rules-modal gameover-modal">
+        <div className="rules-modal-header">
+          <h3>🏆 {title} — Final Scores (Winner: {winners})</h3>
+          <div className="row">
+            <button type="button" className="primary" onClick={onPlayAgain}>
+              ↻ Play Again
+            </button>
+            <button type="button" className="secondary" onClick={onMenu}>
+              ⌂ Main Menu
+            </button>
+          </div>
+        </div>
+        <div className="rules-modal-content">
+          <StatsTabs tabs={[{ key: 'breakdown', label: 'Score Breakdown' }]}>
+            {() => <StackedBarChart xLabels={labels} series={series} />}
+          </StatsTabs>
+        </div>
       </div>
     </div>
   );

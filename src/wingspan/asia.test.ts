@@ -3,7 +3,6 @@
 // modes end-to-end.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/wingspan/ai/choices';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { bird, BIRDS } from './cards';
 import { createGame } from './createGame';
@@ -14,10 +13,12 @@ import {
   getPlayer,
   playedBirds,
   totalEggs,
+  totalFood,
 } from './helpers';
-import { firePinkTriggers, hasPowerImpl, runPower, setPlayer } from './powers';
+import { firePinkTriggers, hasPowerImpl, runPower } from './powers';
 import { bonusCardVp } from './scoring';
-import type { BirdRef, FoodType, GameState, PlayerState } from './types';
+import type { GameState } from './types';
+import { autoResolve, autoSetup, edit, gameFactory, mkBird, ref } from './testUtils';
 
 const COLORS = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'] as const;
 
@@ -46,61 +47,7 @@ const WOODCOCK = 13; // core, no power, ground nest.
 const KILLDEER = 19; // Baird's Sparrow — core, ground nest, ws 23.
 const AMERICAN_COOT = 5; // core platform nest, egg limit 5.
 
-function newGame(seed = 42, sets = ['core', 'asia']): GameState {
-  return createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: ['red', 'blue'],
-    seed,
-    settings: { sets },
-  });
-}
-
-function autoSetup(s: GameState): GameState {
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(0, 2),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed'],
-    });
-  }
-  return s;
-}
-
-/** Drain pending steps with the greedy AI answers. */
-function autoResolve(s: GameState): GameState {
-  let guard = 0;
-  while (s.pending.length > 0 && guard++ < 100) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
-
-function edit(s: GameState, pid: `p${number}`, patch: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...patch });
-}
-
-function mkBird(cardId: number, extra: Partial<import('./types').PlayedBird> = {}) {
-  return {
-    cardId,
-    eggs: 0,
-    tucked: [] as number[],
-    cached: [] as FoodType[],
-    ...extra,
-  };
-}
-
-const ref = (habitat: 'forest' | 'grassland' | 'wetland', index: number): BirdRef => ({
-  habitat,
-  index,
-});
+const newGame = gameFactory(['core', 'asia']);
 
 const mainGame = (seed = 42): GameState => {
   const s = autoSetup(newGame(seed));
@@ -129,7 +76,7 @@ describe('asia powers', () => {
     // The victim is offered a replacement wild food.
     expect(s.pending.some((st) => st.kind === 'chooseSupplyFood' && st.playerId === 'p2')).toBe(true);
     s = autoResolve(s);
-    expect(totalFoods(getPlayer(s, 'p2'))).toBeGreaterThanOrEqual(1);
+    expect(totalFood(getPlayer(s, 'p2'))).toBeGreaterThanOrEqual(1);
   });
 
   it('Smew: draws 4, tucks 2 behind itself and keeps the other 2', () => {
@@ -491,7 +438,3 @@ describe('flock mode', () => {
     expect(s.finalScores).not.toBeNull();
   });
 });
-
-function totalFoods(p: PlayerState): number {
-  return Object.values(p.food).reduce((a, b) => a + b, 0);
-}

@@ -2,7 +2,7 @@
 // drops infeasible pending steps, drains the game-end ability queue, and
 // computes final scores / winner.
 
-import { parseAbility } from './abilities';
+import { hasGameEndEffect } from './abilities';
 import { doDive, doEndTurn, doNautomaTurn, doPlayFish } from './actions';
 import { appendLog, getPlayer, slotAt, topFish } from './helpers';
 import { fireAbility } from './powers';
@@ -47,11 +47,8 @@ export function settle(state: GameState): GameState {
     // Re-read the visible fish — an earlier game-end ability may have
     // covered it, in which case its ability is gone too.
     const card = topFish(slotAt(p.ocean, head.slot));
-    if (card && card.abilityType === 'GameEnd' && card.ability) {
-      const parsed = parseAbility(card.ability);
-      if (parsed && !parsed.wave && parsed.effects.length > 0) {
-        s = fireAbility(s, head.playerId, card.ability, head.slot, `${card.name} (game end)`);
-      }
+    if (hasGameEndEffect(card)) {
+      s = fireAbility(s, head.playerId, card.ability, head.slot, `${card.name} (game end)`);
     }
     s = dropInfeasible(s);
   }

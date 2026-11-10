@@ -3,41 +3,26 @@
 // unit count and banks VP per the escalating table below (ties are friendly:
 // tied players share the same rank and its VP).
 
-import { dragonCard, dragonMatchesCond, parseIcons } from './cards';
+import { dragonCard, dragonMatchesCond, isFullyTrained } from './cards';
+import { allDragons, eggsOnMatCount } from './helpers';
 import type { DragonCond, GameState, ObjectiveId, PlayerId, PlayerState } from './types';
 import { CAVE_IDS } from './types';
 
 // ---------------------------------------------------------------------------
 // Unit counting helpers (shared with end-game counters where possible)
 
-export function dragonsOnMat(p: PlayerState): { cave: number; space: number; cardId: number }[] {
-  const out: { cave: number; space: number; cardId: number }[] = [];
-  p.caves.forEach((row, cave) =>
-    row.spaces.forEach((sp, space) => {
-      if (sp.dragon) out.push({ cave, space, cardId: sp.dragon.cardId });
-    }),
-  );
-  return out;
-}
-
 function countDragons(p: PlayerState, cond?: DragonCond, caveIdx?: number): number {
-  return dragonsOnMat(p).filter(
-    (d) => (caveIdx === undefined || d.cave === caveIdx) && (!cond || dragonMatchesCond(dragonCard(d.cardId), cond)),
+  return allDragons(p).filter(
+    (d) => (caveIdx === undefined || d.cave === caveIdx) && (!cond || dragonMatchesCond(dragonCard(d.dragon.cardId), cond)),
   ).length;
 }
 
-function eggsOnMat(p: PlayerState): number {
-  let n = p.nestEggs;
-  for (const d of dragonsOnMat(p)) n += p.caves[d.cave].spaces[d.space].dragon!.eggs;
-  return n;
-}
-
 function tuckedCards(p: PlayerState): number {
-  return dragonsOnMat(p).reduce((a, d) => a + p.caves[d.cave].spaces[d.space].dragon!.tucked.length, 0);
+  return allDragons(p).reduce((a, d) => a + d.dragon.tucked.length, 0);
 }
 
 function cachedResources(p: PlayerState): number {
-  return dragonsOnMat(p).reduce((a, d) => a + p.caves[d.cave].spaces[d.space].dragon!.cached.length, 0);
+  return allDragons(p).reduce((a, d) => a + d.dragon.cached.length, 0);
 }
 
 function caveCardsOnMat(p: PlayerState): number {
@@ -76,7 +61,7 @@ export const OBJECTIVES: Record<ObjectiveId, ObjectiveDef> = {
   playfulDragons: { label: 'PLAYFUL dragons', unit: (_s, p) => countDragons(p, { personality: 'Playful' }) },
   helpfulDragons: { label: 'HELPFUL dragons', unit: (_s, p) => countDragons(p, { personality: 'Helpful' }) },
   aggressiveDragons: { label: 'AGGRESSIVE dragons', unit: (_s, p) => countDragons(p, { personality: 'Aggressive' }) },
-  eggsOnMat: { label: 'eggs on your player mat', unit: (_s, p) => eggsOnMat(p) },
+  eggsOnMat: { label: 'eggs on your player mat', unit: (_s, p) => eggsOnMatCount(p) },
   tuckedCards: { label: 'tucked cards', unit: (_s, p) => tuckedCards(p) },
   cachedResources: { label: 'cached resources', unit: (_s, p) => cachedResources(p) },
   totalDragons: { label: 'dragons on your player mat', unit: (_s, p) => countDragons(p) },
@@ -103,18 +88,13 @@ export const OBJECTIVES: Record<ObjectiveId, ObjectiveDef> = {
   costGold: { label: 'dragons costing [Gold]', unit: (_s, p) => countDragons(p, { costHas: 'gold' }) },
   vp4PlusDragons: {
     label: 'dragons worth 4+ VP',
-    unit: (_s, p) => dragonsOnMat(p).filter((d) => dragonCard(d.cardId).vp >= 4).length,
+    unit: (_s, p) => allDragons(p).filter((d) => dragonCard(d.dragon.cardId).vp >= 4).length,
   },
   fledglingsOnMat: { label: 'fledglings on your player mat', unit: (_s, p) => countDragons(p, { size: 'Fledgling' }) },
   trainedFledglings: {
     label: 'fully trained fledglings',
     unit: (_s, p) =>
-      dragonsOnMat(p).filter((d) => {
-        const played = p.caves[d.cave].spaces[d.space].dragon!;
-        const card = dragonCard(d.cardId);
-        const track = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
-        return card.size === 'Fledgling' && track > 0 && (played.training ?? 0) >= track;
-      }).length,
+      allDragons(p).filter((d) => isFullyTrained(dragonCard(d.dragon.cardId), d.dragon.training)).length,
   },
   coinsSpentEntice: {
     label: 'coins spent enticing dragons',

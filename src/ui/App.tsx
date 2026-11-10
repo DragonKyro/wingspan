@@ -9,6 +9,7 @@ import { GameScreen } from './GameScreen';
 import { WyrmspanScreen } from './WyrmspanScreen';
 import { FinspanScreen } from './FinspanScreen';
 import { AIDriver } from './AIDriver';
+import { ArtDefs } from './art/core';
 
 export function App() {
   const activeGameId = useGameStore((s) => s.activeGameId);
@@ -34,6 +35,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <ArtDefs />
       <header className="app-header">
         <div
           className="brand"

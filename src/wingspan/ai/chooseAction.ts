@@ -16,6 +16,7 @@ import {
   actionSlot,
   birdCount,
   canPayFood,
+  costTotal,
   getPlayer,
   isAutoma,
   isOceania,
@@ -49,16 +50,9 @@ function cardValue(c: BirdCard, round: number): number {
   else if (c.powerColor === 'teal') v += round >= 2 ? 2.5 : 1;
   v += Math.min(c.eggLimit, 4) * 0.5;
   v += (c.habitats.length - 1) * 0.5;
-  const cost = costUnits(c);
+  const cost = costTotal(c.cost);
   v -= cost * 0.7;
   return v;
-}
-
-function costUnits(c: BirdCard): number {
-  if (c.cost.kind === 'none') return 0;
-  if (c.cost.kind === 'any') return c.cost.count;
-  if (c.cost.kind === 'or') return 1;
-  return c.cost.items.reduce((n, i) => n + i.count, 0);
 }
 
 /** Where `card` can live, preferring the habitat whose action row pays more. */

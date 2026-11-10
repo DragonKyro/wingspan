@@ -221,10 +221,6 @@ export function exchange(state: GameState, playerId: PlayerId, give: [Resource, 
 // ---------------------------------------------------------------------------
 // Turn helpers
 
-export function turnPlayersDone(state: GameState): boolean {
-  return state.players.every((p) => p.passed);
-}
-
 export function nextTurnPlayer(state: GameState): PlayerId {
   const order = state.playerOrder;
   for (let k = 1; k <= order.length; k++) {

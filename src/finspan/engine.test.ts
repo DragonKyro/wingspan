@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseAbility } from './abilities';
 import { grantBenefit } from './actions';
-import { chooseAction } from './ai/chooseAction';
 import { ACHIEVEMENTS, FISH } from './cards';
 import {
   DIVE_BONUSES,
@@ -13,13 +12,13 @@ import {
   FORAGE_SHOWY_BRISTLEMOUTH,
   INITIAL_OCEAN,
 } from './constants';
-import { createGame } from './createGame';
 import { applyAction } from './engine';
 import {
   addYoung,
   allSlots,
   applyMove,
   buildInitialOcean,
+  drawFromDeck,
   getPlayer,
   removeSchool,
   setPlayer,
@@ -27,31 +26,15 @@ import {
 } from './helpers';
 import { gameEndWavePoints, scoreAchievement, scorePlayer, waveCondMet } from './scoring';
 import type { PlayerState } from './types';
+import { aiGame, runAI } from './testUtils';
 
-function newGame(seed: number, players = 2, sets = ['base']) {
-  return createGame({
-    playerNames: Array.from({ length: players }, (_, i) => `P${i + 1}`),
-    playerTypes: Array.from({ length: players }, () => 'ai' as const),
-    playerColors: Array.from({ length: players }, (_, i) => `c${i}`),
-    seed,
-    settings: { sets, achievementSide: 'A' },
-  });
-}
+const newGame = (seed: number, players = 2, sets = ['base']) => aiGame(seed, players, { sets, achievementSide: 'A' });
 
 /** Drive a game to completion with the heuristic AI. */
 function runGame(seed: number, players = 2, sets = ['base'], maxActions = 5000) {
-  let s = newGame(seed, players, sets);
   const actions: unknown[] = [];
-  let n = 0;
-  while (s.phase !== 'gameOver' && n < maxActions) {
-    const pid = s.pending.length ? s.pending[0]!.playerId : s.playerOrder[s.currentPlayerIndex]!;
-    const a = chooseAction(s, pid);
-    if (!a) throw new Error(`AI stuck at action ${n} (phase ${s.phase})`);
-    s = applyAction(s, a as never);
-    actions.push(a);
-    n++;
-  }
-  return { state: s, actions, actionCount: n };
+  const state = runAI(newGame(seed, players, sets), maxActions, (a) => actions.push(a));
+  return { state, actions, actionCount: actions.length };
 }
 
 describe('ability parser', () => {
@@ -203,6 +186,22 @@ describe('setup', () => {
       { zones: ['hatch', 'hatch', 'move'], bottom: 'move' },
     ]);
     expect(s.deck.length).toBe(125 - 6); // 2 players x 3 mains
+  });
+
+  it('keeps every card drawn when the deck reshuffles mid-draw', () => {
+    let s = newGame(42);
+    const [a, b, c, d] = s.deck.slice(-4) as [number, number, number, number];
+    // 1 card left in the deck; 3 in the discard piles (shuffled in on empty).
+    s = { ...s, deck: [a] };
+    s = setPlayer(s, { ...getPlayer(s, 'p1'), discard: [b] });
+    s = setPlayer(s, { ...getPlayer(s, 'p2'), discard: [c, d] });
+    const before = getPlayer(s, 'p1').hand;
+    s = drawFromDeck(s, 'p1', 3);
+    const drawn = getPlayer(s, 'p1').hand.slice(before.length);
+    expect(drawn).toHaveLength(3);
+    expect(drawn[0]).toBe(a);
+    expect([...drawn.slice(1), ...s.deck].sort()).toEqual([b, c, d].sort());
+    expect(s.players.every((p) => p.discard.length === 0)).toBe(true);
   });
 });
 

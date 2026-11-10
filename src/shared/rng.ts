@@ -40,9 +40,3 @@ export function rollBirdfeeder<T>(state: number, faces: readonly T[], n: number)
   }
   return [out, s];
 }
-
-export function pickOne<T>(state: number, arr: readonly T[]): [T, number] {
-  if (arr.length === 0) throw new Error('pickOne: empty array');
-  const [idx, s] = rngInt(state, arr.length);
-  return [arr[idx]!, s];
-}

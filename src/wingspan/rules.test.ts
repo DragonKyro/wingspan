@@ -5,7 +5,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
-import { greedyChoice } from '@/wingspan/ai/choices';
 import { finishRound, internals } from './actions';
 import { bird, BIRDS, BONUS_CARDS } from './cards';
 import { HUM_BONUS_SPACES } from './constants';
@@ -13,9 +12,10 @@ import { createGame } from './createGame';
 import { DUET_MAP, duetFoodsFor, FLOCK_GOAL_POINTS } from './duetMap';
 import { applyAction, settle } from './engine';
 import { actingPlayerId, getPlayer } from './helpers';
-import { firePinkTriggers, resetPinkFlags, runPower, setPlayer } from './powers';
+import { firePinkTriggers, resetPinkFlags, runPower } from './powers';
 import { bonusCardVp, bonusUnits, finalScore, goalScore, nectarPoints } from './scoring';
-import type { BirdRef, GameState, PlayerId, PlayerState, PlayedBird } from './types';
+import type { GameState, PlayerId, PlayerState } from './types';
+import { autoResolve, autoSetup, edit, gameFactory, mkBird, ref } from './testUtils';
 
 const COMMON_YELLOWTHROAT = 94; // brown: draw 2, discard 1 at end of turn.
 const EASTERN_KINGBIRD = 104; // pink: +1 invertebrate when another plays in forest.
@@ -24,54 +24,7 @@ const KILLDEER = 157; // brown: discard 1 egg to draw 2 cards.
 const WOODCOCK = 13; // no power.
 const CARDS_IN_HAND_GOAL = 2008;
 
-function newGame(seed = 42, sets = ['core']): GameState {
-  return createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: ['red', 'blue'],
-    seed,
-    settings: { sets },
-  });
-}
-
-function autoSetup(s: GameState): GameState {
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(0, 2),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed'],
-    });
-  }
-  return s;
-}
-
-function autoResolve(s: GameState): GameState {
-  let guard = 0;
-  while (s.pending.length > 0 && guard++ < 100) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
-
-function edit(s: GameState, pid: `p${number}`, patch: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...patch });
-}
-
-function mkBird(cardId: number, extra: Partial<PlayedBird> = {}): PlayedBird {
-  return { cardId, eggs: 0, tucked: [], cached: [], ...extra };
-}
-
-const ref = (habitat: 'forest' | 'grassland' | 'wetland', index: number): BirdRef => ({
-  habitat,
-  index,
-});
+const newGame = gameFactory(['core']);
 
 describe('end-of-turn discard', () => {
   it('resolving the queued discard finishes the turn for the next player', () => {

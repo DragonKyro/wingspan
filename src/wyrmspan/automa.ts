@@ -253,6 +253,25 @@ export function placeAutomaGuildMarker(state: GameState, guildOval: number): Gam
   return log(s, `Automa placed a guild marker on square ${targetIdx + 1}`);
 }
 
+/** Automa takes the display card in `slot` (1-based; the first card shown
+ *  when that slot is empty) and immediately refills the gap from the deck. */
+function automaTakeFromDisplay(state: GameState, deck: 'dragon' | 'cave', slot: number): GameState {
+  const key = deck === 'dragon' ? 'dragonDisplay' : 'caveDisplay';
+  const disp = [...state[key]];
+  const idx = disp[slot - 1] != null ? slot - 1 : disp.findIndex((c) => c !== null);
+  const takenId = idx >= 0 ? disp[idx]! : null;
+  if (idx >= 0) disp[idx] = null;
+  const [refill, s] = drawCards({ ...state, [key]: disp }, deck, 1);
+  const refillIdx = disp.indexOf(null);
+  if (refillIdx >= 0 && refill[0] !== undefined) disp[refillIdx] = refill[0];
+  const a = s.automa!;
+  const automa =
+    deck === 'dragon'
+      ? { ...a, collectedDragons: a.collectedDragons + 1, dragonCards: takenId !== null ? [...a.dragonCards, takenId] : a.dragonCards }
+      : { ...a, collectedCaves: a.collectedCaves + 1, caveCards: takenId !== null ? [...a.caveCards, takenId] : a.caveCards };
+  return log({ ...s, [key]: disp, automa }, `Automa took ${deck === 'dragon' ? 'dragon' : 'cave card'} from display slot ${slot}`);
+}
+
 /**
  * Resolve the `IF BROWN SPACE` section of `card` after Automa's guild token
  * finishes advancing and has moved onto or past either brown space (0 or 6).
@@ -261,69 +280,9 @@ export function resolveAutomaBrownSpace(state: GameState, card: AutomaCardDef): 
   if (!state.automa) return state;
   let s = state;
 
-  // 1. Take dragon from display[dragonSlot - 1] and immediately refill that slot.
-  if (card.brownSpace.dragonSlot !== null) {
-    const slotIdx = card.brownSpace.dragonSlot - 1;
-    let takenId = s.dragonDisplay[slotIdx] ?? null;
-    const disp = [...s.dragonDisplay];
-    if (takenId !== null) {
-      disp[slotIdx] = null;
-    } else {
-      const fallbackIdx = disp.findIndex((c) => c !== null);
-      if (fallbackIdx >= 0) {
-        takenId = disp[fallbackIdx]!;
-        disp[fallbackIdx] = null;
-      }
-    }
-    const [refill, s2] = drawCards({ ...s, dragonDisplay: disp }, 'dragon', 1);
-    s = s2;
-    const refillIdx = disp.indexOf(null);
-    if (refillIdx >= 0 && refill[0] !== undefined) {
-      disp[refillIdx] = refill[0];
-    }
-    s = {
-      ...s,
-      dragonDisplay: disp,
-      automa: {
-        ...s.automa!,
-        collectedDragons: s.automa!.collectedDragons + 1,
-        dragonCards: takenId !== null ? [...s.automa!.dragonCards, takenId] : s.automa!.dragonCards,
-      },
-    };
-    s = log(s, `Automa took dragon from display slot ${card.brownSpace.dragonSlot}`);
-  }
-
-  // 2. Take cave card from display[caveSlot - 1] and immediately refill that slot.
-  if (card.brownSpace.caveSlot !== null) {
-    const slotIdx = card.brownSpace.caveSlot - 1;
-    let takenId = s.caveDisplay[slotIdx] ?? null;
-    const disp = [...s.caveDisplay];
-    if (takenId !== null) {
-      disp[slotIdx] = null;
-    } else {
-      const fallbackIdx = disp.findIndex((c) => c !== null);
-      if (fallbackIdx >= 0) {
-        takenId = disp[fallbackIdx]!;
-        disp[fallbackIdx] = null;
-      }
-    }
-    const [refill, s2] = drawCards({ ...s, caveDisplay: disp }, 'cave', 1);
-    s = s2;
-    const refillIdx = disp.indexOf(null);
-    if (refillIdx >= 0 && refill[0] !== undefined) {
-      disp[refillIdx] = refill[0];
-    }
-    s = {
-      ...s,
-      caveDisplay: disp,
-      automa: {
-        ...s.automa!,
-        collectedCaves: s.automa!.collectedCaves + 1,
-        caveCards: takenId !== null ? [...s.automa!.caveCards, takenId] : s.automa!.caveCards,
-      },
-    };
-    s = log(s, `Automa took cave card from display slot ${card.brownSpace.caveSlot}`);
-  }
+  // 1–2. Take the dragon / cave card from display[slot - 1] and refill that slot.
+  if (card.brownSpace.dragonSlot !== null) s = automaTakeFromDisplay(s, 'dragon', card.brownSpace.dragonSlot);
+  if (card.brownSpace.caveSlot !== null) s = automaTakeFromDisplay(s, 'cave', card.brownSpace.caveSlot);
 
   // 3. Place a guild marker if available.
   if (card.brownSpace.guildOval !== null) {

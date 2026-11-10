@@ -14,7 +14,7 @@ import {
 import { roomLink } from '@/net';
 import type { GameId } from '@/net/types';
 import { SETS } from '@/wingspan/cards';
-import { ColorSwatchPicker } from './MenuScreen';
+import { ColorSwatchPicker, OptionGroup, Pill } from './MenuScreen';
 import { RulesModal } from './RulesBook';
 
 export function LobbyScreen() {
@@ -72,14 +72,9 @@ export function LobbyScreen() {
           {isHost ? (
             <div className="pill-group">
               {(['wingspan', 'wyrmspan', 'finspan'] as const).map((gid) => (
-                <button
-                  key={gid}
-                  type="button"
-                  className={gameId === gid ? 'primary' : 'secondary'}
-                  onClick={() => hostSetGame(defaultLobbyGame(gid))}
-                >
+                <Pill key={gid} on={gameId === gid} onClick={() => hostSetGame(defaultLobbyGame(gid))}>
                   {GAME_TITLES[gid].name}
-                </button>
+                </Pill>
               ))}
             </div>
           ) : (
@@ -150,133 +145,99 @@ export function LobbyScreen() {
         <h4 className="lobby-section-h">Options {isHost ? '' : '(set by host)'}</h4>
         {gameId === 'wingspan' && (
           <div className="options-stack">
-            <div className="option-group">
-              <span className="option-label">Mode:</span>
-              <div className="pill-group">
-                {(['standard', 'duet', 'flock'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    disabled={!isHost}
-                    className={(g.mode ?? 'standard') === m ? 'primary' : 'secondary'}
-                    onClick={() => hostSetGame({ ...g, mode: m })}
-                  >
-                    {m === 'standard' ? 'Standard' : m === 'duet' ? 'Asia Duet (2p)' : 'Asia Flock (6–7p)'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="option-group">
-              <span className="option-label">Goal Side:</span>
-              <div className="pill-group">
-                <button
-                  type="button"
+            <OptionGroup label="Mode:">
+              {(['standard', 'duet', 'flock'] as const).map((m) => (
+                <Pill
+                  key={m}
+                  on={(g.mode ?? 'standard') === m}
                   disabled={!isHost}
-                  className={(g.goalSide ?? 'green') === 'green' ? 'primary' : 'secondary'}
-                  onClick={() => hostSetGame({ ...g, goalSide: 'green' })}
+                  onClick={() => hostSetGame({ ...g, mode: m })}
                 >
-                  🟩 Green (Majority)
-                </button>
-                <button
-                  type="button"
-                  disabled={!isHost}
-                  className={g.goalSide === 'blue' ? 'primary' : 'secondary'}
-                  onClick={() => hostSetGame({ ...g, goalSide: 'blue' })}
-                >
-                  🟦 Blue (1 pt/item)
-                </button>
-              </div>
-            </div>
-            <div className="option-group">
-              <span className="option-label">Sets:</span>
-              <div className="pill-group">
-                {LOBBY_SETS.filter((s) => (SETS as string[]).includes(s.id)).map((s) => {
-                  const on = g.sets.includes(s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      disabled={!isHost}
-                      className={on ? 'primary' : 'secondary'}
-                      onClick={() => toggleWingspanSet(s.id)}
-                    >
-                      {on ? '✓ ' : ''}
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                  {m === 'standard' ? 'Standard' : m === 'duet' ? 'Asia Duet (2p)' : 'Asia Flock (6–7p)'}
+                </Pill>
+              ))}
+            </OptionGroup>
+            <OptionGroup label="Goal Side:">
+              <Pill
+                on={(g.goalSide ?? 'green') === 'green'}
+                disabled={!isHost}
+                onClick={() => hostSetGame({ ...g, goalSide: 'green' })}
+              >
+                🟩 Green (Majority)
+              </Pill>
+              <Pill
+                on={g.goalSide === 'blue'}
+                disabled={!isHost}
+                onClick={() => hostSetGame({ ...g, goalSide: 'blue' })}
+              >
+                🟦 Blue (1 pt/item)
+              </Pill>
+            </OptionGroup>
+            <OptionGroup label="Sets:">
+              {LOBBY_SETS.filter((s) => (SETS as string[]).includes(s.id)).map((s) => {
+                const on = g.sets.includes(s.id);
+                return (
+                  <Pill key={s.id} on={on} check disabled={!isHost} onClick={() => toggleWingspanSet(s.id)}>
+                    {s.label}
+                  </Pill>
+                );
+              })}
+            </OptionGroup>
           </div>
         )}
 
         {gameId === 'wyrmspan' && (
           <div className="options-stack">
-            <div className="option-group">
-              <span className="option-label">Expansions:</span>
-              <div className="pill-group">
-                <button type="button" className="primary" disabled>
-                  ✓ Base Wyrmspan
-                </button>
-                <button
-                  type="button"
-                  disabled={!isHost}
-                  className={g.expansions?.includes('academy') ? 'primary' : 'secondary'}
-                  onClick={() => {
-                    const has = g.expansions?.includes('academy');
-                    const expansions: ('base' | 'academy')[] = has ? ['base'] : ['base', 'academy'];
-                    hostSetGame({ ...g, sets: expansions, expansions });
-                  }}
-                >
-                  {g.expansions?.includes('academy') ? '✓ ' : ''}Dragon Academy
-                </button>
-              </div>
-            </div>
+            <OptionGroup label="Expansions:">
+              <Pill on check disabled>Base Wyrmspan</Pill>
+              <Pill
+                on={!!g.expansions?.includes('academy')}
+                check
+                disabled={!isHost}
+                onClick={() => {
+                  const has = g.expansions?.includes('academy');
+                  const expansions: ('base' | 'academy')[] = has ? ['base'] : ['base', 'academy'];
+                  hostSetGame({ ...g, sets: expansions, expansions });
+                }}
+              >
+                Dragon Academy
+              </Pill>
+            </OptionGroup>
           </div>
         )}
 
         {gameId === 'finspan' && (
           <div className="options-stack">
-            <div className="option-group">
-              <span className="option-label">Expansions:</span>
-              <div className="pill-group">
-                <button type="button" className="primary" disabled>
-                  ✓ Base Finspan
-                </button>
-                <button
-                  type="button"
-                  disabled={!isHost}
-                  className={g.sets.includes('sr') ? 'primary' : 'secondary'}
-                  onClick={() => {
-                    const has = g.sets.includes('sr');
-                    hostSetGame({ ...g, sets: has ? ['base'] : ['base', 'sr'] });
-                  }}
-                >
-                  {g.sets.includes('sr') ? '✓ ' : ''}Sharks & Reefs
-                </button>
-              </div>
-            </div>
-            <div className="option-group">
-              <span className="option-label">Achievements:</span>
-              <div className="pill-group">
-                <button
-                  type="button"
-                  disabled={!isHost}
-                  className={(g.achievementSide ?? 'A') === 'A' ? 'primary' : 'secondary'}
-                  onClick={() => hostSetGame({ ...g, achievementSide: 'A' })}
-                >
-                  Side A
-                </button>
-                <button
-                  type="button"
-                  disabled={!isHost}
-                  className={g.achievementSide === 'B' ? 'primary' : 'secondary'}
-                  onClick={() => hostSetGame({ ...g, achievementSide: 'B' })}
-                >
-                  Side B (+3 Leader Bonus)
-                </button>
-              </div>
-            </div>
+            <OptionGroup label="Expansions:">
+              <Pill on check disabled>Base Finspan</Pill>
+              <Pill
+                on={g.sets.includes('sr')}
+                check
+                disabled={!isHost}
+                onClick={() => {
+                  const has = g.sets.includes('sr');
+                  hostSetGame({ ...g, sets: has ? ['base'] : ['base', 'sr'] });
+                }}
+              >
+                Sharks & Reefs
+              </Pill>
+            </OptionGroup>
+            <OptionGroup label="Achievements:">
+              <Pill
+                on={(g.achievementSide ?? 'A') === 'A'}
+                disabled={!isHost}
+                onClick={() => hostSetGame({ ...g, achievementSide: 'A' })}
+              >
+                Side A
+              </Pill>
+              <Pill
+                on={g.achievementSide === 'B'}
+                disabled={!isHost}
+                onClick={() => hostSetGame({ ...g, achievementSide: 'B' })}
+              >
+                Side B (+3 Leader Bonus)
+              </Pill>
+            </OptionGroup>
           </div>
         )}
 

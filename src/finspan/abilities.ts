@@ -10,7 +10,7 @@
 //   * "(all players) [XCoral][XCoral] [AllPlayers]" — card art duplicates the
 //     icon (one per "player zone"); each player gains ONE coral.
 
-import type { CardFilter, SiteColor, SlotFilter } from './types';
+import type { CardFilter, FishCard, SiteColor, SlotFilter } from './types';
 
 export type Effect =
   | { kind: 'draw' }
@@ -305,6 +305,14 @@ function parseEffectSeq(text: string): { effects: Effect[]; allPlayers: boolean 
 const cache = new Map<string, ParsedAbility>();
 
 /** Parse an ability string. Returns null for empty/missing text. */
+/** A face-up fish whose GAME END ability does something when resolved
+ *  (wave/points-only game-end abilities are handled by scoring). */
+export function hasGameEndEffect(card: FishCard | null): card is FishCard & { ability: string } {
+  if (!card || card.abilityType !== 'GameEnd' || !card.ability) return false;
+  const parsed = parseAbility(card.ability);
+  return !!parsed && !parsed.wave && parsed.effects.length > 0;
+}
+
 export function parseAbility(raw: string | null): ParsedAbility | null {
   if (!raw) return null;
   const hit = cache.get(raw);

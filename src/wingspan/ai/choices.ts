@@ -4,21 +4,24 @@
 import { bird, hummingbird } from '@/wingspan/cards';
 import { duetEligibleSpaces, duetFoodsFor } from '@/wingspan/duetMap';
 import {
-  adjacentRefs,
   discountFoodCost,
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
-  nestMatches,
   payFoodPlan,
   playEggCost,
   playedBirds,
-  playerToLeft,
-  playerToRight,
   totalEggs,
   wingspanOf,
 } from '@/wingspan/helpers';
-import { costHasFood, faceCovers, hasPowerImpl } from '@/wingspan/powers';
+import { costHasFood, faceCovers } from '@/wingspan/powers';
+import {
+  chooseBirdsEligible,
+  copyPlayedTargets,
+  humSourceOptions,
+  isCopyableBrown,
+  trayCardMatches,
+} from '@/wingspan/resolve';
 import type { BirdRef, Choice, FoodType, GameState, PendingStep, PlayerId } from '@/wingspan/types';
 import { FOOD_TYPES, HABITATS } from '@/wingspan/types';
 
@@ -266,25 +269,7 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'dice', picks };
     }
     case 'chooseBirds': {
-      const adjacent = step.adjacentTo
-        ? new Set(adjacentRefs(p, step.adjacentTo).map((r) => `${r.habitat}:${r.index}`))
-        : null;
-      const eligible: BirdRef[] = playedBirds(p)
-        .filter(({ ref, bird: b }) => {
-          if (step.habitat && ref.habitat !== step.habitat) return false;
-          if (step.exclude && step.exclude.habitat === ref.habitat && step.exclude.index === ref.index) {
-            return false;
-          }
-          if (step.nest && !nestMatches(bird(b.cardId).nest, step.nest)) return false;
-          if (step.eggsMin != null && b.eggs < step.eggsMin) return false;
-          if (step.costFood && !costHasFood(bird(b.cardId), [step.costFood])) return false;
-          if (adjacent && !adjacent.has(`${ref.habitat}:${ref.index}`)) return false;
-          if (step.hasEggs && b.eggs <= 0) return false;
-          if (step.hasCached && b.cached.length === 0) return false;
-          if (step.needRoom && b.eggs >= bird(b.cardId).eggLimit) return false;
-          return true;
-        })
-        .map(({ ref }) => ref);
+      const eligible = chooseBirdsEligible(state, step);
       if (eligible.length < step.min) return null;
       return { kind: 'birds', birds: eligible.slice(0, step.max) };
     }
@@ -314,24 +299,13 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       const target = getPlayer(state, step.target);
       const habitats = step.habitat === 'any' ? HABITATS : [step.habitat];
       for (const h of habitats) {
-        const idx = target.board[h].findIndex((b) => {
-          if (b.ghost) return false;
-          const c = bird(b.cardId);
-          return c.powerColor === 'brown' && !!c.powerText && hasPowerImpl(c.id);
-        });
+        const idx = target.board[h].findIndex(isCopyableBrown);
         if (idx >= 0) return { kind: 'repeatTarget', bird: { habitat: h, index: idx } };
       }
       return null;
     }
     case 'chooseTrayCardEx': {
-      const idx = state.tray.findIndex((id) => {
-        if (id == null) return false;
-        const c = bird(id);
-        if (step.nests && !step.nests.includes(c.nest)) return false;
-        if (step.wingspanLt != null && c.wingspan !== '*' && c.wingspan >= step.wingspanLt) return false;
-        if (step.costFoods && !costHasFood(c, step.costFoods)) return false;
-        return true;
-      });
+      const idx = state.tray.findIndex((id) => id != null && trayCardMatches(step, id));
       if (idx >= 0) return { kind: 'trayPick', cardId: state.tray[idx]! };
       // No qualifying card: reset the tray when allowed.
       if (step.mayResetTray && (state.deck.length > 0 || state.discard.length > 0)) {
@@ -425,19 +399,8 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return { kind: 'handCards', cardIds: step.cardIds.slice(0, n) };
     }
     case 'chooseCopyPlayed': {
-      const neighbors = new Set<PlayerId>();
-      for (const n of [playerToLeft(state, step.playerId), playerToRight(state, step.playerId)]) {
-        if (n) neighbors.add(n);
-      }
-      for (const n of neighbors) {
-        for (const { ref, bird: b } of playedBirds(getPlayer(state, n))) {
-          const c = bird(b.cardId);
-          if (c.powerColor === 'white' && c.powerText && hasPowerImpl(c.id)) {
-            return { kind: 'playedTarget', player: n, bird: ref };
-          }
-        }
-      }
-      return null;
+      const t = copyPlayedTargets(state, step.playerId)[0];
+      return t ? { kind: 'playedTarget', player: t.player, bird: t.bird } : null;
     }
     case 'chooseReroll': {
       // Reroll everything that isn't a rodent (the eagle's target face).
@@ -461,18 +424,9 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
 
     // === americas expansion steps ===
     case 'chooseHumSource': {
-      // Prefer a face-up garden pick over a blind deck draw.
-      for (let i = 0; i < state.humGarden.length; i++) {
-        const id = state.humGarden[i]![state.humGarden[i]!.length - 1];
-        if (id == null) continue;
-        if (step.groups && !step.groups.includes(hummingbird(id).group)) continue;
-        if (p.humReturned.includes(id)) continue;
-        return { kind: 'humPick', source: i };
-      }
-      if (!step.groups && (state.humDeck.length > 0 || state.humDiscard.length > 0)) {
-        return { kind: 'humPick', source: 'deck' };
-      }
-      return null;
+      // Garden slots come before the blind deck draw: prefer a face-up pick.
+      const source = humSourceOptions(state, step)[0];
+      return source == null ? null : { kind: 'humPick', source };
     }
     case 'chooseHumCover': {
       const humId = p.humBoard[step.habitat];

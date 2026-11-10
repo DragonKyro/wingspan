@@ -3,61 +3,19 @@
 // fuzzer hit; src/selfplay.test.ts keeps the broad net.
 
 import { describe, expect, it } from 'vitest';
-import { greedyChoice } from '@/wingspan/ai/choices';
-import { createGame } from './createGame';
 import { applyAction, settle } from './engine';
 import { actingPlayerId, getPlayer, playEggCost } from './helpers';
-import { pushPending, queueHumAction, runPower, setPlayer } from './powers';
-import type { BirdRef, FoodType, GameState, PlayedBird, PlayerState } from './types';
+import { pushPending, queueHumAction, runPower } from './powers';
+import type { GameState } from './types';
+import { autoResolve, autoSetup, edit, gameFactory, mkBird, ref } from './testUtils';
 
 const GRAY_CATBIRD = 131; // brown: repeat a brown power on another bird in this habitat
 const NORTHERN_MOCKINGBIRD = 180; // same text
 const WOODCOCK = 13; // core, no power
 const RUBY_TOPAZ = 2030; // hummingbird
 
-function newGame(sets: string[] = ['core', 'americas']): GameState {
-  let s = createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: ['red', 'blue'],
-    seed: 42,
-    settings: { sets, goalSide: 'green' },
-  });
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(0, 2),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed'],
-    });
-  }
-  return s;
-}
-
-function edit(s: GameState, pid: `p${number}`, patch: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...patch });
-}
-
-function mkBird(cardId: number, extra: Partial<PlayedBird> = {}): PlayedBird {
-  return { cardId, eggs: 0, tucked: [], cached: [] as FoodType[], ...extra };
-}
-
-const ref = (habitat: 'forest' | 'grassland' | 'wetland', index: number): BirdRef => ({ habitat, index });
-
-/** Answer pending steps with the greedy AI until none are left (bounded). */
-function autoResolve(s: GameState, limit = 100): GameState {
-  let n = 0;
-  while (s.pending.length > 0 && n++ < limit) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
+const newGame = (sets = ['core', 'americas']): GameState =>
+  autoSetup(gameFactory(sets, { goalSide: 'green' })());
 
 describe('self-play regressions', () => {
   it('playEggCost includes the Rufous Hornero placeholder discount', () => {

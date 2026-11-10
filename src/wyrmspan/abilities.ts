@@ -12,7 +12,7 @@
 // for patterns that legitimately span sentences ("Draw 3 cards. Keep 1 ...",
 // "Reveal a card. If it is X, A. Otherwise, B.").
 
-import { iconsToGains, parseIcons, type IconToken } from './cards';
+import { caveIdFromName, iconsToGains, parseIcons, type IconToken } from './cards';
 import type {
   AbilityDef,
   AbilityType,
@@ -29,6 +29,7 @@ import type {
   Size,
   Step,
 } from './types';
+import { RESOURCES } from './types';
 
 // ---------------------------------------------------------------------------
 // Small parsing helpers
@@ -96,37 +97,6 @@ const matchSimpleGain: Matcher = (s) => {
   const m = new RegExp(`^Gain (${ICONS})\\.$`).exec(s);
   if (!m) return null;
   return [{ op: 'gain', items: iconsOf(m[1]!) }];
-};
-
-/** "Gain [X]. Each/All opponent(s) [may] gain(s) [Z] (or [W])." */
-const matchGainOpponents: Matcher = (s) => {
-  let m = new RegExp(`^Gain (${ICONS})\\. (?:Each|All) opponents? gains? (${ICONS})\\.$`).exec(s);
-  if (m) {
-    return [
-      { op: 'gain', items: iconsOf(m[1]!) },
-      { op: 'opponentsGain', items: iconsOf(m[2]!) },
-    ];
-  }
-  m = new RegExp(`^Gain (${ICONS})\\. (?:Each|All) opponents? may gain (${ICONS}) or (${ICONS})\\.$`).exec(s);
-  if (m) {
-    const options = [iconsOf(m[2]!), iconsOf(m[3]!)];
-    return [
-      { op: 'gain', items: iconsOf(m[1]!) },
-      { op: 'opponentsMay', steps: [{ op: 'chooseBenefits', count: 1, options }] },
-    ];
-  }
-  return null;
-};
-
-/** "Gain [X]. Each opponent lays [Egg]." */
-const matchGainOppLay: Matcher = (s) => {
-  const m = new RegExp(`^Gain (${ICONS})\\. Each opponent lays ((?:\\[Egg\\]\\s*)+)\\.$`).exec(s);
-  if (!m) return null;
-  const eggs = parseIcons(m[2]!).filter((t) => t.kind === 'egg').length;
-  return [
-    { op: 'gain', items: iconsOf(m[1]!) },
-    { op: 'opponentsGain', items: [{ kind: 'egg', count: eggs }] },
-  ];
 };
 
 /** "Gain <cond-gated> if X, and gain Y if Z." */
@@ -882,11 +852,7 @@ const matchIfCacheTuck: Matcher = (s) => {
   const m = new RegExp(`^If you (cache|tuck) (${ICONS})here, (.*)\\.$`).exec(s);
   if (!m) return null;
   const trigger = m[1]! as 'cache' | 'tuck';
-  const keyIcons = parseIcons(m[2]!);
-  const key: Resource | 'dragonCard' =
-    trigger === 'tuck'
-      ? 'dragonCard'
-      : ((keyIcons.find((i) => i.kind === 'resource') as { res: Resource } | undefined)?.res ?? 'meat');
+  const key = recurringKey(trigger, m[2]!);
   const inner = parseClauses(m[3]! + '.');
   if (inner === null) return null;
   return [{ op: 'recurring', trigger, key, eachSteps: inner, thirdGain: [] }];
@@ -920,8 +886,7 @@ function condOf(text: string): Cond | null {
     t,
   );
   if (m) {
-    const cave = m[1] === 'Crimson Cavern' ? 'crimson' : m[1] === 'Golden Grotto' ? 'golden' : 'amethyst';
-    return { kind: 'leftNeighborGe', cave };
+    return { kind: 'leftNeighborGe', cave: caveIdFromName(m[1]!)! };
   }
   return null;
 }
@@ -961,8 +926,6 @@ const matchLose: Matcher = (s) => {
 };
 
 const MATCHERS: Matcher[] = [
-  matchGainOpponents,
-  matchGainOppLay,
   matchDifferentBenefits,
   matchChooseDouble,
   matchGainThenCache,
@@ -1049,12 +1012,7 @@ function attachTo(steps: Step[], sent: string): Step[] | 'consumed' | null {
   if ((m = new RegExp(`^(?:Each|All) opponents? draws? (${ICONS})from the deck\\.$`).exec(sent))) {
     return [{ op: 'opponentsGain', items: iconsOf(m[1]!) }];
   }
-  const anyResourceOptions: GainItem[][] = [
-    [{ kind: 'resource', res: 'meat', count: 1 }],
-    [{ kind: 'resource', res: 'gold', count: 1 }],
-    [{ kind: 'resource', res: 'crystal', count: 1 }],
-    [{ kind: 'resource', res: 'milk', count: 1 }],
-  ];
+  const anyResourceOptions: GainItem[][] = RESOURCES.map((res) => [{ kind: 'resource', res, count: 1 }]);
   if (/^(?:Each|All) opponents? gains? 1 (?:benefit|resource) of their choice\.$/.test(sent)) {
     const last = steps[steps.length - 1];
     const options = last && last.op === 'chooseBenefits' ? last.options : anyResourceOptions;
@@ -1344,7 +1302,7 @@ function endGameCondOf(text: string): Cond | null {
     if (p) return { kind: 'atLeast', counter: { kind: 'dragons', where: 'column', cond: { personality: p, excludeSelf: true } }, n: 1 };
   }
   if ((m = /^you have (\d+) dragons in your (Crimson Cavern|Golden Grotto|Amethyst Abyss)$/.exec(t))) {
-    const cave = m[2] === 'Crimson Cavern' ? 'crimson' : m[2] === 'Golden Grotto' ? 'golden' : 'amethyst';
+    const cave = caveIdFromName(m[2]!)!;
     return {
       kind: 'atLeast',
       counter: { kind: 'dragons', where: 'namedCave', cave },

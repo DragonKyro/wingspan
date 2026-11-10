@@ -1,11 +1,17 @@
 import { create } from 'zustand';
-import type { Action as WingspanAction, CreateGameOptions as WingspanOptions, GameState as WingspanState } from '@/wingspan/types';
+import type {
+  CreateGameOptions as WingspanOptions,
+  GameState as WingspanState,
+} from '@/wingspan/types';
 import { applyAction as applyWingspan } from '@/wingspan/engine';
 import { createGame as createWingspan } from '@/wingspan/createGame';
-import type { Action as WyrmspanAction, GameState as WyrmspanState } from '@/wyrmspan/types';
+import type { GameState as WyrmspanState } from '@/wyrmspan/types';
 import { applyAction as applyWyrmspan } from '@/wyrmspan/engine';
 import { createGame as createWyrmspan, type CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
-import type { Action as FinspanAction, CreateGameOptions as FinspanOptions, GameState as FinspanState } from '@/finspan/types';
+import type {
+  CreateGameOptions as FinspanOptions,
+  GameState as FinspanState,
+} from '@/finspan/types';
 import { applyAction as applyFinspan } from '@/finspan/engine';
 import { createGame as createFinspan } from '@/finspan/createGame';
 import type { AnyAction, GameId } from '@/net/types';
@@ -75,220 +81,148 @@ interface AppStore {
   dismissError: () => void;
 }
 
-function currentSnap(s: AppStore): GameSnapshot | null {
-  if (!s.game && !s.wyrmspanGame && !s.finspanGame) return null;
+type AnyState = WingspanState | WyrmspanState | FinspanState;
+
+/** Each game's store slot, reducer and constructor. A slot only ever holds
+ *  its own game's state, so the casts at the call sites are safe. */
+const SLOT = { wingspan: 'game', wyrmspan: 'wyrmspanGame', finspan: 'finspanGame' } as const;
+const APPLY: Record<GameId, (state: never, action: never) => AnyState> = {
+  wingspan: applyWingspan,
+  wyrmspan: applyWyrmspan,
+  finspan: applyFinspan,
+};
+const CREATE: Record<GameId, (options: never) => AnyState> = {
+  wingspan: createWingspan,
+  wyrmspan: createWyrmspan,
+  finspan: createFinspan,
+};
+
+/** Store fields making `gameId` the active game (other slots cleared). */
+function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
   return {
-    gameId: s.activeGameId,
-    game: s.game,
-    wyrmspanGame: s.wyrmspanGame,
-    finspanGame: s.finspanGame,
-  };
-}
-
-export const useGameStore = create<AppStore>((set, get) => ({
-  activeGameId: 'wingspan',
-  game: null,
-  wyrmspanGame: null,
-  finspanGame: null,
-  undoStack: [],
-  lastStart: null,
-  error: null,
-  startedAt: null,
-  aiSpeed: 'normal',
-
-  setGameState: (state, startedAt) => {
-    set({
-      activeGameId: 'wingspan',
-      game: state,
-      wyrmspanGame: null,
-      finspanGame: null,
-      undoStack: [],
-      startedAt: startedAt ?? null,
-      error: null,
-    });
-  },
-
-  setWyrmspanState: (state, startedAt) => {
-    set({
-      activeGameId: 'wyrmspan',
-      game: null,
-      wyrmspanGame: state,
-      finspanGame: null,
-      undoStack: [],
-      startedAt: startedAt ?? null,
-      error: null,
-    });
-  },
-
-  setFinspanState: (state, startedAt) => {
-    set({
-      activeGameId: 'finspan',
+      activeGameId: gameId,
       game: null,
       wyrmspanGame: null,
-      finspanGame: state,
+      finspanGame: null,
+      [SLOT[gameId]]: state,
       undoStack: [],
-      startedAt: startedAt ?? null,
       error: null,
-    });
-  },
+    };
+  }
 
-  startLocalGame: (options) => {
-    try {
-      const game = createWingspan(options);
+  const fromSnap = (snap: GameSnapshot): Partial<AppStore> => ({
+    activeGameId: snap.gameId,
+    game: snap.game,
+    wyrmspanGame: snap.wyrmspanGame,
+    finspanGame: snap.finspanGame,
+  });
+
+  function currentSnap(s: AppStore): GameSnapshot | null {
+    if (!s.game && !s.wyrmspanGame && !s.finspanGame) return null;
+    return {
+      gameId: s.activeGameId,
+      game: s.game,
+      wyrmspanGame: s.wyrmspanGame,
+      finspanGame: s.finspanGame,
+    };
+  }
+
+  export const useGameStore = create<AppStore>((set, get) => {
+    /** Start a fresh local match (remembered for Play Again). */
+    const startLocal = (start: NonNullable<AppStore['lastStart']>) => {
+      try {
+        const state = CREATE[start.gameId](start.options as never);
+        set({ ...activate(start.gameId, state), lastStart: start, startedAt: Date.now() });
+      } catch (e) {
+        set({ error: (e as Error).message });
+      }
+    };
+    return {
+    activeGameId: 'wingspan',
+    game: null,
+    wyrmspanGame: null,
+    finspanGame: null,
+    undoStack: [],
+    lastStart: null,
+    error: null,
+    startedAt: null,
+    aiSpeed: 'normal',
+
+    setGameState: (state, startedAt) => set({ ...activate('wingspan', state), startedAt: startedAt ?? null }),
+    setWyrmspanState: (state, startedAt) => set({ ...activate('wyrmspan', state), startedAt: startedAt ?? null }),
+    setFinspanState: (state, startedAt) => set({ ...activate('finspan', state), startedAt: startedAt ?? null }),
+
+    startLocalGame: (options) => startLocal({ gameId: 'wingspan', options }),
+    startLocalWyrmspan: (options) => startLocal({ gameId: 'wyrmspan', options }),
+    startLocalFinspan: (options) => startLocal({ gameId: 'finspan', options }),
+
+    playAgainLocal: () => {
+      const last = get().lastStart;
+      if (!last) return;
+      const seed = Math.floor(Math.random() * 0xffffffff);
+      startLocal({ ...last, options: { ...last.options, seed } } as NonNullable<AppStore['lastStart']>);
+    },
+
+    clearGame: () => {
       set({
-        activeGameId: 'wingspan',
-        game,
+        game: null,
         wyrmspanGame: null,
         finspanGame: null,
         undoStack: [],
-        lastStart: { gameId: 'wingspan', options },
-        startedAt: Date.now(),
+        startedAt: null,
         error: null,
       });
-    } catch (e) {
-      set({ error: (e as Error).message });
-    }
-  },
+    },
 
-  startLocalWyrmspan: (options) => {
-    try {
-      const wyrmspanGame = createWyrmspan(options);
-      set({
-        activeGameId: 'wyrmspan',
-        game: null,
-        wyrmspanGame,
-        finspanGame: null,
-        undoStack: [],
-        lastStart: { gameId: 'wyrmspan', options },
-        startedAt: Date.now(),
-        error: null,
-      });
-    } catch (e) {
-      set({ error: (e as Error).message });
-    }
-  },
-
-  startLocalFinspan: (options) => {
-    try {
-      const finspanGame = createFinspan(options);
-      set({
-        activeGameId: 'finspan',
-        game: null,
-        wyrmspanGame: null,
-        finspanGame,
-        undoStack: [],
-        lastStart: { gameId: 'finspan', options },
-        startedAt: Date.now(),
-        error: null,
-      });
-    } catch (e) {
-      set({ error: (e as Error).message });
-    }
-  },
-
-  playAgainLocal: () => {
-    const last = get().lastStart;
-    if (!last) return;
-    const seed = Math.floor(Math.random() * 0xffffffff);
-    if (last.gameId === 'wingspan') {
-      get().startLocalGame({ ...last.options, seed });
-    } else if (last.gameId === 'wyrmspan') {
-      get().startLocalWyrmspan({ ...last.options, seed });
-    } else {
-      get().startLocalFinspan({ ...last.options, seed });
-    }
-  },
-
-  clearGame: () => {
-    set({
-      game: null,
-      wyrmspanGame: null,
-      finspanGame: null,
-      undoStack: [],
-      startedAt: null,
-      error: null,
-    });
-  },
-
-  dispatch: (action) => {
-    const s = get();
-    const before = currentSnap(s);
-    if (!before) return;
-    const refused = dispatchGuard?.(action);
-    if (refused) {
-      set({ error: refused });
-      return;
-    }
-    const at = Date.now();
-    try {
-      const nextUndo = isOnline() ? [] : [...s.undoStack.slice(-24), before];
-      if (s.activeGameId === 'wingspan' && s.game) {
-        const next = applyWingspan(s.game, action as WingspanAction);
-        set({ game: next, undoStack: nextUndo, error: null });
-      } else if (s.activeGameId === 'wyrmspan' && s.wyrmspanGame) {
-        const next = applyWyrmspan(s.wyrmspanGame, action as WyrmspanAction);
-        set({ wyrmspanGame: next, undoStack: nextUndo, error: null });
-      } else if (s.activeGameId === 'finspan' && s.finspanGame) {
-        const next = applyFinspan(s.finspanGame, action as FinspanAction);
-        set({ finspanGame: next, undoStack: nextUndo, error: null });
-      } else {
+    dispatch: (action) => {
+      const s = get();
+      const before = currentSnap(s);
+      if (!before) return;
+      const refused = dispatchGuard?.(action);
+      if (refused) {
+        set({ error: refused });
         return;
       }
-      broadcastHandler?.(action, before, at);
-    } catch (e) {
-      set({ error: (e as Error).message });
-    }
-  },
-
-  applyLocal: (action) => {
-    const s = get();
-    try {
-      if (s.activeGameId === 'wingspan' && s.game) {
-        set({ game: applyWingspan(s.game, action as WingspanAction) });
-        return true;
+      const at = Date.now();
+      try {
+        const nextUndo = isOnline() ? [] : [...s.undoStack.slice(-24), before];
+        const cur = s[SLOT[s.activeGameId]];
+        if (!cur) return;
+        const next = APPLY[s.activeGameId](cur as never, action as never);
+        set({ [SLOT[s.activeGameId]]: next, undoStack: nextUndo, error: null });
+        broadcastHandler?.(action, before, at);
+      } catch (e) {
+        set({ error: (e as Error).message });
       }
-      if (s.activeGameId === 'wyrmspan' && s.wyrmspanGame) {
-        set({ wyrmspanGame: applyWyrmspan(s.wyrmspanGame, action as WyrmspanAction) });
+    },
+
+    applyLocal: (action) => {
+      const s = get();
+      try {
+        const cur = s[SLOT[s.activeGameId]];
+        if (!cur) return false;
+        set({ [SLOT[s.activeGameId]]: APPLY[s.activeGameId](cur as never, action as never) });
         return true;
+      } catch (e) {
+        console.warn('[gameStore] applyLocal rejected action:', (e as Error).message);
+        return false;
       }
-      if (s.activeGameId === 'finspan' && s.finspanGame) {
-        set({ finspanGame: applyFinspan(s.finspanGame, action as FinspanAction) });
-        return true;
-      }
-      return false;
-    } catch (e) {
-      console.warn('[gameStore] applyLocal rejected action:', (e as Error).message);
-      return false;
-    }
-  },
+    },
 
-  undo: () => {
-    if (isOnline()) return;
-    const stack = get().undoStack;
-    if (stack.length === 0) return;
-    const prev = stack[stack.length - 1]!;
-    set({
-      activeGameId: prev.gameId,
-      game: prev.game,
-      wyrmspanGame: prev.wyrmspanGame,
-      finspanGame: prev.finspanGame,
-      undoStack: stack.slice(0, -1),
-      error: null,
-    });
-  },
+    undo: () => {
+      if (isOnline()) return;
+      const stack = get().undoStack;
+      if (stack.length === 0) return;
+      const prev = stack[stack.length - 1]!;
+      set({ ...fromSnap(prev), undoStack: stack.slice(0, -1), error: null });
+    },
 
-  setAiSpeed: (aiSpeed) => set({ aiSpeed }),
+    setAiSpeed: (aiSpeed) => set({ aiSpeed }),
 
-  takeSnapshot: () => currentSnap(get()),
+    takeSnapshot: () => currentSnap(get()),
 
-  restoreSnapshot: (snap) => {
-    set({
-      activeGameId: snap.gameId,
-      game: snap.game,
-      wyrmspanGame: snap.wyrmspanGame,
-      finspanGame: snap.finspanGame,
-    });
-  },
+    restoreSnapshot: (snap) => set(fromSnap(snap)),
 
-  dismissError: () => set({ error: null }),
-}));
+    dismissError: () => set({ error: null }),
+  };
+});

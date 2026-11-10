@@ -5,15 +5,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
-import { greedyChoice } from '@/wingspan/ai/choices';
 import { hummingbird } from './cards';
 import { HUM_BONUS_SPACES, HUM_GARDEN_SLOTS, HUM_LADDER } from './constants';
 import { createGame } from './createGame';
 import { applyAction, settle } from './engine';
 import { actingPlayerId, getPlayer } from './helpers';
-import { feederReset, moveHumToken, pinkTriggerFor, queueHumAction, runPower, setPlayer } from './powers';
+import { feederReset, moveHumToken, pinkTriggerFor, queueHumAction, runPower } from './powers';
 import { bonusUnits, goalScore } from './scoring';
-import type { BirdRef, FoodType, GameState, PlayerState } from './types';
+import { autoResolve, autoSetup, edit, gameFactory, mkBird, ref, takeSimpleTurn } from './testUtils';
 
 const COLORS = ['red', 'blue'] as const;
 
@@ -42,91 +41,7 @@ const RUBY_TOPAZ = 2030; // card
 const LONG_BILLED_HERMIT = 2033; // advance
 const SPARKLING_VIOLETEAR = 2031; // egg (mango group)
 
-function newGame(seed = 42): GameState {
-  return createGame({
-    playerNames: ['A', 'B'],
-    playerTypes: ['human', 'human'],
-    playerColors: [...COLORS],
-    seed,
-    settings: { sets: ['core', 'americas'] },
-  });
-}
-
-function autoSetup(s: GameState): GameState {
-  while (s.phase === 'setup' && s.setupRemaining.length > 0) {
-    const pid = s.setupRemaining[0]!;
-    const p = getPlayer(s, pid);
-    s = applyAction(s, {
-      type: 'keepSetup',
-      playerId: pid,
-      keepBirds: p.hand.slice(0, 2),
-      keepBonus: p.bonusHand[0]!,
-      discardFood: ['invertebrate', 'seed'],
-    });
-  }
-  return s;
-}
-
-/** Drain pending steps with the greedy AI answers. */
-function autoResolve(s: GameState): GameState {
-  let guard = 0;
-  while (s.pending.length > 0 && guard++ < 100) {
-    const step = s.pending[0]!;
-    const choice = greedyChoice(s, step);
-    if (!choice) throw new Error(`no greedy answer for ${step.kind}`);
-    s = applyAction(s, { type: 'resolveChoice', playerId: step.playerId, choice });
-  }
-  return s;
-}
-
-/** Finish any activation track by activating all remaining powers. */
-function autoActivate(s: GameState): GameState {
-  let guard = 0;
-  while (guard++ < 50) {
-    s = autoResolve(s);
-    if (!s.activation || s.activation.remaining.length === 0) break;
-    s = applyAction(s, { type: 'activatePower', playerId: actingPlayerId(s) });
-  }
-  return autoResolve(s);
-}
-
-function takeSimpleTurn(s: GameState): GameState {
-  const pid = actingPlayerId(s);
-  const p = getPlayer(s, pid);
-  const action: import('./types').Action =
-    p.food.invertebrate + p.food.seed + p.food.fish + p.food.fruit + p.food.rodent >= 2
-      ? { type: 'layEggs', playerId: pid, placements: [] }
-      : {
-          type: 'gainFood',
-          playerId: pid,
-          picks: s.feederIn
-            .map((f, i) => ({ die: i, take: f === 'split' ? ('seed' as const) : undefined }))
-            .slice(0, 1),
-        };
-  s = applyAction(s, action);
-  s = autoActivate(s);
-  s = applyAction(s, { type: 'endTurn', playerId: pid });
-  return autoResolve(s);
-}
-
-function edit(s: GameState, pid: `p${number}`, patch: Partial<PlayerState>): GameState {
-  return setPlayer(s, { ...getPlayer(s, pid), ...patch });
-}
-
-function mkBird(cardId: number, extra: Partial<import('./types').PlayedBird> = {}) {
-  return {
-    cardId,
-    eggs: 0,
-    tucked: [] as number[],
-    cached: [] as FoodType[],
-    ...extra,
-  };
-}
-
-const ref = (habitat: 'forest' | 'grassland' | 'wetland', index: number): BirdRef => ({
-  habitat,
-  index,
-});
+const newGame = gameFactory(['core', 'americas']);
 
 describe('americas expansion', () => {
   it('deals a 5-slot garden, a grassland hummingbird per player, and 5 track tokens', () => {

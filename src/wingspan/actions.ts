@@ -60,7 +60,9 @@ import {
   queueRowHumAction,
   refillFeeder,
   refillHumGarden,
+  drawTopCard,
   refillTray,
+  resetTray,
   resetPinkFlags,
   runPower,
   setPlayer,
@@ -568,12 +570,7 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
     s = setPlayer(s, spendNectarAware(pl, action.resetTrayCost, 'wetland'));
     s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: action.resetTrayCost });
     // Reset: discard all face-up cards, then refill from the deck.
-    s = {
-      ...s,
-      discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
-      tray: [null, null, null],
-    };
-    s = refillTray(s);
+    s = resetTray(s);
     // Re-validate tray picks against the new tray.
     for (const pick of action.picks) {
       if (pick !== 'deck' && s.tray[pick] == null) throw new Error('that tray slot is empty');
@@ -655,23 +652,24 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
     }
     state = setPlayer(state, { ...p, endOfTurnDiscards: 0 });
   }
+  return passTurn(state);
+}
+
+/** End-of-turn maintenance (players and the Automa): refill the tray (and
+ *  the Americas hummingbird garden), then hand the turn to the next player
+ *  with action cubes left — or end the round when nobody has any. */
+function passTurn(state: GameState): GameState {
   let s = refillTray(state);
-  // Americas: empty hummingbird-garden slots refill at the end of each turn.
   if (isAmericas(s)) s = refillHumGarden(s);
-  // Advance to the next player with cubes left.
-  let next = state.currentPlayerIndex;
+  let next = s.currentPlayerIndex;
   let guard = 0;
   do {
     next = (next + 1) % s.playerOrder.length;
     guard++;
   } while (getPlayer(s, s.playerOrder[next]!).actionCubes <= 0 && guard <= s.playerOrder.length);
-  const anyLeft = s.players.some((pl) => pl.actionCubes > 0);
-  if (!anyLeft) {
-    return endRound(s);
-  }
+  if (!s.players.some((pl) => pl.actionCubes > 0)) return endRound(s);
   s = { ...s, currentPlayerIndex: next, turnTookAction: false };
-  s = resetPinkFlags(s, s.playerOrder[next]!);
-  return s;
+  return resetPinkFlags(s, s.playerOrder[next]!);
 }
 
 /** Called by the pending resolver when the queued end-of-turn discard is
@@ -699,44 +697,18 @@ export function duetReset(state: GameState, action: DuetResetAction): GameState 
   if (action.target === 'feeder') {
     s = feederReset(s, action.playerId);
   } else {
-    s = {
-      ...s,
-      discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
-      tray: [null, null, null],
-    };
-    s = refillTray(s);
+    s = resetTray(s);
   }
   return s;
 }
 
 // === automa solo turn ===
 
+/** The Automa takes the top deck card face down (it scores as a bird even
+ *  when the deck and discard are both empty). */
 function drawAutomaFaceDown(state: GameState): { s: GameState; drawnId: number | null } {
-  let deck = state.deck;
-  let discard = state.discard;
-  let rngState = state.rngState;
-  if (deck.length === 0 && discard.length > 0) {
-    [deck, rngState] = shuffle(rngState, discard);
-    discard = [];
-  }
-  let drawnId: number | null = null;
-  if (deck.length > 0) {
-    drawnId = deck[deck.length - 1]!;
-    deck = deck.slice(0, -1);
-  }
-  return {
-    s: {
-      ...state,
-      deck,
-      discard,
-      rngState,
-      automa: {
-        ...state.automa!,
-        faceDownBirds: state.automa!.faceDownBirds + 1,
-      },
-    },
-    drawnId,
-  };
+  const { s, id } = drawTopCard(state);
+  return { s: { ...s, automa: { ...s.automa!, faceDownBirds: s.automa!.faceDownBirds + 1 } }, drawnId: id };
 }
 
 export function automaTurn(state: GameState, playerId: PlayerId): GameState {
@@ -894,22 +866,7 @@ export function automaTurn(state: GameState, playerId: PlayerId): GameState {
     }
   }
 
-  s = refillTray(s);
-  if (isAmericas(s)) s = refillHumGarden(s);
-
-  let next = s.currentPlayerIndex;
-  let guard = 0;
-  do {
-    next = (next + 1) % s.playerOrder.length;
-    guard++;
-  } while (getPlayer(s, s.playerOrder[next]!).actionCubes <= 0 && guard <= s.playerOrder.length);
-  const anyLeft = s.players.some((pl) => pl.actionCubes > 0);
-  if (!anyLeft) {
-    return endRound(s);
-  }
-  s = { ...s, currentPlayerIndex: next, turnTookAction: false };
-  s = resetPinkFlags(s, s.playerOrder[next]!);
-  return s;
+  return passTurn(s);
 }
 
 // === round / game end ===
@@ -927,20 +884,26 @@ function endRound(state: GameState): GameState {
   // 2. score the end-of-round goal, 3. remove action cubes, 4. discard and
   // replace the tray cards, 5. rotate the first-player marker. The teal
   // powers therefore run BEFORE goal scoring — they can change it.
-  const tealQueue: { playerId: PlayerId; bird: BirdRef }[] = [];
+  return { ...state, phase: 'roundEnd', roundEndQueue: powerQueue(state, 'teal') };
+}
+
+/** Every live bird with a `color` power, in turn order from the
+ *  first-player marker then board order (round-end / game-end queues). */
+function powerQueue(state: GameState, color: 'teal' | 'yellow'): { playerId: PlayerId; bird: BirdRef }[] {
+  const queue: { playerId: PlayerId; bird: BirdRef }[] = [];
   for (const pid of turnOrderFromFirst(state)) {
     const p = getPlayer(state, pid);
     for (const h of HABITATS) {
       p.board[h].forEach((b, index) => {
         if (b.ghost) return;
         const c = bird(b.cardId);
-        if (c.powerColor === 'teal' && c.powerText && hasPowerImpl(c.id)) {
-          tealQueue.push({ playerId: pid, bird: { habitat: h, index } });
+        if (c.powerColor === color && c.powerText && hasPowerImpl(c.id)) {
+          queue.push({ playerId: pid, bird: { habitat: h, index } });
         }
       });
     }
   }
-  return { ...state, phase: 'roundEnd', roundEndQueue: tealQueue };
+  return queue;
 }
 
 /** Called by settle() once the roundEnd queue has drained: score the goal,
@@ -1052,12 +1015,7 @@ export function finishRound(state: GameState): GameState {
     }
   }
   // Discard the face-up tray cards and restock from the deck.
-  s = {
-    ...s,
-    discard: [...s.discard, ...s.tray.filter((id): id is number => id != null)],
-    tray: [null, null, null],
-  };
-  s = refillTray(s);
+  s = resetTray(s);
   // Americas: the hummingbird garden is wiped and restocked each round.
   if (isAmericas(s)) {
     s = {
@@ -1128,23 +1086,8 @@ export function finishRound(state: GameState): GameState {
   return beginGameEnd({ ...s, round: nextRound });
 }
 
-export function beginGameEnd(state: GameState): GameState {
-  // Queue every yellow-powered bird, in turn order from the first-player
-  // marker then board order.
-  const queue: { playerId: PlayerId; bird: BirdRef }[] = [];
-  for (const pid of turnOrderFromFirst(state)) {
-    const p = getPlayer(state, pid);
-    for (const h of HABITATS) {
-      p.board[h].forEach((b, index) => {
-        if (b.ghost) return;
-        const c = bird(b.cardId);
-        if (c.powerColor === 'yellow' && c.powerText && hasPowerImpl(c.id)) {
-          queue.push({ playerId: pid, bird: { habitat: h, index } });
-        }
-      });
-    }
-  }
-  return { ...state, phase: 'gameEnd', gameEndQueue: queue };
+function beginGameEnd(state: GameState): GameState {
+  return { ...state, phase: 'gameEnd', gameEndQueue: powerQueue(state, 'yellow') };
 }
 
 /** Advance the roundEnd queue: run the head bird's teal power. */
