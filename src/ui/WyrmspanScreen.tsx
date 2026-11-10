@@ -39,10 +39,13 @@ import type {
 import { ActionToastBanner, FlipProvider, useFlipAnchor, useFlipCard, useValuePulse } from './fx';
 import { GameOverModal } from './MatchCharts';
 import { RulesModal } from './RulesBook';
+import { CreatureCard, FreeCost } from './CreatureCard';
 import {
   AdventurerMeepleSvg,
   DragonIllustration,
+  WYRM_CAVE_COLOR,
   WyrmResourceIcon,
+  WyrmVp,
   playerColorHex,
   renderWyrmspanText,
 } from './svgArt';
@@ -118,14 +121,14 @@ export function WyrmspanScreen() {
               <span>
                 Acting:{' '}
                 <span className="pcolor" style={{ background: playerColorHex(actingP.color) }} />
-                <b>{actingP.name}</b> ({actingP.coins} 🪙 · {actingP.nestEggs} nest 🥚)
+                <b>{actingP.name}</b> (<WyrmResourceIcon kind="coin" size={13} />{actingP.coins} · <WyrmResourceIcon kind="egg" size={13} />{actingP.nestEggs} in nests)
               </span>
               {state.phase === 'setup' && (
                 <span className="badge">Setup — keep 4 cards & pick 3 resources</span>
               )}
               <div className="spacer" />
               <div ref={dragonDeckAnchor} className="deck-pill" title="Dragon & Cave decks">
-                🐉 {state.dragonDeck.length} · 🪨 {state.caveDeck.length}
+                <WyrmResourceIcon kind="dragoncard" size={13} /> {state.dragonDeck.length} · <WyrmResourceIcon kind="cavecard" size={13} /> {state.caveDeck.length}
               </div>
               {connection !== 'in-game' && (
                 <button
@@ -182,7 +185,7 @@ export function WyrmspanScreen() {
           <div className="card">
             <div className="wyrm-common-grid">
               <div>
-                <h3>🐉 Dragon Display</h3>
+                <h3><WyrmResourceIcon kind="dragoncard" size={16} /> Dragon Display</h3>
                 <div className="tray">
                   {state.dragonDisplay.map((id, i) =>
                     id != null ? (
@@ -201,7 +204,7 @@ export function WyrmspanScreen() {
                 </div>
               </div>
               <div>
-                <h3>🪨 Cave Display</h3>
+                <h3><WyrmResourceIcon kind="cavecard" size={16} /> Cave Display</h3>
                 <div className="tray">
                   {state.caveDisplay.map((id, i) =>
                     id != null ? (
@@ -236,7 +239,7 @@ export function WyrmspanScreen() {
                   <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
                   <b>{p.name}</b>
                   <span className="muted">
-                    {p.coins}🪙 · {sc} VP {p.passed ? '(passed)' : ''}
+                    <WyrmResourceIcon kind="coin" size={12} />{p.coins} · <WyrmVp n={sc} size={15} /> {p.passed ? '(passed)' : ''}
                   </span>
                   {pid === actingId && <span className="turn-dot" />}
                 </button>
@@ -332,8 +335,8 @@ export function WyrmspanScreen() {
                         }
                         title="Walk your adventurer left-to-right through this cavern"
                       >
-                        <AdventurerMeepleSvg color={shownP.color} size={15} /> Explore (1🪙
-                        {expCount > 0 ? `+${expCount}🥚` : ''})
+                        <AdventurerMeepleSvg color={shownP.color} size={15} /> Explore (1<WyrmResourceIcon kind="coin" size={12} />
+                        {expCount > 0 && <>+{expCount}<WyrmResourceIcon kind="egg" size={12} /></>})
                       </button>
                       {selIsCave && (
                         <button
@@ -351,7 +354,7 @@ export function WyrmspanScreen() {
                             setSelectedCardId(null);
                           }}
                         >
-                          ⛏ Excavate Col {(emptyIdx ?? 0) + 1}
+                          <WyrmResourceIcon kind="cavecard" size={14} /> Excavate Col {(emptyIdx ?? 0) + 1}
                         </button>
                       )}
                       {selIsDragon && (
@@ -370,7 +373,7 @@ export function WyrmspanScreen() {
                             setSelectedCardId(null);
                           }}
                         >
-                          🐉 Entice Col {(enticeIdx ?? 0) + 1}
+                          <WyrmResourceIcon kind="dragoncard" size={14} /> Entice Col {(enticeIdx ?? 0) + 1}
                         </button>
                       )}
                     </div>
@@ -417,7 +420,7 @@ export function WyrmspanScreen() {
                               <span className="badge">Excavated Space {sIdx + 1}</span>
                               {sp.caveCardId != null && (
                                 <div className="muted" style={{ fontSize: '0.7rem', marginTop: 4 }}>
-                                  🪨 {cardName(sp.caveCardId)}
+                                  <WyrmResourceIcon kind="cavecard" size={12} /> {cardName(sp.caveCardId)}
                                 </div>
                               )}
                               {isEntTarget && (
@@ -427,8 +430,8 @@ export function WyrmspanScreen() {
                           ) : (
                             <div className="unexcavated-box">
                               <span className="muted">
-                                Unexcavated (Col {sIdx + 1} · 1🪙
-                                {excavateEggCost(sIdx) ? `+${excavateEggCost(sIdx)}🥚` : ''})
+                                Unexcavated (Col {sIdx + 1} · 1<WyrmResourceIcon kind="coin" size={12} />
+                                {excavateEggCost(sIdx) > 0 && <>+{excavateEggCost(sIdx)}<WyrmResourceIcon kind="egg" size={12} /></>})
                               </span>
                               {isExcTarget && (
                                 <div className="target-hint">▶ Click to Excavate here</div>
@@ -468,37 +471,46 @@ export function WyrmspanScreen() {
               {canActMain && shownP.id === actingId && (
                 <div className="row exchange-bar">
                   <span className="muted">2→1 Trade:</span>
-                  <select
-                    value={giveRes[0]}
-                    onChange={(e) => setGiveRes([e.target.value as Resource, giveRes[1]])}
-                  >
+                  <span className="res-picker" role="group" aria-label="Give">
                     {RESOURCES.map((r) => (
-                      <option key={r} value={r}>
-                        -{r}
-                      </option>
+                      <button
+                        key={r}
+                        type="button"
+                        className={giveRes[0] === r ? 'primary' : 'secondary'}
+                        title={`Give: ${r}`}
+                        onClick={() => setGiveRes([r, giveRes[1]])}
+                      >
+                        <WyrmResourceIcon kind={r} size={16} />
+                      </button>
                     ))}
-                  </select>
-                  <select
-                    value={giveRes[1]}
-                    onChange={(e) => setGiveRes([giveRes[0], e.target.value as Resource])}
-                  >
+                  </span>
+                  <span className="res-picker" role="group" aria-label="Give">
                     {RESOURCES.map((r) => (
-                      <option key={r} value={r}>
-                        -{r}
-                      </option>
+                      <button
+                        key={r}
+                        type="button"
+                        className={giveRes[1] === r ? 'primary' : 'secondary'}
+                        title={`Give: ${r}`}
+                        onClick={() => setGiveRes([giveRes[0], r])}
+                      >
+                        <WyrmResourceIcon kind={r} size={16} />
+                      </button>
                     ))}
-                  </select>
+                  </span>
                   <span>→</span>
-                  <select
-                    value={getRes}
-                    onChange={(e) => setGetRes(e.target.value as Resource)}
-                  >
+                  <span className="res-picker" role="group" aria-label="Get">
                     {RESOURCES.map((r) => (
-                      <option key={r} value={r}>
-                        +{r}
-                      </option>
+                      <button
+                        key={r}
+                        type="button"
+                        className={getRes === r ? 'primary' : 'secondary'}
+                        title={`Get: ${r}`}
+                        onClick={() => setGetRes(r)}
+                      >
+                        <WyrmResourceIcon kind={r} size={16} />
+                      </button>
                     ))}
-                  </select>
+                  </span>
                   <button
                     type="button"
                     className="secondary"
@@ -561,14 +573,14 @@ export function WyrmspanScreen() {
                 className={`side-tab-btn${sideTab === 'play' ? ' active' : ''}`}
                 onClick={() => setSideTab('play')}
               >
-                🧭 Guild & Standings
+                <WyrmResourceIcon kind="guild" size={14} /> Guild & Standings
               </button>
               <button
                 type="button"
                 className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
                 onClick={() => setSideTab('log')}
               >
-                📜 Log ({state.log.length})
+                Log ({state.log.length})
               </button>
             </div>
 
@@ -585,20 +597,20 @@ export function WyrmspanScreen() {
                         🃏 Deck: <b>{state.automa.deck.length}</b> (Last: {state.automa.lastCard ?? '—'})
                       </span>
                       <span className="stat-pill">
-                        🪙 Obj Coins: <b>{state.automa.objectiveCoins}</b>
+                        <WyrmResourceIcon kind="coin" size={12} /> Objective coins: <b>{state.automa.objectiveCoins}</b>
                       </span>
                       <span className="stat-pill">
-                        🐉 Dragons: <b>{state.automa.collectedDragons}</b>
+                        <WyrmResourceIcon kind="dragoncard" size={12} /> Dragons: <b>{state.automa.collectedDragons}</b>
                       </span>
                       <span className="stat-pill">
-                        🪨 Caves: <b>{state.automa.collectedCaves}</b>
+                        <WyrmResourceIcon kind="cavecard" size={12} /> Caves: <b>{state.automa.collectedCaves}</b>
                       </span>
                       <span className="stat-pill">
-                        🛡 Guild Markers Left: <b>{state.automa.availableGuildMarkers}</b>
+                        <WyrmResourceIcon kind="guild" size={12} /> Guild markers left: <b>{state.automa.availableGuildMarkers}</b>
                       </span>
                       {state.automa.cacheTokens > 0 && (
                         <span className="stat-pill">
-                          💎 Cache Tokens: <b>{state.automa.cacheTokens}</b>
+                          <WyrmResourceIcon kind="cached" size={12} /> Cache tokens: <b>{state.automa.cacheTokens}</b>
                         </span>
                       )}
                     </div>
@@ -614,7 +626,10 @@ export function WyrmspanScreen() {
                       <b>{p.name}</b>
                       <span className="spacer" />
                       <span className="muted" style={{ fontSize: '0.74rem' }}>
-                        🐉{sc.printedDragonVp} · 🥚{sc.eggs} · 💎{sc.cached} · 🛡{sc.guildTile}
+                        <span title="Printed dragon VP"><WyrmResourceIcon kind="dragoncard" size={12} />{sc.printedDragonVp}</span> ·{' '}
+                        <span title="Eggs"><WyrmResourceIcon kind="egg" size={12} />{sc.eggs}</span> ·{' '}
+                        <span title="Cached resources"><WyrmResourceIcon kind="cached" size={12} />{sc.cached}</span> ·{' '}
+                        <span title="Guild tile"><WyrmResourceIcon kind="guild" size={12} />{sc.guildTile}</span>
                       </span>
                       <b className="badge">{sc.total} VP</b>
                     </div>
@@ -656,23 +671,69 @@ export function WyrmspanScreen() {
   );
 }
 
+/** Icon for a guild-track space, derived from its reward. */
+function trackIcon(sp: { brown?: boolean; label: string }): string {
+  if (sp.brown) return 'guild';
+  const l = sp.label.toLowerCase();
+  if (l.includes('dragon card')) return 'dragoncard';
+  if (l.includes('cave card')) return 'cavecard';
+  for (const k of ['egg', 'meat', 'gold', 'crystal', 'milk', 'coin']) if (l.includes(k)) return k;
+  return 'any';
+}
+
 function DragonGuildPanel({ state }: { state: GameState }) {
   const tile = GUILD_TILES[state.guild.tile];
+  const n = GUILD_TRACK.length;
+  const posOf = (pid: PlayerId) => state.guild.track[pid] ?? 0;
   return (
     <div className="card">
-      <h3>🧭 {tile?.name ?? state.guild.tile}</h3>
-      <div className="muted" style={{ fontSize: '0.74rem', marginBottom: 6 }}>
-        Guild Track positions (spaces 0 & 6 = Brown Marker Placement):
+      <h3>
+        <WyrmResourceIcon kind="guild" size={16} /> {tile?.name ?? state.guild.tile}
+      </h3>
+      <div className="muted" style={{ fontSize: '0.72rem', marginBottom: 6 }}>
+        Each <WyrmResourceIcon kind="guild" size={12} /> moves you 1 space clockwise and gives that space&apos;s reward.{' '}
+        <WyrmResourceIcon kind="guild" size={12} /> spaces = place a guild marker on the tile.
       </div>
-      <div className="guild-track-chips">
-        {state.players.map((p) => {
-          const pos = state.guild.track[p.id] ?? 0;
-          const sp = GUILD_TRACK[pos];
+      <div className="guild-track">
+        {GUILD_TRACK.map((sp, i) => {
+          const here = state.players.filter((p) => posOf(p.id) === i);
+          const nextFor = state.players.filter((p) => (posOf(p.id) + 1) % n === i);
           return (
-            <span key={p.id} className="stat-pill" title={sp?.label}>
+            <div
+              key={i}
+              className={`gt-space${sp.brown ? ' brown' : ''}${nextFor.length ? ' next' : ''}`}
+              title={`Space ${i}: ${sp.label}${nextFor.length ? `\nNext reward for: ${nextFor.map((p) => p.name).join(', ')}` : ''}`}
+            >
+              <span className="gt-num">{i}</span>
+              <WyrmResourceIcon kind={trackIcon(sp)} size={20} />
+              <div className="gt-tokens">
+                {here.map((p) => (
+                  <span key={p.id} className="pcolor" style={{ background: playerColorHex(p.color) }} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="guild-upcoming">
+        {state.players.map((p) => {
+          const pos = posOf(p.id);
+          return (
+            <div key={p.id} className="guild-up-row">
               <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
-              {p.name}: Space <b>{pos}</b> ({p.guildMarkersPlaced}/4 markers)
-            </span>
+              <b>{p.name}</b>
+              <span className="muted">
+                space {pos} · {p.guildMarkersPlaced}/4 markers · next:
+              </span>
+              {[1, 2, 3].map((d) => {
+                const sp = GUILD_TRACK[(pos + d) % n]!;
+                return (
+                  <span key={d} className={`guild-up-item${d === 1 ? ' first' : ''}`} title={`+${d}: ${sp.label}`}>
+                    <WyrmResourceIcon kind={trackIcon(sp)} size={d === 1 ? 18 : 15} />
+                  </span>
+                );
+              })}
+            </div>
           );
         })}
       </div>
@@ -687,12 +748,7 @@ function DragonGuildPanel({ state }: { state: GameState }) {
                   if (!pid) return null;
                   const pl = player(state, pid);
                   return (
-                    <span
-                      key={k}
-                      className="pcolor"
-                      style={{ background: playerColorHex(pl.color) }}
-                      title={pl.name}
-                    />
+                    <span key={k} className="pcolor" style={{ background: playerColorHex(pl.color) }} title={pl.name} />
                   );
                 })}
                 {occ.length === 0 && <span className="muted">open</span>}
@@ -705,13 +761,38 @@ function DragonGuildPanel({ state }: { state: GameState }) {
   );
 }
 
+const ABILITY_META: Record<string, { label: string; cls: string; icon: string }> = {
+  WhenPlayed: { label: 'When played', cls: 'ab-whenplayed', icon: 'whenplayed' },
+  OncePerRound: { label: 'Once per round', cls: 'ab-onceperround', icon: 'onceperround' },
+  EndGame: { label: 'Game end', cls: 'ab-endgame', icon: 'endgame' },
+  Adventurer: { label: 'Adventurer', cls: 'ab-adventurer', icon: 'adventurer' },
+  'Adventurer, EndGame': { label: 'Adventurer · Game end', cls: 'ab-adventurer', icon: 'adventurer' },
+};
+
+const COST_ORDER = ['meat', 'gold', 'crystal', 'milk', 'egg', 'coin'] as const;
+
+function caveStrip(caves: readonly string[]) {
+  return CAVE_THEMES.map((t) => ({
+    key: t.id,
+    label: t.name,
+    color: WYRM_CAVE_COLOR[t.id]!,
+    icon: <WyrmResourceIcon kind={t.id} size={13} />,
+    on: caves.some((c) => c.toLowerCase().startsWith(t.id)),
+  }));
+}
+
+function tally(items: readonly string[]): [string, number][] {
+  const m = new Map<string, number>();
+  for (const x of items) m.set(x, (m.get(x) ?? 0) + 1);
+  return [...m.entries()];
+}
+
 export function WyrmDragonCardView({
   card,
   played,
   zone = 'dragon',
   selectable,
   selected,
-  compact,
   onClick,
 }: {
   card: DragonCard;
@@ -719,92 +800,100 @@ export function WyrmDragonCardView({
   zone?: string;
   selectable?: boolean;
   selected?: boolean;
+  /** @deprecated cards are one fixed size everywhere; kept for call-site compatibility. */
   compact?: boolean;
   onClick?: () => void;
 }) {
   const flipRef = useFlipCard(`wyrm-d:${card.id}`, zone);
   const tokenTotal =
-    (played?.eggs ?? 0) +
-    (played?.cached.length ?? 0) +
-    (played?.tucked.length ?? 0) +
-    (played?.training ?? 0);
+    (played?.eggs ?? 0) + (played?.cached.length ?? 0) + (played?.tucked.length ?? 0) + (played?.training ?? 0);
   const pulseRef = useValuePulse<HTMLDivElement>(tokenTotal);
   const trackLen = card.trainingTrack ? parseIcons(card.trainingTrack).length : 0;
-
   const pers = card.personality ?? 'Shy';
+  const meta = ABILITY_META[card.abilityType] ?? { label: card.abilityType, cls: 'ab-whenplayed', icon: 'whenplayed' };
+  const costIcons = COST_ORDER.flatMap((r) =>
+    Array.from({ length: card.cost[r] ?? 0 }, (_, i) => <WyrmResourceIcon key={`${r}${i}`} kind={r} size={15} />),
+  );
+
+  const overlay =
+    played && tokenTotal > 0 ? (
+      <div ref={pulseRef} className="cc-tokens">
+        {played.eggs > 0 && (
+          <span title={`${played.eggs} egg(s) — 1 VP each`}>
+            <WyrmResourceIcon kind="egg" size={12} />×{played.eggs}
+          </span>
+        )}
+        {tally(played.cached).map(([r, n]) => (
+          <span key={r} title={`${n} cached ${r} — 1 VP each`}>
+            <WyrmResourceIcon kind={r} size={12} />×{n}
+          </span>
+        ))}
+        {played.tucked.length > 0 && (
+          <span title={`${played.tucked.length} tucked dragon(s) — 1 VP each`}>
+            <WyrmResourceIcon kind="tucked" size={12} />×{played.tucked.length}
+          </span>
+        )}
+        {(played.training ?? 0) > 0 && (
+          <span title={`Training ${played.training}/${trackLen}`}>
+            <WyrmResourceIcon kind="fledglingarrow" size={12} />
+            {played.training}/{trackLen}
+          </span>
+        )}
+      </div>
+    ) : undefined;
+
   return (
-    <div
-      ref={flipRef}
-      className={`bird wyrm-dragon-card pers-${pers.toLowerCase()}${
-        compact ? ' bird-compact' : ''
-      }${selectable ? ' selectable' : ''}${selected ? ' selected' : ''}`}
+    <CreatureCard
+      theme="wyrm"
+      cardRef={flipRef}
+      name={card.name}
+      subtitle={`#${card.number} · ${card.size} · ${pers}`}
+      cost={
+        <>
+          {costIcons.length ? costIcons : <FreeCost />}
+          {card.ignoreCost && (
+            <span className="cc-free" title="This dragon's cost can be ignored (see its ability)">
+              *
+            </span>
+          )}
+        </>
+      }
+      points={<WyrmVp n={card.vp} size={22} />}
+      placements={caveStrip(card.caves)}
+      art={<DragonIllustration id={card.id} name={card.name} personality={pers} size={card.size} caves={card.caves} />}
+      overlay={overlay}
+      traits={
+        <>
+          <span className="cc-trait">
+            <WyrmResourceIcon kind={card.size.toLowerCase()} size={14} />
+          </span>
+          <span className="cc-trait">
+            <WyrmResourceIcon kind={pers.toLowerCase()} size={14} />
+          </span>
+          <span className="cc-trait" title={card.capacity ? `Holds up to ${card.capacity} egg(s)` : 'Cannot hold eggs'}>
+            <WyrmResourceIcon kind="egg" size={13} />
+            {played ? `${played.eggs}/${card.capacity}` : `×${card.capacity}`}
+          </span>
+        </>
+      }
+      powerClass={card.ability ? meta.cls : 'pband-none'}
+      powerIcon={card.ability ? <WyrmResourceIcon kind={meta.icon} size={11} /> : undefined}
+      powerLabel={card.ability ? meta.label : undefined}
+      preface={
+        card.trainingTrack ? (
+          <div className="cc-preface" title="Fledgling training track">
+            Train {played?.training ?? 0}/{trackLen}: {renderWyrmspanText(card.trainingTrack, 12)}
+          </div>
+        ) : undefined
+      }
+      power={card.ability ? renderWyrmspanText(card.ability, 13) : <span className="muted">No ability</span>}
+      tooltip={`${card.name} (#${card.number}) — ${card.size} · ${pers} · ${card.vp} VP · ${card.caves.join(' / ')}\n${
+        card.ability ? `${meta.label}: ${card.ability}` : 'No ability'
+      }`}
+      selectable={selectable}
+      selected={selected}
       onClick={onClick}
-      title={`${card.name} (#${card.number}) — ${card.size} ${pers} · ${card.vp} VP\n${card.ability ?? ''}`}
-    >
-      <div className="bcard-top">
-        <div className="bcard-badge">
-          <div className="bcard-cost">
-            {(card.cost.meat ?? 0) > 0 && <WyrmResourceIcon kind="meat" size={13} />}
-            {(card.cost.gold ?? 0) > 0 && <WyrmResourceIcon kind="gold" size={13} />}
-            {(card.cost.crystal ?? 0) > 0 && <WyrmResourceIcon kind="crystal" size={13} />}
-            {(card.cost.milk ?? 0) > 0 && <WyrmResourceIcon kind="milk" size={13} />}
-            {(card.cost.egg ?? 0) > 0 && <WyrmResourceIcon kind="egg" size={13} />}
-            {(card.cost.coin ?? 0) > 0 && <WyrmResourceIcon kind="coin" size={13} />}
-          </div>
-          <div className="muted" style={{ fontSize: '0.62rem' }}>
-            {card.caves.map((c) => c[0]).join('/')}
-          </div>
-        </div>
-        <div className="bcard-titles">
-          <div className="bname">{card.name}</div>
-          <div className="bsci">
-            {card.size} · {pers} · 🛡{card.vp}
-            {card.size === 'Fledgling' ? '/fledg' : ''}
-          </div>
-        </div>
-      </div>
-
-      <div className="bcard-art">
-        <DragonIllustration id={card.id} name={card.name} personality={pers} size={card.size} caves={card.caves} />
-      </div>
-
-      {card.trainingTrack && (
-        <div className="fledgling-track">
-          <span>Train ({played?.training ?? 0}/{trackLen}):</span>
-          {renderWyrmspanText(card.trainingTrack)}
-        </div>
-      )}
-
-      {card.ability && (
-        <div className="bcard-power pband-brown">
-          <div className="bpower">
-            <b>[{card.abilityType}]</b> {renderWyrmspanText(card.ability)}
-          </div>
-        </div>
-      )}
-
-      {played && (
-        <div ref={pulseRef} className="bcard-played-overlay">
-          <div className="tokens">
-            {played.eggs > 0 && (
-              <span className="tok-pill" title="Eggs on dragon (1 VP each)">
-                <WyrmResourceIcon kind="egg" size={14} /> ×{played.eggs}/{card.capacity}
-              </span>
-            )}
-            {played.cached.map((r, i) => (
-              <span key={i} title={`Cached ${r} (1 VP)`}>
-                <WyrmResourceIcon kind={r} size={14} />
-              </span>
-            ))}
-            {played.tucked.length > 0 && (
-              <span className="tucked-count" title="Tucked dragons (1 VP each)">
-                🂠 ×{played.tucked.length}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    />
   );
 }
 
@@ -823,15 +912,29 @@ export function WyrmCaveCardView({
 }) {
   const flipRef = useFlipCard(`wyrm-c:${card.id}`, zone);
   return (
-    <div
-      ref={flipRef}
-      className={`wyrm-cave-card${selectable ? ' selectable' : ''}${selected ? ' selected' : ''}`}
+    <CreatureCard
+      theme="wyrm"
+      cardRef={flipRef}
+      name={card.name ?? `Cave card #${card.number}`}
+      subtitle={`Cave #${card.number} · excavate into any cave`}
+      cost={
+        <span className="cc-free" title="Cave card — the excavation cost depends on the column">
+          CAVE
+        </span>
+      }
+      points={<WyrmResourceIcon kind="cavecard" size={20} />}
+      placements={caveStrip(['crimson', 'golden', 'amethyst'])}
+      art={<div className="cc-cave-art" />}
+      traits={<span className="muted">Excavates 1 cave space</span>}
+      powerClass="ab-cave"
+      powerIcon={<WyrmResourceIcon kind="cavecard" size={11} />}
+      powerLabel="When excavated"
+      power={card.ability ? renderWyrmspanText(card.ability, 13) : <span className="muted">No effect</span>}
+      tooltip={`Cave #${card.number}\nWhen excavated: ${card.ability ?? '—'}`}
+      selectable={selectable}
+      selected={selected}
       onClick={onClick}
-      title={`Cave #${card.number}\nWhen Excavated: ${card.ability}`}
-    >
-      <div className="wcc-head">🪨 Cave #{card.number}</div>
-      <div className="wcc-body">{renderWyrmspanText(card.ability)}</div>
-    </div>
+    />
   );
 }
 
@@ -873,29 +976,24 @@ function WyrmspanPendingBar({
       {step.kind === 'setupCards' && (
         <div className="row">
           <span className="muted">Pick {step.keep} of 6 cards to keep:</span>
-          {step.offer.map((cid) => {
-            const on = setupKeeps.includes(cid);
-            return (
-              <button
-                key={cid}
-                type="button"
-                className={on ? 'primary' : 'secondary'}
-                onClick={() => {
-                  setSetupKeeps((cur) =>
-                    cur.includes(cid)
-                      ? cur.filter((x) => x !== cid)
-                      : cur.length < step.keep
-                        ? [...cur, cid]
-                        : [...cur.slice(1), cid],
-                  );
-                }}
-              >
-                {on ? '✓ ' : ''}
-                {isDragonCard(cid) ? '🐉 ' : '🪨 '}
-                {cardName(cid)}
-              </button>
-            );
-          })}
+          <div className="setup-card-row">
+            {step.offer.map((cid) => {
+              const on = setupKeeps.includes(cid);
+              const toggle = () =>
+                setSetupKeeps((cur) =>
+                  cur.includes(cid)
+                    ? cur.filter((x) => x !== cid)
+                    : cur.length < step.keep
+                      ? [...cur, cid]
+                      : [...cur.slice(1), cid],
+                );
+              return isDragonCard(cid) ? (
+                <WyrmDragonCardView key={cid} card={dragonCard(cid)} zone="setup" selectable selected={on} onClick={toggle} />
+              ) : (
+                <WyrmCaveCardView key={cid} card={caveCard(cid)} zone="setup" selectable selected={on} onClick={toggle} />
+              );
+            })}
+          </div>
           <button
             type="button"
             className="primary"
@@ -908,7 +1006,7 @@ function WyrmspanPendingBar({
               })
             }
           >
-            ✓ Keep {setupKeeps.length}/{step.keep} Cards
+            ✓ Keep {setupKeeps.length}/{step.keep} selected
           </button>
         </div>
       )}
@@ -916,22 +1014,24 @@ function WyrmspanPendingBar({
       {step.kind === 'setupResources' && (
         <div className="row">
           <span className="muted">Pick {step.count} starting resources:</span>
-          {[0, 1, 2].map((slotIdx) => (
-            <select
-              key={slotIdx}
-              value={setupRes[slotIdx] ?? 'meat'}
-              onChange={(e) => {
-                const next = setupRes.slice();
-                next[slotIdx] = e.target.value as Resource;
-                setSetupRes(next);
-              }}
-            >
+          {Array.from({ length: step.count }, (_, slotIdx) => (
+            <span key={slotIdx} className="res-picker" role="group" aria-label={`Starting resource ${slotIdx + 1}`}>
               {RESOURCES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
+                <button
+                  key={r}
+                  type="button"
+                  className={setupRes[slotIdx] === r ? 'primary' : 'secondary'}
+                  title={r}
+                  onClick={() => {
+                    const next = setupRes.slice();
+                    next[slotIdx] = r;
+                    setSetupRes(next);
+                  }}
+                >
+                  <WyrmResourceIcon kind={r} size={18} />
+                </button>
               ))}
-            </select>
+            </span>
           ))}
           <button
             type="button"
@@ -944,7 +1044,10 @@ function WyrmspanPendingBar({
               })
             }
           >
-            ✓ Gain {setupRes.slice(0, step.count).join(' + ')}
+            ✓ Gain{' '}
+            {setupRes.slice(0, step.count).map((r, i) => (
+              <WyrmResourceIcon key={i} kind={r} size={15} />
+            ))}
           </button>
         </div>
       )}

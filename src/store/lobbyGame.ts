@@ -39,10 +39,10 @@ export const LOBBY_SETS: { id: string; label: string }[] = [
 
 export function defaultLobbyGame(gameId: GameId = 'wingspan'): LobbyGame {
   if (gameId === 'wyrmspan') {
-    return { gameId: 'wyrmspan', sets: ['base', 'academy'], expansions: ['base', 'academy'] };
+    return { gameId: 'wyrmspan', sets: ['base'], expansions: ['base'] };
   }
   if (gameId === 'finspan') {
-    return { gameId: 'finspan', sets: ['base', 'sr'], achievementSide: 'A' };
+    return { gameId: 'finspan', sets: ['base'], achievementSide: 'A' };
   }
   return { gameId: 'wingspan', sets: ['core'], mode: 'standard', goalSide: 'green' };
 }

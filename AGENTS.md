@@ -76,6 +76,13 @@ AI — and only Wingspan has a UI so far.
   plan via ordered regex rules (first match wins; use word boundaries — "peafowl" contains
   "owl") plus name colour/part words, and habitat/cave/zone to a seeded scene.
   `svgArt.tsx` re-exports them alongside the small token icons.
+- `src/ui/CreatureCard.tsx` — the ONE fixed-size frame (--cc-w × --cc-h) for
+  birds, dragons and fish: cost top-left, VP top-right, placement strip on the
+  left (habitats / caves / depth zones), traits under the art, tokens overlaid
+  on the art. Board slots are sized to it. Icon rule: every game item renders
+  through the same component as its card-text token (`FoodIcon`/`TokenIcon`,
+  `WyrmResourceIcon`/`WyrmVp`, `FinIcon` in art/tokens.tsx), each with a
+  hover <title>; never use emoji for resources, cards or points.
 
 ## Engine invariants
 

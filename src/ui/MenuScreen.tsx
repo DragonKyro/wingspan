@@ -137,15 +137,15 @@ export function MenuScreen() {
   ]);
 
   // Wingspan options
-  const [sets, setSets] = useState<string[]>(['core', 'european', 'oceania', 'asia', 'americas']);
+  const [sets, setSets] = useState<string[]>(['core']);
   const [mode, setMode] = useState<GameMode>('standard');
   const [goalSide, setGoalSide] = useState<'green' | 'blue'>('green');
 
   // Wyrmspan options
-  const [wyrmAcademy, setWyrmAcademy] = useState(true);
+  const [wyrmAcademy, setWyrmAcademy] = useState(false);
 
   // Finspan options
-  const [finSr, setFinSr] = useState(true);
+  const [finSr, setFinSr] = useState(false);
   const [finSide, setFinSide] = useState<'A' | 'B'>('A');
 
   // Official Automa Solo Mode options
@@ -164,8 +164,9 @@ export function MenuScreen() {
   const [name, setName] = useState(myDisplayName);
 
   const activeGameId = selectedGame ?? 'wingspan';
-  const maxPlayers =
-    activeGameId === 'wingspan'
+  const maxPlayers = automaOn
+    ? 1
+    : activeGameId === 'wingspan'
       ? mode === 'flock'
         ? 7
         : mode === 'duet'
@@ -205,7 +206,20 @@ export function MenuScreen() {
     setSeats(seats.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   };
 
+  const setSolo = (on: boolean) => {
+    setAutomaOn(on);
+    if (on) {
+      const me = seats.find((s) => !s.isAI) ?? seats[0] ?? { id: 's1', name: 'Player 1', color: 'red' as const, isAI: false };
+      setSeats([{ ...me, isAI: false }]);
+      setMode('standard');
+    } else if (seats.length === 1) {
+      const used = seats[0]!.color;
+      setSeats([...seats, { id: 's2', name: 'AI 1', color: COLORS.find((c) => c !== used) ?? 'blue', isAI: true }]);
+    }
+  };
+
   const changeMode = (nextMode: GameMode) => {
+    if (nextMode !== 'standard') setAutomaOn(false);
     setMode(nextMode);
     if (nextMode === 'duet' && seats.length !== 2) {
       setSeats([
@@ -494,7 +508,9 @@ export function MenuScreen() {
                 </p>
               </div>
               <span className="player-range">
-                {minPlayers === maxPlayers ? `${minPlayers} players` : `${minPlayers}–${maxPlayers} players`}
+                {minPlayers === maxPlayers
+                  ? `${minPlayers} player${minPlayers === 1 ? '' : 's'}${automaOn ? ' vs Automa' : ''}`
+                  : `${minPlayers}–${maxPlayers} players`}
               </span>
             </div>
 
@@ -552,15 +568,17 @@ export function MenuScreen() {
                 + Add Seat
               </button>
               <span className="muted" style={{ fontSize: '0.8rem' }}>
-                Hot-seat humans share this screen; AI seats play automatically.
+                {automaOn
+                  ? 'Automa solo: you play alone against the official Automa deck.'
+                  : 'Hot-seat humans share this screen; AI seats play automatically.'}
               </span>
             </div>
 
             {/* Game-specific options */}
             <h4 className="lobby-section-h">Solo Automa & Game Options</h4>
             <OptionGroup label="Solo Mode:" style={{ marginBottom: 10 }}>
-              <Pill on={!automaOn} onClick={() => setAutomaOn(false)}>👥 Multiplayer / Standard AI Bots</Pill>
-              <Pill on={automaOn} onClick={() => setAutomaOn(true)}>
+              <Pill on={!automaOn} onClick={() => setSolo(false)}>👥 Multiplayer / Standard AI Bots</Pill>
+              <Pill on={automaOn} onClick={() => setSolo(true)}>
                 ⚙️ Official Automa Solo Deck (1p vs Automa)
               </Pill>
             </OptionGroup>

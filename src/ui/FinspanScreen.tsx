@@ -36,6 +36,7 @@ import { DEEPWATER_ROW, DIVERS_PER_WEEK, ESTUARY_ROW, SITE_COLORS, zoneOfRow } f
 import { ActionToastBanner, FlipProvider, useFlipAnchor, useFlipCard, useValuePulse } from './fx';
 import { GameOverModal } from './MatchCharts';
 import { RulesModal } from './RulesBook';
+import { CreatureCard, FreeCost } from './CreatureCard';
 import {
   DiverMeepleSvg,
   FinIcon,
@@ -174,7 +175,7 @@ export function FinspanScreen() {
               )}
               <div className="spacer" />
               <div ref={deckAnchor} className="deck-pill" title="Main fish deck">
-                🐟 Deck: <b>{state.deck.length}</b>
+                <FinIcon kind="fishfromhand" size={13} /> Deck: <b>{state.deck.length}</b>
               </div>
               {connection !== 'in-game' && (
                 <button
@@ -244,7 +245,8 @@ export function FinspanScreen() {
                   <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
                   <b>{p.name}</b>
                   <span className="muted">
-                    {DIVERS_PER_WEEK - p.diversUsed}🤿 · {liveScore} VP
+                    <DiverMeepleSvg color={p.color} size={12} />×{DIVERS_PER_WEEK - p.diversUsed} · {liveScore}
+                    <FinIcon kind="wave" size={12} />
                   </span>
                   {pid === actingId && <span className="turn-dot" />}
                 </button>
@@ -319,14 +321,14 @@ export function FinspanScreen() {
                 className={`side-tab-btn${sideTab === 'play' ? ' active' : ''}`}
                 onClick={() => setSideTab('play')}
               >
-                🌊 Ocean & Standings
+                Ocean & Standings
               </button>
               <button
                 type="button"
                 className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
                 onClick={() => setSideTab('log')}
               >
-                📜 Log ({state.log.length})
+                Log ({state.log.length})
               </button>
             </div>
 
@@ -343,20 +345,20 @@ export function FinspanScreen() {
                         🃏 Deck: <b>{state.nautoma.deck.length}</b> (Last: #{state.nautoma.lastCardId ?? '—'})
                       </span>
                       <span className="stat-pill">
-                        🤿 Ach Divers: <b>{state.nautoma.achievementDivers}</b>
+                        <DiverMeepleSvg color="c4" size={12} /> Achievement divers: <b>{state.nautoma.achievementDivers}</b>
                       </span>
                       <span className="stat-pill">
-                        🐟 Fish: <b>{state.nautoma.fish.length}</b>
+                        <FinIcon kind="fishfromhand" size={12} /> Fish: <b>{state.nautoma.fish.length}</b>
                       </span>
                       <span className="stat-pill">
-                        🐠 Schools: <b>{state.nautoma.schools}</b>
+                        <FinIcon kind="school" size={12} /> Schools: <b>{state.nautoma.schools}</b>
                       </span>
                       <span className="stat-pill">
-                        🐟 Young: <b>{state.nautoma.young}</b> · 🥚 Eggs: <b>{state.nautoma.eggs}</b>
+                        <FinIcon kind="young" size={12} /> Young: <b>{state.nautoma.young}</b> · <FinIcon kind="egg" size={12} /> Eggs: <b>{state.nautoma.eggs}</b>
                       </span>
                       {isSR && (
                         <span className="stat-pill">
-                          🪸 Coral: <b>{state.nautoma.corals}</b>
+                          <FinIcon kind="anycoral" size={12} /> Coral: <b>{state.nautoma.corals}</b>
                         </span>
                       )}
                       {state.nautoma.ravelMode && (
@@ -368,7 +370,7 @@ export function FinspanScreen() {
                   </div>
                 )}
 
-                <h3>🌊 Ocean Summary — {shownP.name}</h3>
+                <h3>Ocean Summary — {shownP.name}</h3>
                 <div className="stat-pills" style={{ marginBottom: 10 }}>
                   <span className="stat-pill">
                     <FinIcon kind="egg" size={15} /> Eggs: <b>{totalEggs(shownP.ocean)}</b>
@@ -399,7 +401,10 @@ export function FinspanScreen() {
                       <b>{p.name}</b>
                       <span className="spacer" />
                       <span className="muted" style={{ fontSize: '0.75rem' }}>
-                        🐟{sc.fishPoints} · 🥚{sc.eggYoungPoints} · 🐟×3:{sc.schoolPoints} · 🏆{sc.achievementPoints}
+                        <span title="Fish card points"><FinIcon kind="fishfromhand" size={12} />{sc.fishPoints}</span> ·{' '}
+                        <span title="Eggs + young fish"><FinIcon kind="egg" size={12} /><FinIcon kind="young" size={12} />{sc.eggYoungPoints}</span> ·{' '}
+                        <span title="Schools"><FinIcon kind="school" size={12} />{sc.schoolPoints}</span> ·{' '}
+                        <span title="Achievements">🏆{sc.achievementPoints}</span>
                       </span>
                       <b className="badge">{sc.total} VP</b>
                     </div>
@@ -499,9 +504,11 @@ function OceanMatView({
               {isSR && (
                 <div className="reef-strip" title="Sharks & Reefs Coral Overlay">
                   <span>
-                    🪸 Coral: <b>{coral}/{MAX_CORAL}</b> (+{REEF_COMPLETION_BONUS[col]}pt at 6)
+                    <FinIcon kind="anycoral" size={12} /> Coral: <b>{coral}/{MAX_CORAL}</b> (+{REEF_COMPLETION_BONUS[col]}pt at 6)
                   </span>
-                  <span className="muted">Twilight cost: 1 {reefItem}</span>
+                  <span className="muted">
+                    Twilight cost: <FinIcon kind={reefItem === 'card' ? 'discard' : reefItem} size={13} />
+                  </span>
                 </div>
               )}
             </div>
@@ -512,18 +519,21 @@ function OceanMatView({
       {/* 6 Depth Rows */}
       {Array.from({ length: 6 }, (_, row) => {
         const zone = zoneOfRow(row);
-        const rowLabel =
+        const [rowIcon, rowText] =
           row === ESTUARY_ROW
-            ? '☀️ Sunlight (Estuary)'
+            ? ['estuary', 'Sunlight (Estuary)']
             : row <= 2
-              ? '☀️ Sunlight'
+              ? ['sunlight', 'Sunlight']
               : row === 3
-                ? isSR
-                  ? '🪸 Twilight + Coral Reef'
-                  : '🌅 Twilight'
+                ? ['twilight', isSR ? 'Twilight + Coral Reef' : 'Twilight']
                 : row === DEEPWATER_ROW
-                  ? '🌑 Midnight (Deepwater)'
-                  : '🌑 Midnight';
+                  ? ['deepwater', 'Midnight (Deepwater)']
+                  : ['midnight', 'Midnight'];
+        const rowLabel = (
+          <>
+            <FinIcon kind={rowIcon} size={15} /> {rowText}
+          </>
+        );
         return (
           <div key={row} className={`ocean-row zone-${zone}`}>
             <div className="ocean-zone-label">
@@ -600,6 +610,20 @@ function SlotTokensBadge({ slot, consumed }: { slot: SlotState; consumed: number
   );
 }
 
+const FIN_ABILITY: Record<string, { label: string; cls: string }> = {
+  WhenPlayed: { label: 'When played', cls: 'fab-whenplayed' },
+  IfActivated: { label: 'If activated', cls: 'fab-ifactivated' },
+  GameEnd: { label: 'Game end', cls: 'fab-gameend' },
+};
+
+const ZONE_STRIP = [
+  { key: 'sunlight', label: 'Sunlight zone', color: '#2a9fd6' },
+  { key: 'twilight', label: 'Twilight zone', color: '#1f5f8f' },
+  { key: 'midnight', label: 'Midnight zone', color: '#16264a' },
+] as const;
+
+const TAG_ORDER = ['predator', 'venomous', 'electric', 'bioluminescent', 'camouflage'] as const;
+
 export function FishCardView({
   card,
   slotState,
@@ -607,7 +631,6 @@ export function FishCardView({
   zone = 'fish',
   selectable,
   selected,
-  compact,
   onClick,
 }: {
   card: FishCard;
@@ -616,50 +639,86 @@ export function FishCardView({
   zone?: string;
   selectable?: boolean;
   selected?: boolean;
+  /** @deprecated cards are one fixed size everywhere; kept for call-site compatibility. */
   compact?: boolean;
   onClick?: () => void;
 }) {
   const flipRef = useFlipCard(`fish:${card.id}`, zone);
-  const costParts: string[] = [];
-  if (card.cost.cards) costParts.push(`${card.cost.cards}🂠`);
-  if (card.cost.eggs) costParts.push(`${card.cost.eggs}🥚`);
-  if (card.cost.young) costParts.push(`${card.cost.young}🐟`);
-  if (card.cost.schools) costParts.push(`${card.cost.schools}🐠`);
-  if (card.cost.consume) costParts.push('Consume<');
+  const tokenTotal = slotState ? slotState.eggs + slotState.young + (slotState.school ? 3 : 0) + consumedCount : 0;
+  const pulseRef = useValuePulse<HTMLDivElement>(tokenTotal);
+  const c = card.cost;
+  const rep = (n: number, kind: string) =>
+    Array.from({ length: n }, (_, i) => <FinIcon key={`${kind}${i}`} kind={kind} size={15} />);
+  const costIcons = [
+    ...rep(c.cards, 'discard'),
+    ...rep(c.eggs, 'egg'),
+    ...rep(c.young, 'young'),
+    ...rep(c.schools, 'school'),
+    ...(c.consume ? rep(1, 'consume') : []),
+  ];
+  const coral = card.coralCost;
+  const meta = card.abilityType ? FIN_ABILITY[card.abilityType] : undefined;
+  const deep = card.zones.midnight === 'bottom';
+
+  const overlay =
+    slotState && tokenTotal > 0 ? (
+      <div ref={pulseRef} className="cc-tokens">
+        {slotState.eggs > 0 && (
+          <span title={`${slotState.eggs} fish egg(s) — 1 VP each`}>
+            <FinIcon kind="egg" size={12} />×{slotState.eggs}
+          </span>
+        )}
+        {slotState.young > 0 && (
+          <span title={`${slotState.young} young fish — 1 VP each; 3 merge into a 6-VP school`}>
+            <FinIcon kind="young" size={12} />×{slotState.young}
+          </span>
+        )}
+        {slotState.school && (
+          <span title="School — 6 VP">
+            <FinIcon kind="school" size={12} />6
+          </span>
+        )}
+        {consumedCount > 0 && (
+          <span title={`${consumedCount} consumed fish underneath — 1 VP each`}>
+            <FinIcon kind="consume" size={12} />×{consumedCount}
+          </span>
+        )}
+      </div>
+    ) : undefined;
 
   return (
-    <div
-      ref={flipRef}
-      className={`fish-card${compact ? ' compact' : ''}${
-        card.band ? ` band-${card.band}` : ''
-      }${selectable ? ' selectable' : ''}${selected ? ' selected' : ''}`}
-      onClick={onClick}
-      title={`${card.name} (${card.length} cm, ${card.size}) — ${card.points} VP\n${card.ability ?? ''}`}
-    >
-      <div className="fcard-top">
-        <span className="fcard-pts">{card.points}pt</span>
-        <div className="fcard-titles">
-          <div className="fcard-name">
-            {card.name} {card.forage && <span className="muted">(Forage)</span>}
-          </div>
-          <div className="fcard-meta">
-            {card.length}cm ({card.size})
-            {costParts.length > 0 ? ` · Cost: ${costParts.join('+')}` : ' · Free'}
-            {card.coralCost ? ` · Needs ${card.coralCost.count} ${card.coralCost.site} coral` : ''}
-          </div>
-        </div>
-        <div className="fcard-zones">
-          {card.zones.sunlight && <span title="Sunlight">☀️</span>}
-          {card.zones.twilight && <span title="Twilight">🌅</span>}
-          {card.zones.midnight && (
-            <span title={card.zones.midnight === 'bottom' ? 'Deepwater only' : 'Midnight'}>
-              {card.zones.midnight === 'bottom' ? '⚓' : '🌑'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="fcard-art">
+    <CreatureCard
+      theme="fin"
+      cardRef={flipRef}
+      name={card.name}
+      subtitle={card.latin}
+      cost={
+        <>
+          {costIcons.length || coral ? costIcons : <FreeCost />}
+          {coral &&
+            Array.from({ length: coral.count }, (_, i) => (
+              <FinIcon key={`cor${i}`} kind={coral.site === 'any' ? 'anycoral' : `${coral.site}coral`} size={15} />
+            ))}
+        </>
+      }
+      points={
+        card.forage ? (
+          <FinIcon kind="forage" size={20} />
+        ) : (
+          <>
+            {card.points}
+            <FinIcon kind="wave" size={16} />
+          </>
+        )
+      }
+      placements={ZONE_STRIP.map((z) => ({
+        key: z.key,
+        label: z.key === 'midnight' && deep ? 'Midnight zone — deepwater (bottom row) only' : z.label,
+        color: z.color,
+        icon: <FinIcon kind={z.key === 'midnight' && deep ? 'deepwater' : z.key} size={13} />,
+        on: !!card.zones[z.key],
+      }))}
+      art={
         <FishIllustration
           id={card.id}
           name={card.name}
@@ -667,19 +726,40 @@ export function FishCardView({
           tags={card.tags}
           forage={card.forage}
           zones={card.zones}
-          coral={card.coralCost && card.coralCost.site !== 'any' ? card.coralCost.site : null}
+          coral={coral && coral.site !== 'any' ? coral.site : null}
         />
-      </div>
-
-      {card.ability && (
-        <div className={`fcard-ability ab-${card.abilityType ?? 'WhenPlayed'}`}>
-          <b>{card.abilityType === 'IfActivated' ? '🤿' : card.abilityType === 'GameEnd' ? '🌊' : '⚡'}</b>{' '}
-          {renderFinspanText(card.ability)}
-        </div>
-      )}
-
-      {slotState && <SlotTokensBadge slot={slotState} consumed={consumedCount} />}
-    </div>
+      }
+      overlay={overlay}
+      traits={
+        <>
+          <span className="cc-trait" title={`${card.size} fish · ${card.length} cm (can consume shorter fish)`}>
+            <FinIcon kind={card.size} size={14} />
+            {card.length}cm
+          </span>
+          {card.band && (
+            <span className="cc-trait" title={`Only playable in the ${card.band} dive site`}>
+              <FinIcon kind={`flipper${card.band}`} size={13} />
+            </span>
+          )}
+          <span className="spacer" />
+          {TAG_ORDER.filter((t) => (card.tags[t] ?? 0) > 0).map((t) => (
+            <span key={t} className="cc-trait">
+              <FinIcon kind={t} size={13} />
+              {(card.tags[t] ?? 0) > 1 ? `×${card.tags[t]}` : ''}
+            </span>
+          ))}
+        </>
+      }
+      powerClass={meta ? meta.cls : 'pband-none'}
+      powerLabel={meta?.label}
+      power={card.ability ? renderFinspanText(card.ability, 13) : <span className="muted">No ability</span>}
+      tooltip={`${card.name} (${card.latin}) — ${card.forage ? 'forage fish' : `${card.points} VP`} · ${card.length} cm ${
+        card.size
+      }\n${card.ability ? `${meta?.label ?? 'Ability'}: ${card.ability}` : 'No ability'}`}
+      selectable={selectable}
+      selected={selected}
+      onClick={onClick}
+    />
   );
 }
 

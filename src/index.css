@@ -728,39 +728,62 @@ h3 {
   color: var(--muted);
 }
 
-/* Bird Card */
-.bird {
-  background: linear-gradient(180deg, #faf4e6 0%, #efe3c8 100%);
-  color: #281e11;
+/* ============================================================================
+   CREATURE CARDS — one fixed frame for birds, dragons and fish (CreatureCard.tsx)
+   cost top-left · VP top-right · placement strip on the left · traits under art
+   ============================================================================ */
+
+:root {
+  --cc-w: 148px;
+  --cc-h: 226px;
+}
+
+.ccard {
+  width: var(--cc-w);
+  height: var(--cc-h);
+  flex: none;
+  padding: 5px;
   border-radius: 8px;
-  padding: 6px;
-  font-size: 0.72rem;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  height: 100%;
-  border: 1.5px solid #c9b58c;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  gap: 2px;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  font-size: 0.7rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
   transition: transform 140ms ease, box-shadow 140ms ease, outline 120ms ease;
 }
 
-.hand .bird,
-.tray .bird {
-  width: 146px;
-  min-height: 168px;
+.ccard-wing {
+  background: linear-gradient(180deg, #faf4e6 0%, #efe3c8 100%);
+  color: #281e11;
+  border: 1.5px solid #c9b58c;
 }
 
-.bird.selectable {
+.ccard-wyrm {
+  background: linear-gradient(180deg, #f1e8da 0%, #ddcdb4 100%);
+  color: #26190f;
+  border: 1.5px solid #8c6a4a;
+}
+
+.ccard-fin {
+  background: linear-gradient(180deg, #eef6f9 0%, #d3e5ee 100%);
+  color: #0f2433;
+  border: 1.5px solid #6a9ab4;
+}
+
+.ccard.selectable {
   outline: 2px solid var(--accent);
   cursor: pointer;
 }
 
-.bird.selectable:hover {
+.ccard.selectable:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
 }
 
-.bird.selected {
+.ccard.selected {
   outline: 3px solid #ffd166;
   transform: translateY(-3px);
 }
@@ -775,151 +798,252 @@ h3 {
   }
 }
 
-.bird.activating {
+.ccard.activating {
   animation: pulse-activate 1.1s infinite ease-in-out;
 }
 
-.bcard-top {
+.cc-top {
   display: flex;
-  gap: 5px;
-  align-items: stretch;
-}
-
-.bcard-badge {
-  background: #d8ceba;
-  border: 1px solid #a8997c;
-  border-radius: 5px;
-  padding: 2px 4px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 34px;
+  justify-content: space-between;
+  gap: 4px;
+  height: 22px;
+  flex: none;
 }
 
-.bcard-habs {
+.cc-cost {
   display: flex;
+  align-items: center;
   gap: 1px;
-  flex-wrap: wrap;
-  justify-content: center;
+  min-height: 20px;
+  max-width: 104px;
+  padding: 1px 5px;
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  overflow: hidden;
 }
 
-.bcard-cost-items {
+.cc-free {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.cc-vp {
   display: flex;
+  align-items: center;
   gap: 1px;
-  flex-wrap: wrap;
-  justify-content: center;
+  font-weight: 900;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
-.bcard-titles {
-  flex: 1;
-  min-width: 0;
-}
-
-.bname {
+.cc-name {
+  flex: none;
+  height: 2.2em;
   font-weight: 800;
-  font-size: 0.76rem;
-  line-height: 1.12;
-  color: #1f170c;
+  font-size: 0.7rem;
+  line-height: 1.1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.bsci {
-  font-size: 0.62rem;
+.cc-sub {
+  flex: none;
+  height: 11px;
+  line-height: 11px;
+  font-size: 0.56rem;
   font-style: italic;
-  color: #6b5b43;
+  opacity: 0.7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.bcard-mid {
+.cc-body {
   display: flex;
-  align-items: center;
   gap: 4px;
-  min-height: 50px;
+  height: 80px;
+  flex: none;
 }
 
-.bcard-left-stats {
+.cc-place {
+  width: 18px;
+  flex: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 2px;
 }
 
-.bcard-vp {
-  font-weight: 800;
-  font-size: 0.84rem;
-  color: #362819;
-  display: flex;
-  align-items: center;
-}
-
-.bcard-egg-cap {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  max-width: 26px;
-  justify-content: center;
-}
-
-.egg-pip {
-  width: 6px;
-  height: 7.5px;
-  border-radius: 50%;
-  border: 1px solid #6b533b;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.egg-pip.filled {
-  background: #52b788;
-}
-
-.bcard-art {
+.cc-pl {
   flex: 1;
-  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px dashed rgba(0, 0, 0, 0.22);
+}
+
+.cc-pl > svg {
+  opacity: 0.28;
+  filter: grayscale(1);
+}
+
+.cc-pl.on {
+  background: var(--pl);
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.cc-pl.on > svg {
+  opacity: 1;
+  filter: none;
+}
+
+.cc-mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-art {
+  height: 62px;
+  flex: none;
   position: relative;
   border-radius: 5px;
   overflow: hidden;
   background: #e8e0c8;
-  box-shadow: inset 0 0 0 1px rgba(60, 40, 20, 0.35), 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
-.bcard-art > svg,
-.fcard-art > svg {
+.cc-art > svg {
   display: block;
 }
 
-.bcard-wingspan {
+.cc-cave-art {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse 30% 55% at 50% 100%, #1a1020 98%, transparent 100%),
+    linear-gradient(90deg, #b33a48, #c9931b 50%, #7b4fc0);
+}
+
+.cc-tokens {
   position: absolute;
-  right: 3px;
+  left: 2px;
+  right: 2px;
   bottom: 2px;
-  font-size: 0.55rem;
-  font-weight: 700;
-  color: #4a3b26;
-  background: rgba(250, 244, 230, 0.85);
-  border-radius: 3px;
-  padding: 0 3px;
-  line-height: 1.35;
-}
-
-.bcard-power {
-  border-radius: 5px;
-  padding: 4px 5px;
-  font-size: 0.65rem;
-  line-height: 1.18;
-  margin-top: auto;
-}
-
-.bcard-power-head {
-  font-weight: 800;
-  font-size: 0.58rem;
-  letter-spacing: 0.04em;
   display: flex;
-  gap: 3px;
+  flex-wrap: wrap;
+  gap: 2px;
   align-items: center;
+}
+
+.cc-tokens > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 3px 0 1px;
+  border-radius: 8px;
+  background: rgba(255, 250, 240, 0.92);
+  color: #2a1d14;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.cc-tokens > .cc-tok-pink {
+  background: #c96480;
+  color: #fff;
+  padding: 0 4px;
+}
+
+.cc-traits {
+  height: 16px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cc-traits .spacer {
+  flex: 1;
+}
+
+.cc-trait {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.cc-power {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+  padding: 3px 5px;
+  font-size: 0.58rem;
+  line-height: 1.18;
+  overflow: hidden;
+}
+
+.cc-power-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 900;
+  font-size: 0.52rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   margin-bottom: 1px;
 }
 
+.cc-preface {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.cc-power-text {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.cc-power .svg-icon {
+  vertical-align: -3px;
+}
+
+.bcard-cost-or {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bcard-slash {
+  font-weight: 800;
+  margin: 0 1px;
+  opacity: 0.6;
+}
+
+/* Power bands. Wingspan follows the printed power colours; Wyrmspan/Finspan
+   use one colour per ability timing so the same timing always looks the same. */
 .pband-brown {
   background: #7d5330;
   color: #fdf6ec;
@@ -946,47 +1070,36 @@ h3 {
   color: #3b2e1e;
 }
 
-.bcard-played-overlay {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding-top: 3px;
-  border-top: 1px dashed #c4b08b;
+.ab-whenplayed,
+.fab-whenplayed {
+  background: #ecd28a;
+  color: #2e2006;
 }
 
-.tokens {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  align-items: center;
+.ab-onceperround {
+  background: #3d6fae;
+  color: #f2f7fd;
 }
 
-.tok-pink-used {
-  background: #c96480;
-  color: #fff;
-  border-radius: 4px;
-  padding: 0 4px;
-  font-size: 0.58rem;
-  font-weight: 700;
+.ab-endgame,
+.fab-gameend {
+  background: #8f2f3a;
+  color: #fdf0f1;
 }
 
-.tucked-stack {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.ab-adventurer {
+  background: #4d6b3c;
+  color: #f2f8ee;
 }
 
-.tucked-bar {
-  height: 6px;
-  background: repeating-linear-gradient(90deg, #7d5330 0 4px, transparent 4px 6px);
-  border-radius: 2px;
-  flex: 1;
+.ab-cave {
+  background: #5c4d42;
+  color: #f8efe6;
 }
 
-.tucked-count {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #5c4324;
+.fab-ifactivated {
+  background: #1f6f9f;
+  color: #eef8fd;
 }
 
 /* Bonus & Hummingbird Cards */
@@ -1434,71 +1547,6 @@ h3 {
   align-items: center;
 }
 
-.fish-card {
-  background: linear-gradient(180deg, #1b3b56, #102638);
-  color: #e6f4f8;
-  border: 1.5px solid #3d7299;
-  border-radius: 8px;
-  padding: 6px 8px;
-  width: 170px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.7rem;
-}
-
-.fish-card.compact {
-  width: 100%;
-  height: 100%;
-}
-
-.fish-card.selectable {
-  outline: 2px solid #ffd166;
-  cursor: pointer;
-}
-
-.fish-card.selected {
-  outline: 3px solid #48cae4;
-  transform: translateY(-3px);
-}
-
-.fcard-top {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.fcard-pts {
-  background: #ffd166;
-  color: #14213d;
-  font-weight: 800;
-  border-radius: 5px;
-  padding: 1px 5px;
-}
-
-.fcard-name {
-  font-weight: 700;
-}
-
-.fcard-meta {
-  font-size: 0.62rem;
-  color: #98c1d9;
-}
-
-.fcard-art {
-  height: 48px;
-  border-radius: 5px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(160, 220, 255, 0.25);
-}
-
-.fcard-ability {
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 5px;
-  padding: 3px 5px;
-  font-size: 0.64rem;
-}
-
 .ocean-tokens-row,
 .stat-pills {
   display: flex;
@@ -1868,12 +1916,6 @@ h3 {
     min-width: 580px;
   }
 
-  .hand .bird,
-  .tray .bird {
-    width: 132px;
-    min-height: 152px;
-  }
-
   .rules-modal {
     max-height: 92vh;
   }
@@ -1886,4 +1928,132 @@ h3 {
 
 .ms-total-row td {
   border-top: 2px solid var(--accent);
+}
+
+/* ============================================================================
+   BOARDS — every slot holds exactly one fixed-size creature card
+   ============================================================================ */
+
+.slots {
+  grid-template-columns: repeat(auto-fill, calc(var(--cc-w) + 11px));
+}
+
+.slot {
+  min-width: 0;
+  width: calc(var(--cc-w) + 11px);
+  min-height: calc(var(--cc-h) + 11px);
+}
+
+.mat-col-costs {
+  grid-template-columns: 64px repeat(5, calc(var(--cc-w) + 11px));
+}
+
+.mat,
+.ocean-mat {
+  overflow-x: auto;
+}
+
+.ocean-sites-header,
+.ocean-row {
+  grid-template-columns: 120px repeat(3, calc(var(--cc-w) + 13px));
+}
+
+.ocean-slot {
+  min-height: calc(var(--cc-h) + 13px);
+}
+
+/* Wyrmspan guild track: 12 spaces, reward icon per space, next reward glows */
+.guild-track {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.gt-space {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 2px 2px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 46px;
+}
+
+.gt-space.brown {
+  background: rgba(124, 84, 46, 0.45);
+  border-color: rgba(229, 169, 82, 0.4);
+}
+
+.gt-space.next {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 1px #ffd166, 0 0 10px rgba(255, 209, 102, 0.45);
+}
+
+.gt-num {
+  font-size: 0.55rem;
+  font-weight: 800;
+  opacity: 0.65;
+  line-height: 1;
+}
+
+.gt-tokens {
+  display: flex;
+  gap: 1px;
+  min-height: 9px;
+}
+
+.gt-tokens .pcolor {
+  width: 9px;
+  height: 9px;
+}
+
+.guild-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.guild-up-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 0.74rem;
+}
+
+.guild-up-item {
+  display: inline-flex;
+  padding: 1px;
+  border-radius: 50%;
+}
+
+.guild-up-item.first {
+  box-shadow: 0 0 0 2px #ffd166;
+}
+
+/* Setup / choices that show full cards */
+.setup-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.res-picker {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.res-picker button {
+  padding: 3px 5px;
+  line-height: 0;
 }

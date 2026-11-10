@@ -9,7 +9,18 @@ import { BirdIllustration } from './art/birdArt';
 import { DragonIllustration } from './art/dragonArt';
 import { FishIllustration } from './art/fishArt';
 
+import { FinIcon, WyrmResourceIcon } from './art/tokens';
+
 export { ArtDefs } from './art/core';
+export {
+  FIN_SITE_COLOR,
+  FinIcon,
+  renderFinspanText,
+  renderWyrmspanText,
+  WYRM_CAVE_COLOR,
+  WyrmResourceIcon,
+  WyrmVp,
+} from './art/tokens';
 export { BirdIllustration, DragonIllustration, FishIllustration };
 
 // ============================================================================
@@ -142,12 +153,72 @@ export function FinspanThumbnail() {
 // TOKEN ICONS (replace emoji chips — consistent across platforms)
 // ============================================================================
 
-export type TokenKind = 'card' | 'die' | 'feather' | 'predator' | 'flock' | 'bonus';
+export type TokenKind =
+  | 'card' | 'die' | 'feather' | 'predator' | 'flock' | 'bonus'
+  | 'bird' | 'tuck' | 'duet' | 'hum' | 'beakL' | 'beakR';
 
-export function TokenIcon({ kind, size = 14, title }: { kind: TokenKind; size?: number; title?: string }) {
+const TOKEN_TITLE: Record<TokenKind, string> = {
+  card: 'Bird card', die: 'Birdfeeder die', feather: 'Victory points', predator: 'Predator', flock: 'Flocking',
+  bonus: 'Bonus card', bird: 'Bird', tuck: 'Tucked card (1 VP each)', duet: 'Duet token', hum: 'Hummingbird',
+  beakL: 'Beak pointing left', beakR: 'Beak pointing right',
+};
+
+export const HUM_GROUP_HEX: Record<string, string> = {
+  bee: '#e07a9b', brilliant: '#48cae4', emerald: '#52b788', mango: '#f4a261', topaz: '#ffd166',
+};
+
+export function TokenIcon({
+  kind,
+  size = 14,
+  title,
+  color,
+}: {
+  kind: TokenKind;
+  size?: number;
+  title?: string;
+  color?: string;
+}) {
+  const t = title ?? TOKEN_TITLE[kind];
+  const hum = color ?? '#52b788';
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={title ?? kind}>
-      {title && <title>{title}</title>}
+    <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={t}>
+      <title>{t}</title>
+      {kind === 'bird' && (
+        <>
+          <circle cx="12" cy="12" r="10.5" fill="#5d8a64" stroke="#22402a" strokeWidth="1.2" />
+          <path d="M5 13.6q2-5 7.4-4.4l3-2.6 1 2.4 3.2.6-2.8 1.6q-.4 5.4-6.4 6.2l-1 2.2-1.2-2.2Q5.8 17 5 13.6Z" fill="#f7efe0" />
+        </>
+      )}
+      {kind === 'tuck' && (
+        <>
+          <rect x="3.5" y="7" width="13" height="14" rx="2" fill="#d8c8a8" stroke="#7a5a32" strokeWidth="1.1" />
+          <rect x="7.5" y="3" width="13" height="14" rx="2" fill="#f7efe0" stroke="#7a5a32" strokeWidth="1.3" />
+          <path d="M10 18.6h8" stroke="#7a5a32" strokeWidth="1.4" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'duet' && (
+        <>
+          <path d="M12 1.8 21 7v10l-9 5.2L3 17V7Z" fill="#c23b5a" stroke="#4a0f1f" strokeWidth="1.2" />
+          <circle cx="9.4" cy="12" r="3.4" fill="#f7efe0" />
+          <circle cx="14.6" cy="12" r="3.4" fill="#f7efe0" opacity="0.75" />
+        </>
+      )}
+      {kind === 'hum' && (
+        <>
+          <circle cx="12" cy="12" r="10.5" fill={hum} stroke="#1a2a20" strokeWidth="1.2" />
+          <path d="M2.6 9.4 9.6 11.6" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" />
+          <path d="M10 11.4q2-3 5.6-1.4 2.6 1.4 2 4.4l3 3.2-3.8-1.8q-3 1.4-5.4-1.2Z" fill="#fff" />
+          <path d="M13 10.4q-1-5 3-7" stroke="#fff" strokeWidth="1.6" fill="none" opacity="0.8" />
+        </>
+      )}
+      {(kind === 'beakL' || kind === 'beakR') && (
+        <g transform={kind === 'beakR' ? 'matrix(-1 0 0 1 24 0)' : undefined}>
+          <circle cx="12" cy="12" r="10.5" fill="#e8dcc0" stroke="#6b5434" strokeWidth="1.2" />
+          <circle cx="14" cy="11" r="5" fill="#6b5434" />
+          <path d="M9.6 9.6 3.6 11.6l6 1.6Z" fill="#e5a952" stroke="#6b5434" strokeWidth="0.8" />
+          <circle cx="12.6" cy="9.8" r="1" fill="#fff" />
+        </g>
+      )}
       {kind === 'card' && (
         <>
           <rect x="6.5" y="3" width="13" height="18" rx="2" fill="#d8c8a8" stroke="#7a5a32" strokeWidth="1.1" transform="rotate(8 13 12)" />
@@ -199,6 +270,18 @@ export function TokenIcon({ kind, size = 14, title }: { kind: TokenKind; size?: 
 // WINGSPAN SVG ICONS & ILLUSTRATIONS
 // ============================================================================
 
+export const FOOD_TITLE: Record<string, string> = {
+  invertebrate: 'Invertebrate',
+  seed: 'Seed',
+  fish: 'Fish',
+  fruit: 'Fruit',
+  rodent: 'Rodent',
+  nectar: 'Nectar',
+  split: 'Invertebrate or seed',
+  any: 'Any food',
+  wild: 'Any food',
+};
+
 export function FoodIcon({ food, size = 18 }: { food: string; size?: number }) {
   const f = food.toLowerCase();
   return (
@@ -208,8 +291,9 @@ export function FoodIcon({ food, size = 18 }: { food: string; size?: number }) {
       height={size}
       className="svg-icon"
       role="img"
-      aria-label={food}
+      aria-label={FOOD_TITLE[f] ?? food}
     >
+      <title>{FOOD_TITLE[f] ?? food}</title>
       {f === 'invertebrate' && (
         <>
           <circle cx="12" cy="12" r="11" fill="#3f8f6b" stroke="#1d4d37" strokeWidth="1.4" />
@@ -296,6 +380,7 @@ export function FoodIcon({ food, size = 18 }: { food: string; size?: number }) {
 export function DieFaceSvg({ face, size = 34 }: { face: string; size?: number }) {
   return (
     <svg viewBox="0 0 38 38" width={size} height={size} role="img" aria-label={`Die: ${face}`}>
+      <title>{`Birdfeeder die: ${FOOD_TITLE[face] ?? face}`}</title>
       <rect x="1.5" y="2.5" width="35" height="34" rx="7" fill="#cbb68c" />
       <rect x="1.5" y="1.5" width="35" height="33" rx="7" fill="#f7efe0" stroke="#9e875b" strokeWidth="1.4" />
       <g transform="translate(7, 6)">
@@ -309,6 +394,7 @@ export function HabitatIcon({ habitat, size = 18 }: { habitat: string; size?: nu
   const h = habitat.toLowerCase();
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={habitat}>
+      <title>{`${h.charAt(0).toUpperCase()}${h.slice(1)}`}</title>
       {h === 'forest' && (
         <>
           <polygon points="12,1 22,7 22,17 12,23 2,17 2,7" fill="#3a6b4c" stroke="#1c3b27" strokeWidth="1.3" />
@@ -340,6 +426,7 @@ export function NestIcon({ nest, size = 18 }: { nest: string; size?: number }) {
   const n = (nest || 'none').toLowerCase();
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={`Nest: ${nest}`}>
+      <title>{n === 'wild' || n === 'star' ? 'Any nest (wild)' : n === 'none' ? 'No nest' : `${n.charAt(0).toUpperCase()}${n.slice(1)} nest`}</title>
       <circle cx="12" cy="12" r="10.5" fill="#6b533b" stroke="#362819" strokeWidth="1.3" />
       {n === 'bowl' && (
         <path d="M5.5 11 A6.5 6 0 0 0 18.5 11 Z" fill="#e9d3ab" stroke="#362819" strokeWidth="1.1" />
@@ -390,6 +477,7 @@ export function EggTokenSvg({ index = 0, size = 16 }: { index?: number; size?: n
   const c = EGG_PALETTE[index % EGG_PALETTE.length]!;
   return (
     <svg viewBox="0 0 18 22" width={size * 0.85} height={size} className="svg-icon" role="img" aria-label="Egg">
+      <title>Egg</title>
       <path
         d="M9 1.5 C13.5 1.5 16.5 8.5 16.5 13.5 C16.5 18 13.2 20.5 9 20.5 C4.8 20.5 1.5 18 1.5 13.5 C1.5 8.5 4.5 1.5 9 1.5 Z"
         fill={c.fill}
@@ -408,6 +496,7 @@ export function ActionCubeSvg({ color = 'orange', size = 18 }: { color?: string;
   const hex = playerColorHex(color);
   return (
     <svg viewBox="0 0 22 22" width={size} height={size} className="svg-icon" role="img" aria-label="Action cube">
+      <title>Action cube</title>
       <polygon points="11,2 20,7 11,12 2,7" fill={hex} stroke="#1a1a1a" strokeWidth="1.1" />
       <polygon points="2,7 11,12 11,20 2,15" fill={hex} filter="brightness(0.85)" stroke="#1a1a1a" strokeWidth="1.1" />
       <polygon points="20,7 11,12 11,20 20,15" fill={hex} filter="brightness(0.7)" stroke="#1a1a1a" strokeWidth="1.1" />
@@ -415,146 +504,65 @@ export function ActionCubeSvg({ color = 'orange', size = 18 }: { color?: string;
   );
 }
 
-/** Render Wingspan power/goal text with inline SVG icons for [token] tags. */
-export function renderWingspanText(text: string | null | undefined): ReactNode {
-  if (!text) return null;
-  const parts = text.split(/(\[[^\]]+\])/g);
-  return parts.map((part, idx) => {
-    const m = /^\[([^\]]+)\]$/.exec(part);
-    if (!m) return part;
-    const tag = m[1]!.toLowerCase();
-    if (
-      tag === 'invertebrate' ||
-      tag === 'seed' ||
-      tag === 'fish' ||
-      tag === 'fruit' ||
-      tag === 'rodent' ||
-      tag === 'nectar' ||
-      tag === 'wild'
-    ) {
-      return <FoodIcon key={idx} food={tag} size={14} />;
-    }
-    if (tag === 'forest' || tag === 'grassland' || tag === 'wetland') {
-      return <HabitatIcon key={idx} habitat={tag} size={14} />;
-    }
-    if (tag === 'bowl' || tag === 'cavity' || tag === 'ground' || tag === 'platform' || tag === 'star') {
-      return <NestIcon key={idx} nest={tag} size={14} />;
-    }
-    if (tag === 'egg') return <EggTokenSvg key={idx} index={0} size={14} />;
-    if (tag === 'card' || tag === 'bird_with_tucked_card') {
-      return (
-        <TokenIcon key={idx} kind="card" title="Bird card" />
-      );
-    }
-    if (tag === 'die') {
-      return (
-        <TokenIcon key={idx} kind="die" title="Birdfeeder die" />
-      );
-    }
-    if (tag === 'point' || tag === 'feather') {
-      return (
-        <TokenIcon key={idx} kind="feather" title="Victory points" />
-      );
-    }
-    if (tag === 'predator') {
-      return (
-        <TokenIcon key={idx} kind="predator" title="Predator" />
-      );
-    }
-    if (tag === 'flocking') {
-      return (
-        <TokenIcon key={idx} kind="flock" title="Flocking" />
-      );
-    }
+const WING_FOODS = new Set(['invertebrate', 'seed', 'fish', 'fruit', 'rodent', 'nectar', 'wild']);
+const WING_NESTS = new Set(['bowl', 'cavity', 'ground', 'platform', 'star']);
+
+/** One Wingspan text token → its icon (shared by card text, goals and bonus cards). */
+export function wingspanToken(tag: string, key: number | string, size = 14): ReactNode {
+  const t = tag.toLowerCase();
+  if (WING_FOODS.has(t)) return <FoodIcon key={key} food={t} size={size} />;
+  if (t === 'forest' || t === 'grassland' || t === 'wetland') return <HabitatIcon key={key} habitat={t} size={size} />;
+  if (WING_NESTS.has(t)) return <NestIcon key={key} nest={t} size={size} />;
+  if (t === 'egg') return <EggTokenSvg key={key} index={0} size={size} />;
+  if (t === 'card') return <TokenIcon key={key} kind="card" size={size} />;
+  if (t === 'bird_with_tucked_card') return <TokenIcon key={key} kind="tuck" size={size} title="Bird with a tucked card" />;
+  if (t === 'die') return <TokenIcon key={key} kind="die" size={size} />;
+  if (t === 'point' || t === 'feather') return <TokenIcon key={key} kind="feather" size={size} />;
+  if (t === 'predator') return <TokenIcon key={key} kind="predator" size={size} />;
+  if (t === 'flocking') return <TokenIcon key={key} kind="flock" size={size} />;
+  if (t === 'bonus_cards') return <TokenIcon key={key} kind="bonus" size={size} title="Bonus-card power" />;
+  if (t === 'bird') return <TokenIcon key={key} kind="bird" size={size} />;
+  if (t === 'duet_token') return <TokenIcon key={key} kind="duet" size={size} />;
+  if (t === 'hummingbird') return <TokenIcon key={key} kind="hum" size={size} />;
+  if (HUM_GROUP_HEX[t]) {
+    return <TokenIcon key={key} kind="hum" size={size} color={HUM_GROUP_HEX[t]} title={`${t[0]!.toUpperCase()}${t.slice(1)} hummingbird`} />;
+  }
+  if (t === 'beak_pointing_left') return <TokenIcon key={key} kind="beakL" size={size} />;
+  if (t === 'beak_pointing_right') return <TokenIcon key={key} kind="beakR" size={size} />;
+  if (t.startsWith('action_cube')) return <ActionCubeSvg key={key} color={t.endsWith('gray') ? '#9aa0a6' : 'orange'} size={size} />;
+  // Data artifacts like ["fruit","seed"] → fruit / seed.
+  const list = t.replace(/"/g, '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (list.length > 1 && list.every((x) => WING_FOODS.has(x))) {
     return (
-      <span key={idx} className="inline-chip">
-        {m[1]}
+      <span key={key} className="bcard-cost-or">
+        {list.map((x, i) => (
+          <span key={x}>
+            {i > 0 && <span className="bcard-slash">/</span>}
+            <FoodIcon food={x} size={size} />
+          </span>
+        ))}
       </span>
     );
+  }
+  return (
+    <span key={key} className="inline-chip" title={tag}>
+      {tag}
+    </span>
+  );
+}
+
+/** Render Wingspan power/goal text with inline SVG icons for [token] tags. */
+export function renderWingspanText(text: string | null | undefined, size = 14): ReactNode {
+  if (!text) return null;
+  return text.split(/(\[[^\]]+\])/g).map((part, idx) => {
+    const m = /^\[([^\]]+)\]$/.exec(part);
+    return m ? wingspanToken(m[1]!, idx, size) : part;
   });
 }
 
 // ============================================================================
 // WYRMSPAN SVG ICONS & ILLUSTRATIONS
 // ============================================================================
-
-export function WyrmResourceIcon({ kind, size = 18 }: { kind: string; size?: number }) {
-  const k = kind.toLowerCase();
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={kind}>
-      {k === 'meat' && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#b83b3b" stroke="#4f1212" strokeWidth="1.4" />
-          <ellipse cx="11" cy="12" rx="6.2" ry="4.5" fill="#f28482" stroke="#4f1212" strokeWidth="1.1" />
-          <circle cx="14.5" cy="11.5" r="1.8" fill="#fff1e6" />
-        </>
-      )}
-      {k === 'gold' && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#c9931b" stroke="#593e05" strokeWidth="1.4" />
-          <polygon points="5,16 19,16 16,8 8,8" fill="#ffd166" stroke="#593e05" strokeWidth="1.2" />
-        </>
-      )}
-      {k === 'crystal' && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#7b42bc" stroke="#311457" strokeWidth="1.4" />
-          <polygon points="12,4 17,10 14.5,19 9.5,19 7,10" fill="#e0aaff" stroke="#311457" strokeWidth="1.1" />
-        </>
-      )}
-      {k === 'milk' && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#5b8ca8" stroke="#1d3a4d" strokeWidth="1.4" />
-          <path d="M9,6 L15,6 L14,9 L16.5,13 L16.5,18.5 L7.5,18.5 L7.5,13 L10,9 Z" fill="#f8f9fa" stroke="#1d3a4d" strokeWidth="1.1" />
-        </>
-      )}
-      {(k === 'any' || k === 'anyresource') && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#3a3347" stroke="#1a1423" strokeWidth="1.4" />
-          <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="#b83b3b" />
-          <path d="M12 12 L22 12 A10 10 0 0 1 12 22 Z" fill="#c9931b" />
-          <path d="M12 12 L12 22 A10 10 0 0 1 2 12 Z" fill="#7b42bc" />
-          <path d="M12 12 L2 12 A10 10 0 0 1 12 2 Z" fill="#f8f9fa" />
-        </>
-      )}
-      {k === 'coin' && (
-        <>
-          <circle cx="12" cy="12" r="10.5" fill="#ced4da" stroke="#495057" strokeWidth="1.6" />
-          <circle cx="12" cy="12" r="7.5" fill="none" stroke="#6c757d" strokeWidth="1.1" strokeDasharray="2 2" />
-          <polygon points="12,6.5 14.5,12 12,17.5 9.5,12" fill="#6c757d" />
-        </>
-      )}
-      {k === 'egg' && (
-        <>
-          <path
-            d="M12 2.5 C17 2.5 20 10 20 15 C20 19.5 16.5 22 12 22 C7.5 22 4 19.5 4 15 C4 10 7 2.5 12 2.5 Z"
-            fill="#e0a96d"
-            stroke="#5c3a18"
-            strokeWidth="1.4"
-          />
-          <path d="M8 11 Q12 14 16 11 M8 15 Q12 18 16 15" fill="none" stroke="#8a5a2b" strokeWidth="1.2" />
-        </>
-      )}
-      {(k === 'guild' || k === 'dragonguild') && (
-        <>
-          <polygon points="12,1.5 21,6.8 21,17.2 12,22.5 3,17.2 3,6.8" fill="#5e4b8b" stroke="#231942" strokeWidth="1.4" />
-          <polygon points="12,4.5 14,10 19.5,12 14,14 12,19.5 10,14 4.5,12 10,10" fill="#ffd166" />
-        </>
-      )}
-      {(k === 'dragoncard' || k === 'dragon') && (
-        <>
-          <rect x="4" y="2.5" width="16" height="19" rx="2.5" fill="#6c4675" stroke="#e0aaff" strokeWidth="1.3" />
-          <path d="M8,14 L12,7 L16,14 L12,12 Z" fill="#ffd166" />
-        </>
-      )}
-      {(k === 'cavecard' || k === 'cave') && (
-        <>
-          <rect x="3" y="4" width="18" height="16" rx="2.5" fill="#5c4d42" stroke="#ddb892" strokeWidth="1.3" />
-          <path d="M7,17 L7,11 A5,5 0 0,1 17,11 L17,17 Z" fill="#23190f" />
-        </>
-      )}
-    </svg>
-  );
-}
 
 export function AdventurerMeepleSvg({ color = 'orange', size = 22 }: { color?: string; size?: number }) {
   const hex = playerColorHex(color);
@@ -567,113 +575,9 @@ export function AdventurerMeepleSvg({ color = 'orange', size = 22 }: { color?: s
   );
 }
 
-export function renderWyrmspanText(text: string | null | undefined): ReactNode {
-  if (!text) return null;
-  const parts = text.split(/(\[[^\]]+\])/g);
-  return parts.map((part, idx) => {
-    const m = /^\[([^\]]+)\]$/.exec(part);
-    if (!m) return part;
-    const raw = m[1]!;
-    const vp = /^VP-(\d+)$/i.exec(raw);
-    if (vp) {
-      return (
-        <span key={idx} className="inline-chip chip-vp" title={`${vp[1]} VP`}>
-          🛡{vp[1]}
-        </span>
-      );
-    }
-    return <WyrmResourceIcon key={idx} kind={raw} size={14} />;
-  });
-}
-
 // ============================================================================
 // FINSPAN SVG ICONS & ILLUSTRATIONS
 // ============================================================================
-
-export function FinIcon({ kind, size = 18 }: { kind: string; size?: number }) {
-  const k = kind.toLowerCase();
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className="svg-icon" role="img" aria-label={kind}>
-      {(k === 'egg' || k === 'fishegg') && (
-        <>
-          <circle cx="12" cy="12" r="9.5" fill="#ffd166" fillOpacity="0.85" stroke="#b57c00" strokeWidth="1.5" />
-          <circle cx="10" cy="10" r="3.2" fill="#ef476f" />
-          <circle cx="14.5" cy="8.5" r="1.6" fill="#fff" opacity="0.8" />
-        </>
-      )}
-      {(k === 'young' || k === 'youngfish') && (
-        <>
-          <circle cx="12" cy="12" r="10.5" fill="#1e6091" stroke="#0b2239" strokeWidth="1.3" />
-          <path d="M5,12 Q10,7 16,12 L20,9 L19,12 L20,15 L16,12 Q10,17 5,12 Z" fill="#90e0ef" />
-          <circle cx="8" cy="11.2" r="1.1" fill="#0b2239" />
-        </>
-      )}
-      {(k === 'school' || k === 'schoolfish') && (
-        <>
-          <circle cx="12" cy="12" r="11" fill="#0077b6" stroke="#caf0f8" strokeWidth="1.4" />
-          {[-4, 0, 4].map((dy, i) => (
-            <path
-              key={i}
-              d={`M${6 + (i % 2) * 2},${12 + dy} Q${10 + (i % 2) * 2},${9.5 + dy} ${15 + (i % 2) * 2},${12 + dy} L${18 + (i % 2) * 2},${10 + dy} L${18 + (i % 2) * 2},${14 + dy} Z`}
-              fill="#caf0f8"
-            />
-          ))}
-        </>
-      )}
-      {(k === 'hatch' || k === 'fishhatch') && (
-        <>
-          <circle cx="12" cy="12" r="10.5" fill="#2a9d8f" stroke="#134e47" strokeWidth="1.3" />
-          <path d="M6,14 L9,10 L11,14 L14,9 L18,13" fill="none" stroke="#ffd166" strokeWidth="2" />
-        </>
-      )}
-      {(k === 'move' || k === 'schoolfeedermove') && (
-        <>
-          <circle cx="12" cy="12" r="10.5" fill="#48cae4" stroke="#023e8a" strokeWidth="1.3" />
-          <path d="M6,12 L16,12 M13,8 L18,12 L13,16" fill="none" stroke="#023e8a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </>
-      )}
-      {(k === 'coral' || k.startsWith('coral') || k.endsWith('coral')) && (
-        <>
-          <circle
-            cx="12"
-            cy="12"
-            r="10.5"
-            fill={
-              k.includes('blue')
-                ? '#3a86ff'
-                : k.includes('purple')
-                  ? '#8338ec'
-                  : k.includes('green')
-                    ? '#38b000'
-                    : '#ff006e'
-            }
-            stroke="#1a1a1a"
-            strokeWidth="1.3"
-          />
-          <path
-            d="M12,19 L12,9 M12,14 L8,10 M12,12 L16,8"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-          />
-        </>
-      )}
-      {(k === 'draw' || k === 'drawcard' || k === 'recovercard') && (
-        <>
-          <rect x="4" y="3" width="16" height="18" rx="2.5" fill="#1e6091" stroke="#90e0ef" strokeWidth="1.4" />
-          <path d="M8,12 Q12,9 15,12 Q12,15 8,12 Z" fill="#90e0ef" />
-        </>
-      )}
-      {k.includes('consume') && (
-        <>
-          <circle cx="12" cy="12" r="10.5" fill="#9d0208" stroke="#370617" strokeWidth="1.3" />
-          <path d="M5,8 L14,12 L5,16 Z M13,12 L19,10 L19,14 Z" fill="#ffd166" />
-        </>
-      )}
-    </svg>
-  );
-}
 
 export function DiverMeepleSvg({ color = 'c0', size = 20 }: { color?: string; size?: number }) {
   const hex = playerColorHex(color);
@@ -686,13 +590,3 @@ export function DiverMeepleSvg({ color = 'c0', size = 20 }: { color?: string; si
   );
 }
 
-export function renderFinspanText(text: string | null | undefined): ReactNode {
-  if (!text) return null;
-  const parts = text.split(/(\[[^\]]+\])/g);
-  return parts.map((part, idx) => {
-    const m = /^\[([^\]]+)\]$/.exec(part);
-    if (!m) return part;
-    const raw = m[1]!;
-    return <FinIcon key={idx} kind={raw} size={14} />;
-  });
-}

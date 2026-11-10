@@ -12,7 +12,9 @@ import {
   FoodIcon,
   HabitatIcon,
   NestIcon,
+  TokenIcon,
   WyrmResourceIcon,
+  WyrmVp,
 } from './svgArt';
 
 export interface RulesPage {
@@ -206,7 +208,7 @@ const WINGSPAN_PAGES: RulesPage[] = [
           <Tile
             icon={<EggTokenSvg index={1} size={20} />}
             label="1. Play a Bird from Hand"
-            hint="Place a bird in the leftmost empty slot of a matching habitat. Pay its Column Egg Cost (Col 1: 0🥚, Cols 2–3: 1🥚, Cols 4–5: 2🥚) from any birds on your mat + its Food Cost (any 2 food tokens may substitute for any 1 required food icon). Trigger any White 'When Played' power."
+            hint="Place a bird in the leftmost empty slot of a matching habitat. Pay its Column Egg Cost (Col 1: 0 eggs, Cols 2–3: 1 egg, Cols 4–5: 2 eggs) from any birds on your mat + its Food Cost (any 2 food tokens may substitute for any 1 required food icon). Trigger any White 'When Played' power."
           />
           <Tile
             icon={<HabitatIcon habitat="forest" size={22} />}
@@ -284,7 +286,11 @@ const WINGSPAN_PAGES: RulesPage[] = [
             hint="Non-competitive: score 1 point per qualifying item at the end of each round, up to a maximum of 5 points per round."
           />
           <Tile
-            label="🪶 End-of-Game Score Categories"
+            label={
+              <>
+                <TokenIcon kind="feather" size={15} /> End-of-Game Score Categories
+              </>
+            }
             hint="Sum of: Printed Bird VP + Bonus Cards + End-of-Round Goals + 1 VP per Egg on birds + 1 VP per Cached Food on birds + 1 VP per Tucked Card (+ Nectar Majorities / Duet Group / Hummingbird Track)."
           />
           <Tile
@@ -400,7 +406,7 @@ const WYRMSPAN_PAGES: RulesPage[] = [
           <Tile
             icon={<WyrmResourceIcon kind="caveCard" size={22} />}
             label="1. Excavate a Cavern Space"
-            hint="Pay 1 Coin (+0🥚 on Col 2, +1🥚 on Col 3, +2🥚 on Col 4) to play a Cave Card from hand into the leftmost unexcavated space of Crimson Cavern, Golden Grotto, or Amethyst Abyss. Immediately trigger the Cave Card's When Played benefit (Col 4 also offers a 3-items → 1 Coin trade)."
+            hint="Pay 1 Coin (+0 eggs on Col 2, +1 egg on Col 3, +2 eggs on Col 4) to play a Cave Card from hand into the leftmost unexcavated space of Crimson Cavern, Golden Grotto, or Amethyst Abyss. Immediately trigger the Cave Card's When Played benefit (Col 4 also offers a 3-items → 1 Coin trade)."
           />
           <Tile
             icon={<WyrmResourceIcon kind="dragonCard" size={22} />}
@@ -410,7 +416,7 @@ const WYRMSPAN_PAGES: RulesPage[] = [
           <Tile
             icon={<AdventurerMeepleSvg color="orange" size={22} />}
             label="3. Explore a Cavern"
-            hint="Enter Crimson Cavern, Golden Grotto, or Amethyst Abyss: 1st entry costs 1🪙, 2nd costs 1🪙+1🥚, 3rd costs 1🪙+2🥚 (max 3 entries per cavern per round). Walk left-to-right activating printed path icons and each dragon's If Activated ability until reaching a space without a dragon."
+            hint="Enter Crimson Cavern, Golden Grotto, or Amethyst Abyss: 1st entry costs 1 coin, 2nd costs 1 coin+1 egg, 3rd costs 1 coin+2 eggs (max 3 entries per cavern per round). Walk left-to-right activating printed path icons and each dragon's If Activated ability until reaching a space without a dragon."
           />
           <Tile
             icon={<WyrmResourceIcon kind="egg" size={22} />}
@@ -437,11 +443,20 @@ const WYRMSPAN_PAGES: RulesPage[] = [
             hint="Each step grants the space's printed reward (Egg, Meat, Dragon Card, Cave Card, Crystal, Gold, Coin, Milk). Landing on or passing either Brown Space (spaces 0 & 6) lets you place 1 of your 4 Guild Markers onto the active Dragon Guild Tile for major rewards or end-game VP!"
           />
           <Tile
-            label="🐣 Hatchlings & Dragon Sizes"
+            label={
+              <>
+                <WyrmResourceIcon kind="hatchling" size={15} /> Hatchlings & Dragon Sizes
+              </>
+            }
             hint="Dragons come in Small, Medium, Large, Hatchling (recurring abilities that fire every time you cache/tuck onto them, with a big bonus on the 3rd item!), and Fledgling (Dragon Academy)."
           />
           <Tile
-            label="⚡ When Played · 🧭 Adventurer · 🌙 Once Per Round · 🛡 End Game"
+            label={
+              <>
+                <WyrmResourceIcon kind="whenplayed" size={15} /> When Played · <WyrmResourceIcon kind="adventurer" size={15} /> Adventurer ·{' '}
+                <WyrmResourceIcon kind="onceperround" size={15} /> Once Per Round · <WyrmResourceIcon kind="endgame" size={15} /> End Game
+              </>
+            }
             hint="When Played fires on Entice; Adventurer fires when walked over during Explore; Once Per Round fires in turn order at Round End; End Game scores bonus VP after Round 4."
           />
         </div>
@@ -463,7 +478,11 @@ const WYRMSPAN_PAGES: RulesPage[] = [
             hint="At the end of each round, rank players on that round's Objective Tile: R1 = 4/1/0 · R2 = 5/2/1 · R3 = 6/3/2 · R4 = 7/4/3. Ties are friendly: tied players all receive that rank's full VP, and the next player gets the next rank! (0 units = 0 VP)."
           />
           <Tile
-            label="🛡 Final Score Breakdown"
+            label={
+              <>
+                <WyrmVp size={16} /> Final Score Breakdown
+              </>
+            }
             hint="Sum of: Dragon Guild Tile markers + Printed Dragon VP (Fledglings score 1 VP × total fledglings on your mat) + End-Game Dragon Abilities + 1 VP per Egg + 1 VP per Cached Resource + 1 VP per Tucked Card + Public Objectives + 1 VP per remaining Coin + 1 VP per 4 remaining items (hand cards + resources, rounded down)."
           />
         </div>
@@ -481,7 +500,11 @@ const WYRMSPAN_PAGES: RulesPage[] = [
         />
         <div className="rules-grid">
           <Tile
-            label="🐣 Fledgling Training"
+            label={
+              <>
+                <WyrmResourceIcon kind="fledgling" size={15} /> Fledgling Training
+              </>
+            }
             hint="Whenever your adventurer walks over a Fledgling during Explore (or via a training effect), you may pay the leftmost uncovered cost box on its training track. Once all boxes are trained, its ability unlocks!"
           />
           <Tile
@@ -516,14 +539,14 @@ const FINSPAN_PAGES: RulesPage[] = [
           <b>Setup:</b> Each player receives <b>2 Starter Fish + 3 Main Fish</b> in hand (hands and
           personal discard piles are face-up/public) and <b>6 Divers</b> per week. Your Ocean Mat
           has 3 Dive Site columns (<b>Blue</b>, <b>Purple</b>, <b>Green</b>) across 6 rows: Rows
-          1–3 = <b>☀️ Sunlight</b> (Row 1 = <i>Estuary</i>), Row 4 = <b>🌅 Twilight</b>, Rows 5–6 ={' '}
-          <b>🌑 Midnight</b> (Row 6 = <i>Deepwater</i>).
+          1–3 = <b><FinIcon kind="sunlight" size={14} /> Sunlight</b> (Row 1 = <i>Estuary</i>), Row 4 = <b><FinIcon kind="twilight" size={14} /> Twilight</b>, Rows 5–6 ={' '}
+          <b><FinIcon kind="midnight" size={14} /> Midnight</b> (Row 6 = <i>Deepwater</i>).
         </p>
         <div className="rules-grid">
           <Tile
             icon={<FinIcon kind="egg" size={22} />}
             label="Printed Forage Fish & Starting Tokens"
-            hint="Every Ocean Mat starts with Catalina Goby (1cm, Green Sunlight Row 2, with 1🥚), 1🐟 Young on open Purple Sunlight Row 3, Showy Bristlemouth (3cm, Purple Twilight Row 4), and Glasshead Grenadier (9cm, Blue Midnight Row 5, with 1🥚)."
+            hint="Every Ocean Mat starts with Catalina Goby (1cm, Green Sunlight Row 2, with 1 egg), 1 Young fish on open Purple Sunlight Row 3, Showy Bristlemouth (3cm, Purple Twilight Row 4), and Glasshead Grenadier (9cm, Blue Midnight Row 5, with 1 egg)."
           />
           <Tile
             icon={<DiverMeepleSvg color="c0" size={22} />}
@@ -570,22 +593,34 @@ const FINSPAN_PAGES: RulesPage[] = [
         <div className="rules-grid">
           <Tile
             icon={<FinIcon kind="draw" size={22} />}
-            label="🔵 Blue Dive Site (Left — Cards)"
+            label={
+              <>
+                <FinIcon kind="flipperblue" size={15} /> Blue Dive Site (Left — Cards)
+              </>
+            }
             hint="Each depth zone (Sunlight, Twilight, Midnight) containing ≥1 fish grants Draw 1 Card. First diver reaching the bottom each week recovers 1 Card from your discard pile (or deck if empty)."
           />
           <Tile
             icon={<FinIcon kind="egg" size={22} />}
-            label="🟣 Purple Dive Site (Center — Eggs)"
+            label={
+              <>
+                <FinIcon kind="flipperpurple" size={15} /> Purple Dive Site (Center — Eggs)
+              </>
+            }
             hint="Each depth zone containing ≥1 fish lets you Lay 1 Egg on any fish without an egg (max 1 egg per fish). First diver reaching the bottom each week lays +1 Egg."
           />
           <Tile
             icon={<FinIcon kind="hatch" size={22} />}
-            label="🟢 Green Dive Site (Right — Hatch & Move)"
+            label={
+              <>
+                <FinIcon kind="flippergreen" size={15} /> Green Dive Site (Right — Hatch & Move)
+              </>
+            }
             hint="Sunlight & Twilight zones with ≥1 fish Hatch 1 Egg into 1 Young; Midnight zone & bottom bonus Move 1 Young or School in a straight horizontal/vertical line."
           />
           <Tile
             icon={<FinIcon kind="school" size={22} />}
-            label="🐠 Schools (6 VP)"
+            label="Schools (6 VP)"
             hint="At any time, whenever 3 Young share a single slot (by hatching, placing, or moving), they immediately merge into a School token worth 6 VP! Schools cannot enter or cross another School's slot."
           />
         </div>
@@ -607,7 +642,11 @@ const FINSPAN_PAGES: RulesPage[] = [
             hint="At the end of Weeks 1, 2, and 3, every player scores points for the active Week's Achievement (Side A: W1 Eggs/Young 1pt, W2 Full Rows 2pt, W3 Schools 2pt; Side B: random tiles + 3 VP bonus to the weekly leader!)."
           />
           <Tile
-            label="🌊 Final Score Breakdown"
+            label={
+              <>
+                <FinIcon kind="wave" size={15} /> Final Score Breakdown
+              </>
+            }
             hint="Sum of: Weekly Achievement VP + Game-End Wave Abilities on visible fish + Printed VP on visible fish + 1 VP per Consumed Fish + 1 VP per Egg + 1 VP per Young + 6 VP per School (+ S&R Coral & Reef Completion VP). Tiebreaker: most cards in hand."
           />
         </div>
@@ -626,7 +665,11 @@ const FINSPAN_PAGES: RulesPage[] = [
         <div className="rules-grid">
           <Tile
             icon={<FinIcon kind="coral" size={22} />}
-            label="🪸 Sharks & Reefs — Coral Reefs"
+            label={
+              <>
+                <FinIcon kind="anycoral" size={15} /> Sharks & Reefs — Coral Reefs
+              </>
+            }
             hint="The Coral Reef overlay replaces the Twilight zone checkpoint bonus: when diving through Twilight, you may discard that site's indicated item (Blue: 1 Egg, Purple: 1 Young, Green: 1 Card) to place 1 Coral in that site (max 6). Each Coral scores 1 VP, and reaching 6 Coral in a site awards +6 VP (Blue), +8 VP (Purple), or +5 VP (Green)!"
           />
           <Tile

@@ -50,8 +50,10 @@ import {
   FoodIcon,
   HabitatIcon,
   NestIcon,
+  HUM_GROUP_HEX,
   playerColorHex,
   renderWingspanText,
+  TokenIcon,
 } from './svgArt';
 
 type Draft =
@@ -128,7 +130,8 @@ export function GameScreen() {
                   <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
                   <b>{p.name}</b>
                   <span className="muted">
-                    {p.actionCubes}🧊 · {live} VP
+                    <ActionCubeSvg color={p.color} size={12} />×{p.actionCubes} · {live}
+                    <TokenIcon kind="feather" size={12} />
                   </span>
                   {i === actingIdx && <span className="turn-dot" />}
                 </button>
@@ -181,7 +184,7 @@ export function GameScreen() {
                 className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
                 onClick={() => setSideTab('log')}
               >
-                📜 Log ({game.log.length})
+                Log ({game.log.length})
               </button>
             </div>
 
@@ -192,24 +195,24 @@ export function GameScreen() {
                     <h3>⚙️ Automa Solo Deck ({game.automa.difficulty})</h3>
                     <div className="stat-pills">
                       <span className="stat-pill">
-                        📜 Bonus: <b>{bonusCard(game.automa.bonusCardId).name}</b>
+                        <TokenIcon kind="bonus" size={13} /> Bonus: <b>{bonusCard(game.automa.bonusCardId).name}</b>
                       </span>
                       <span className="stat-pill">
                         🃏 Deck: <b>{game.automa.deck.length}</b> (Last: #{game.automa.lastCardId ?? '—'})
                       </span>
                       <span className="stat-pill">
-                        🎯 Goal Cubes: <b>{game.automa.goalCubes}</b>
+                        <ActionCubeSvg color="#9aa0a6" size={12} /> Goal cubes: <b>{game.automa.goalCubes}</b>
                       </span>
                       <span className="stat-pill">
-                        🪶 Face-Up: <b>{game.automa.faceUpBirds.length}</b> · Face-Down:{' '}
+                        <TokenIcon kind="card" size={13} /> Face-up birds: <b>{game.automa.faceUpBirds.length}</b> · Face-Down:{' '}
                         <b>{game.automa.faceDownBirds}</b>
                       </span>
                       <span className="stat-pill">
-                        🥚 Eggs: <b>{game.automa.eggs}</b>
+                        <EggTokenSvg index={0} size={12} /> Eggs: <b>{game.automa.eggs}</b>
                       </span>
                       {game.automa.hoardTokens > 0 && (
                         <span className="stat-pill">
-                          🧺 Hoard: <b>{game.automa.hoardTokens}</b>
+                          <FoodIcon food="any" size={12} /> Hoard: <b>{game.automa.hoardTokens}</b>
                         </span>
                       )}
                     </div>
@@ -224,7 +227,10 @@ export function GameScreen() {
                       <b>{p.name}</b>
                       <span className="spacer" />
                       <span className="muted" style={{ fontSize: '0.73rem' }}>
-                        🪶{sc.birdPoints} · 🥚{sc.eggs} · 📜{sc.bonusPoints} · 🎯{sc.goalPoints}
+                        <span title="Bird card points"><TokenIcon kind="bird" size={12} />{sc.birdPoints}</span> ·{' '}
+                        <span title="Eggs"><EggTokenSvg index={0} size={11} />{sc.eggs}</span> ·{' '}
+                        <span title="Bonus cards"><TokenIcon kind="bonus" size={12} />{sc.bonusPoints}</span> ·{' '}
+                        <span title="Round goals">goals {sc.goalPoints}</span>
                       </span>
                       <b className="badge">{sc.total} VP</b>
                     </div>
@@ -362,7 +368,7 @@ function CommonRow({
       <div className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
         {/* Birdfeeder */}
         <div>
-          <h3>🎲 Birdfeeder {pickingDice && `— pick ${diceNeeded}`}</h3>
+          <h3><TokenIcon kind="die" size={16} /> Birdfeeder {pickingDice && `— pick ${diceNeeded}`}</h3>
           <div className="row">
             {game.feederIn.map((f, i) => (
               <span
@@ -398,7 +404,7 @@ function CommonRow({
 
         {/* Bird Tray & Deck */}
         <div style={{ flex: 1 }}>
-          <h3>🂠 Bird Tray {pickingCards && `— pick ${cardsNeeded}`}</h3>
+          <h3><TokenIcon kind="card" size={16} /> Bird Tray {pickingCards && `— pick ${cardsNeeded}`}</h3>
           <div className="tray">
             <div
               ref={deckAnchor}
@@ -440,7 +446,7 @@ function CommonRow({
         {/* Americas Hummingbird Garden */}
         {americas && (
           <div>
-            <h3>🌺 Hummingbird Garden (Deck: {game.humDeck.length})</h3>
+            <h3><TokenIcon kind="hum" size={16} /> Hummingbird Garden (Deck: {game.humDeck.length})</h3>
             <div className="hum-garden-row">
               {game.humGarden.map((stack, i) => {
                 const top = stack[stack.length - 1];
@@ -542,7 +548,8 @@ function PlayerMatView({
               <span className="hab-gain-badge">+{rowGain}</span>
               {oceania && player.nectarSpent[h] > 0 && (
                 <span className="hab-nectar-badge" title="Spent nectar in this habitat">
-                  🌺{player.nectarSpent[h]}
+                  <FoodIcon food="nectar" size={12} />
+                  {player.nectarSpent[h]}
                 </span>
               )}
             </div>
@@ -640,8 +647,8 @@ function PlayerMatView({
                           {
                             draft.placements.filter((r) => r.habitat === h && r.index === i)
                               .length
-                          }{' '}
-                          🥚
+                          }
+                          <EggTokenSvg index={0} size={11} />
                         </span>
                       )}
                   </div>
@@ -654,7 +661,7 @@ function PlayerMatView({
                   {player.humBoard[h] != null ? (
                     <HummingbirdCardView cardId={player.humBoard[h]!} />
                   ) : (
-                    <div className="hum-empty-space">🌺 Hummingbird Space</div>
+                    <div className="hum-empty-space"><TokenIcon kind="hum" size={14} /> Hummingbird space</div>
                   )}
                 </div>
               )}
@@ -666,13 +673,14 @@ function PlayerMatView({
       {/* Americas Hummingbird Track */}
       {americas && (
         <div className="hum-track-bar">
-          <span className="muted">🌺 Hummingbird Track:</span>
+          <span className="muted"><TokenIcon kind="hum" size={14} /> Hummingbird track:</span>
           {HUM_GROUPS.map((grp: HumGroup) => {
             const pos = player.humTrack[grp] ?? 0;
             const pts = HUM_LADDER[pos] ?? 0;
             const isBonus = HUM_BONUS_SPACES[grp]?.includes(pos);
             return (
               <span key={grp} className="stat-pill">
+                <TokenIcon kind="hum" size={13} color={HUM_GROUP_HEX[grp]} title={`${grp} hummingbirds`} />
                 <b>{grp}:</b> step {pos}/{HUM_LADDER.length - 1} ({pts >= 0 ? `+${pts}` : pts} VP)
                 {isBonus ? ' ✨' : ''}
               </span>
@@ -695,7 +703,7 @@ function DuetMapPanel({ game }: { game: GameState }) {
   return (
     <div className="card">
       <div className="row" style={{ marginBottom: 6 }}>
-        <h3>☯️ Asia Duet Map (6×6)</h3>
+        <h3><TokenIcon kind="duet" size={16} /> Asia Duet Map (6×6)</h3>
         <span className="muted">
           Contiguous group = +1 VP per token · Reset space tokens:{' '}
           {duet.reset.length ? duet.reset.join(', ') : 'none'}
