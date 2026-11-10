@@ -74,8 +74,8 @@ function duetGoalUnits(state: GameState, playerId: PlayerId, tileId: number): nu
     case 2041:
       return duetTokens(state, playerId, (i) => duetIsEdge(i));
     case 2042: {
-      // Tokens on a pair of matching symbols: each token counts once, and a
-      // token qualifies when its symbol appears on ≥2 of the player's spaces.
+      // Tokens on a pair of matching symbols: each pair of matching symbols
+      // among the player's spaces contributes 2 tokens.
       const map = state.duet?.map ?? [];
       const seen = new Map<string, number>();
       const keyOf = (i: number) => {
@@ -88,8 +88,8 @@ function duetGoalUnits(state: GameState, playerId: PlayerId, tileId: number): nu
         seen.set(k, (seen.get(k) ?? 0) + 1);
       }
       let n = 0;
-      for (let i = 0; i < map.length; i++) {
-        if (map[i] === playerId && (seen.get(keyOf(i)) ?? 0) >= 2) n++;
+      for (const count of seen.values()) {
+        n += Math.floor(count / 2) * 2;
       }
       return n;
     }
@@ -335,11 +335,34 @@ export function bonusUnits(p: PlayerState, name: string): number {
         .reduce((n, { bird: b }) => n + bonusWeight(b), 0);
     case 'Ecologist':
       return Math.min(
-        ...HABITATS.map((h) =>
-          playedBirds(p)
-            .filter(({ ref }) => ref.habitat === h)
-            .reduce((n, { bird: b }) => n + bonusWeight(b), 0),
+        ...HABITATS.map(
+          (h) =>
+            playedBirds(p)
+              .filter(({ ref }) => ref.habitat === h)
+              .reduce((n, { bird: b }) => n + bonusWeight(b), 0) +
+            (p.humBoard[h] != null ? 1 : 0),
         ),
+      );
+    case 'Omnivore Specialist':
+      return playedBirds(p)
+        .filter(({ bird: b }) => {
+          const cost = BIRD_BY_ID.get(b.cardId)!.cost;
+          return (
+            cost.kind === 'any' ||
+            (cost.kind === 'and' && cost.items.some((i) => i.food === 'any'))
+          );
+        })
+        .reduce((n, { bird: b }) => n + bonusWeight(b), 0);
+    case '[Fan Made] Caprimulgiform Specialist':
+      return (
+        playedBirds(p)
+          .filter(({ bird: b }) => {
+            const c = BIRD_BY_ID.get(b.cardId)!;
+            return /hummingbird|swift|needletail|nightjar|nighthawk|poor-?will|widow|frogmouth|potoo|pauraque|oilbird/i.test(
+              c.name,
+            );
+          })
+          .reduce((n, { bird: b }) => n + bonusWeight(b), 0) + humIdsOnMat(p).length
       );
     case 'Visionary Leader':
       return p.hand.length;
@@ -453,12 +476,14 @@ export function bonusUnits(p: PlayerState, name: string): number {
     case 'Wetland Population Monitor': {
       const habitat: Habitat = name.split(' ')[0]!.toLowerCase() as Habitat;
       const nests = new Set<string>();
+      let wild = 0;
       for (const { ref, bird: b } of playedBirds(p)) {
         if (ref.habitat !== habitat) continue;
         const nest = BIRD_BY_ID.get(b.cardId)!.nest;
-        if (nest !== 'none') nests.add(nest);
+        if (nest === 'wild') wild++;
+        else if (nest !== 'none') nests.add(nest);
       }
-      return nests.size;
+      return Math.min(5, nests.size + wild);
     }
     case 'Forest Ranger':
     case 'Grassland Ranger':

@@ -8,7 +8,7 @@
 // Tiebreak: most visible dragons on the mat.
 
 import { parseAbility } from './abilities';
-import { dragonCard } from './cards';
+import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { GUILD_TILES } from './guild';
 import { allDragons, countCounter, evalCond } from './helpers';
 import type { GameState, PlayerState, ScoreBreakdown } from './types';
@@ -116,9 +116,17 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
   // Printed dragon VP + end-game abilities.
   let printedDragonVp = 0;
   let endGameAbilities = 0;
+  let remDragonCards = p.hand.filter(isDragonCard).length;
+  let remCaveCards = p.hand.filter((id) => !isDragonCard(id)).length;
+  let remResources = RESOURCES.reduce((a, r) => a + p.resources[r], 0);
   for (const d of dragons) {
     const card = dragonCard(d.dragon.cardId);
     printedDragonVp += dragonVp(p, card);
+    const active =
+      card.size !== 'Fledgling' ||
+      !card.trainingTrack ||
+      (d.dragon.training ?? 0) >= parseIcons(card.trainingTrack).length;
+    if (!active) continue;
     const def = parseAbility(card);
     if (def.endGame) {
       const eg = def.endGame;
@@ -130,6 +138,42 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
         if (eg.max !== undefined) n = Math.min(n * eg.vpPer, eg.max) / eg.vpPer;
         endGameAbilities += eg.vpPer * n;
       }
+    } else if (card.abilityType === 'EndGame') {
+      // Pay-for-VP EndGame dragons (Northern Cavalier Wyvern 85, Equatorial
+      // Cavalier Wyvern 86, Playful Hornwyrn 143, Ophidian Recluse 148):
+      // paying items for VP is always strictly better than 1 VP per 4 leftovers.
+      if (card.id === 85) {
+        if (remDragonCards >= 2) {
+          remDragonCards -= 2;
+          endGameAbilities += 3;
+        } else if (remDragonCards >= 1) {
+          remDragonCards -= 1;
+          endGameAbilities += 1;
+        }
+      } else if (card.id === 86) {
+        if (remCaveCards >= 2) {
+          remCaveCards -= 2;
+          endGameAbilities += 3;
+        } else if (remCaveCards >= 1) {
+          remCaveCards -= 1;
+          endGameAbilities += 1;
+        }
+      } else if (card.id === 143) {
+        if (remResources >= 2) {
+          remResources -= 2;
+          endGameAbilities += 3;
+        } else if (remResources >= 1) {
+          remResources -= 1;
+          endGameAbilities += 1;
+        }
+      } else if (card.id === 148) {
+        if (remResources >= 1 && remCaveCards >= 1 && remDragonCards >= 1) {
+          remResources -= 1;
+          remCaveCards -= 1;
+          remDragonCards -= 1;
+          endGameAbilities += 5;
+        }
+      }
     }
   }
 
@@ -138,7 +182,7 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
   const tucked = dragons.reduce((a, d) => a + d.dragon.tucked.length, 0);
   const objectives = p.objectiveVps.reduce((a, b) => a + b, 0);
   const coins = p.coins;
-  const handAndResources = p.hand.length + RESOURCES.reduce((a, r) => a + p.resources[r], 0);
+  const handAndResources = remDragonCards + remCaveCards + remResources;
   const leftovers = Math.floor(handAndResources / 4);
   const bonusVP = p.bonusVP;
 

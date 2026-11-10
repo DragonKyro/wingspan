@@ -8,7 +8,7 @@ Modeled on the sibling `catan` and `card-collecting` projects.
 
 ```bash
 npm run dev          # dev server
-npm run test:run     # vitest (342 tests across 19 test files)
+npm run test:run     # vitest (346 tests across 19 test files)
 npm run build        # typecheck + production build
 npm run cards        # regenerate Wingspan card data from wingsearch
 npm run deploy:rules # merge + deploy Firebase RTDB rules
@@ -104,7 +104,7 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       `fish.pdf`, `fish automa.pdf`, `sharks.pdf`)
 - [x] AI & Automa self-play sweep across every set, player count, and mode of
       all three games (`src/selfplay.test.ts`)
-- [x] 342 tests passing across 19 test files, `tsc` & `vite build` clean
+- [x] 346 tests passing across 19 test files, `tsc` & `vite build` clean
 
 ### Still to do
 

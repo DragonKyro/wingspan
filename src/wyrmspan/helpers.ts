@@ -454,9 +454,15 @@ export function countCounter(_state: GameState, p: PlayerState, counter: Counter
     case 'guildMarkers':
       return p.guildMarkersPlaced;
     case 'objectivesLowest': {
-      const scores = p.objectiveVps;
-      const min = Math.min(...[0, 1, 2, 3].map((i) => scores[i] ?? 0));
-      return [0, 1, 2, 3].filter((i) => (scores[i] ?? 0) === min).length;
+      let count = 0;
+      const rounds = Math.max(4, p.objectiveVps.length);
+      for (let r = 0; r < rounds; r++) {
+        const myVp = p.objectiveVps[r];
+        if (myVp === undefined) continue;
+        const lowest = Math.min(..._state.players.map((pl) => pl.objectiveVps[r] ?? myVp));
+        if (myVp <= lowest) count++;
+      }
+      return count;
     }
     case 'traitSets': {
       const counts = (['Shy', 'Playful', 'Helpful', 'Aggressive'] as const).map(
@@ -558,6 +564,11 @@ export function evalCond(
     case 'didPrecede':
     case 'tuckedHere':
       return true; // handled via step context flags
+    case 'hasSizesInCave': {
+      if (!ctxPos) return false;
+      const inCave = allDragons(p).filter((d) => d.cave === ctxPos[0]);
+      return cond.sizes.every((sz) => inCave.some((d) => dragonCard(d.dragon.cardId).size === sz));
+    }
   }
   return true;
 }

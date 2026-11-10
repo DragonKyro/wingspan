@@ -5,6 +5,7 @@ import { bird, hummingbird } from '@/wingspan/cards';
 import { duetEligibleSpaces, duetFoodsFor } from '@/wingspan/duetMap';
 import {
   adjacentRefs,
+  discountFoodCost,
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
@@ -180,10 +181,22 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       }
       for (const habitat of habitats) {
         if (!habitat || p.board[habitat].length >= 5) continue;
-        if (totalEggs(p) < Math.max(0, playEggCost(p, habitat) - (step.eggDiscount ?? 0))) continue;
-        const cardId = p.hand.find(
-          (id) => bird(id).habitats.includes(habitat) && payFoodPlan(p.food, bird(id).cost) != null,
-        );
+        const baseEggs = playEggCost(p, habitat);
+        const discEggs = Math.max(0, baseEggs - (step.eggDiscount ?? 0));
+        const totalEggsOnMat = totalEggs(p);
+        const cardId = p.hand.find((id) => {
+          const c = bird(id);
+          if (!c.habitats.includes(habitat)) return false;
+          if (totalEggsOnMat >= discEggs && payFoodPlan(p.food, c.cost) != null) return true;
+          if (
+            step.foodDiscount &&
+            totalEggsOnMat >= baseEggs &&
+            payFoodPlan(p.food, discountFoodCost(c.cost, step.foodDiscount)) != null
+          ) {
+            return true;
+          }
+          return false;
+        });
         if (cardId != null) {
           return { kind: 'handCards', cardIds: [cardId], habitat };
         }

@@ -1356,9 +1356,8 @@ function endGameCondOf(text: string): Cond | null {
   }
   if (/^you have a \*?hatchling\*?, a \*?small\*? dragon, and a \*?large\*? dragon in this cave$/.test(t)) {
     return {
-      kind: 'atLeast',
-      counter: { kind: 'dragons', where: 'cave', cond: { size: 'Hatchling' } },
-      n: 1,
+      kind: 'hasSizesInCave',
+      sizes: ['Hatchling', 'Small', 'Large'],
     };
   }
   return null;
@@ -1428,7 +1427,7 @@ function parseRecurring(text: string): AbilityDef | null {
   if (m) {
     const base = parseClauses(m[1]! + '.');
     if (base === null) return null;
-    const trigger = m[4]! as 'cache' | 'tuck';
+    const trigger: 'cache' | 'tuck' = m[4] === 'tucked' ? 'tuck' : 'cache';
     const key = recurringKey(trigger, m[2]!);
     const thirdSteps = parseClauses(m[5]! + '.');
     if (thirdSteps === null) return null;

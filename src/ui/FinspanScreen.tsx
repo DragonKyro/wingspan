@@ -64,6 +64,7 @@ export function FinspanScreen() {
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
   const [viewIdx, setViewIdx] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [sideTab, setSideTab] = useState<'play' | 'log'>('play');
 
   const deckAnchor = useFlipAnchor('fish-deck');
 
@@ -310,92 +311,108 @@ export function FinspanScreen() {
         </div>
 
         {/* Right Side Panel */}
-        <div>
-          {state.nautoma && (
-            <div className="card">
-              <h3>
-                ⚙️ Nautoma Solo Deck (⭐ {state.nautoma.difficulty}
-                {state.nautoma.ravelMode ? ` · Ravel X=${state.nautoma.ravelStrength}` : ''})
-              </h3>
-              <div className="stat-pills">
-                <span className="stat-pill">
-                  🃏 Deck: <b>{state.nautoma.deck.length}</b> (Last: #{state.nautoma.lastCardId ?? '—'})
-                </span>
-                <span className="stat-pill">
-                  🤿 Ach Divers: <b>{state.nautoma.achievementDivers}</b>
-                </span>
-                <span className="stat-pill">
-                  🐟 Fish: <b>{state.nautoma.fish.length}</b>
-                </span>
-                <span className="stat-pill">
-                  🐠 Schools: <b>{state.nautoma.schools}</b>
-                </span>
-                <span className="stat-pill">
-                  🐟 Young: <b>{state.nautoma.young}</b> · 🥚 Eggs: <b>{state.nautoma.eggs}</b>
-                </span>
-                {isSR && (
-                  <span className="stat-pill">
-                    🪸 Coral: <b>{state.nautoma.corals}</b>
-                  </span>
-                )}
-                {state.nautoma.ravelMode && (
-                  <span className="stat-pill">
-                    🏖 Ravel ({state.nautoma.ravelCardId}): <b>+{state.nautoma.ravelPoints} VP</b>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
+        <div className="side-column">
           <div className="card">
-            <h3>🌊 Ocean Summary — {shownP.name}</h3>
-            <div className="stat-pills">
-              <span className="stat-pill">
-                <FinIcon kind="egg" size={15} /> Eggs: <b>{totalEggs(shownP.ocean)}</b>
-              </span>
-              <span className="stat-pill">
-                <FinIcon kind="young" size={15} /> Young: <b>{totalYoung(shownP.ocean)}</b>
-              </span>
-              <span className="stat-pill">
-                <FinIcon kind="school" size={15} /> Schools (6pt): <b>{totalSchools(shownP.ocean)}</b>
-              </span>
-              <span className="stat-pill">
-                <FinIcon kind="consume" size={15} /> Consumed: <b>{totalConsumed(shownP.ocean)}</b>
-              </span>
-              {isSR && (
-                <span className="stat-pill">
-                  <FinIcon kind="coral" size={15} /> Coral:{' '}
-                  <b>{shownP.ocean.corals.join(' / ')}</b>
-                </span>
-              )}
+            <div className="side-tabs-bar">
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'play' ? ' active' : ''}`}
+                onClick={() => setSideTab('play')}
+              >
+                🌊 Ocean & Standings
+              </button>
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
+                onClick={() => setSideTab('log')}
+              >
+                📜 Log ({state.log.length})
+              </button>
             </div>
-          </div>
 
-          <div className="card">
-            <h3>🏆 Live Standings</h3>
-            {state.players.map((p) => {
-              const sc = scorePlayer(state, p);
-              return (
-                <div key={p.id} className="standing-row">
-                  <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
-                  <b>{p.name}</b>
-                  <span className="spacer" />
-                  <span className="muted" style={{ fontSize: '0.75rem' }}>
-                    🐟{sc.fishPoints} · 🥚{sc.eggYoungPoints} · 🐟×3:{sc.schoolPoints} · 🏆{sc.achievementPoints}
+            {sideTab === 'play' ? (
+              <>
+                {state.nautoma && (
+                  <div style={{ marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                    <h3>
+                      ⚙️ Nautoma Solo Deck (⭐ {state.nautoma.difficulty}
+                      {state.nautoma.ravelMode ? ` · Ravel X=${state.nautoma.ravelStrength}` : ''})
+                    </h3>
+                    <div className="stat-pills">
+                      <span className="stat-pill">
+                        🃏 Deck: <b>{state.nautoma.deck.length}</b> (Last: #{state.nautoma.lastCardId ?? '—'})
+                      </span>
+                      <span className="stat-pill">
+                        🤿 Ach Divers: <b>{state.nautoma.achievementDivers}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🐟 Fish: <b>{state.nautoma.fish.length}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🐠 Schools: <b>{state.nautoma.schools}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🐟 Young: <b>{state.nautoma.young}</b> · 🥚 Eggs: <b>{state.nautoma.eggs}</b>
+                      </span>
+                      {isSR && (
+                        <span className="stat-pill">
+                          🪸 Coral: <b>{state.nautoma.corals}</b>
+                        </span>
+                      )}
+                      {state.nautoma.ravelMode && (
+                        <span className="stat-pill">
+                          🏖 Ravel ({state.nautoma.ravelCardId}): <b>+{state.nautoma.ravelPoints} VP</b>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <h3>🌊 Ocean Summary — {shownP.name}</h3>
+                <div className="stat-pills" style={{ marginBottom: 10 }}>
+                  <span className="stat-pill">
+                    <FinIcon kind="egg" size={15} /> Eggs: <b>{totalEggs(shownP.ocean)}</b>
                   </span>
-                  <b className="badge">{sc.total} VP</b>
+                  <span className="stat-pill">
+                    <FinIcon kind="young" size={15} /> Young: <b>{totalYoung(shownP.ocean)}</b>
+                  </span>
+                  <span className="stat-pill">
+                    <FinIcon kind="school" size={15} /> Schools (6pt): <b>{totalSchools(shownP.ocean)}</b>
+                  </span>
+                  <span className="stat-pill">
+                    <FinIcon kind="consume" size={15} /> Consumed: <b>{totalConsumed(shownP.ocean)}</b>
+                  </span>
+                  {isSR && (
+                    <span className="stat-pill">
+                      <FinIcon kind="coral" size={15} /> Coral:{' '}
+                      <b>{shownP.ocean.corals.join(' / ')}</b>
+                    </span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
 
-          <div className="card">
-            <h3>📜 Dive & Action Log</h3>
-            <div className="log">
-              {state.log.slice(-50).map((e) => (
-                <div key={e.seq}>{e.msg}</div>
-              ))}
-            </div>
+                <h3>🏆 Live Standings</h3>
+                {state.players.map((p) => {
+                  const sc = scorePlayer(state, p);
+                  return (
+                    <div key={p.id} className="standing-row">
+                      <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
+                      <b>{p.name}</b>
+                      <span className="spacer" />
+                      <span className="muted" style={{ fontSize: '0.75rem' }}>
+                        🐟{sc.fishPoints} · 🥚{sc.eggYoungPoints} · 🐟×3:{sc.schoolPoints} · 🏆{sc.achievementPoints}
+                      </span>
+                      <b className="badge">{sc.total} VP</b>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="log">
+                {state.log.slice(-50).map((e) => (
+                  <div key={e.seq}>{e.msg}</div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -712,6 +729,46 @@ function FinspanPendingBar({
               }
             >
               +1 {site} Coral ({p.ocean.corals[col]}/{MAX_CORAL})
+            </button>
+          ))}
+        </div>
+      )}
+      {step.kind === 'chooseRecover' && p.discard.length > 0 && step.count === 1 && (
+        <div className="row">
+          {p.discard.map((cid) => (
+            <button
+              key={cid}
+              type="button"
+              className="primary"
+              onClick={() =>
+                dispatch({
+                  type: 'resolveChoice',
+                  playerId: step.playerId,
+                  choice: { kind: 'handCards', cardIds: [cid] },
+                })
+              }
+            >
+              Recover {fish(cid).name}
+            </button>
+          ))}
+        </div>
+      )}
+      {step.kind === 'chooseHandDiscard' && p.hand.length > 0 && step.count === 1 && (
+        <div className="row">
+          {p.hand.map((cid) => (
+            <button
+              key={cid}
+              type="button"
+              className="primary"
+              onClick={() =>
+                dispatch({
+                  type: 'resolveChoice',
+                  playerId: step.playerId,
+                  choice: { kind: 'handCards', cardIds: [cid] },
+                })
+              }
+            >
+              Discard {fish(cid).name}
             </button>
           ))}
         </div>

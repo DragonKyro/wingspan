@@ -54,8 +54,8 @@ import {
 } from './svgArt';
 
 type Draft =
-  | { kind: 'playBird'; cardId: number; habitat: Habitat | null }
-  | { kind: 'gainFood'; reroll: boolean; picks: number[] }
+  | { kind: 'playBird'; cardId: number; habitat: Habitat | null; coverTwo?: boolean }
+  | { kind: 'gainFood'; reroll: boolean; picks: number[]; splitTake: 'invertebrate' | 'seed' }
   | { kind: 'layEggs'; placements: BirdRef[] }
   | { kind: 'drawCards'; picks: ('deck' | number)[] }
   | { kind: 'setup'; keepBirds: number[]; keepBonus: number | null };
@@ -74,6 +74,7 @@ export function GameScreen() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [viewIdx, setViewIdx] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [sideTab, setSideTab] = useState<'play' | 'log'>('play');
 
   const acting = actingPlayerId(game);
   const actingIdx = game.playerOrder.indexOf(acting);
@@ -156,7 +157,7 @@ export function GameScreen() {
           />
         </div>
 
-        <div>
+        <div className="side-column">
           <ActionsPanel
             game={game}
             draft={draft}
@@ -165,61 +166,77 @@ export function GameScreen() {
             dispatch={dispatch}
           />
 
-          {game.automa && (
-            <div className="card">
-              <h3>⚙️ Automa Solo Deck ({game.automa.difficulty})</h3>
-              <div className="stat-pills">
-                <span className="stat-pill">
-                  📜 Bonus: <b>{bonusCard(game.automa.bonusCardId).name}</b>
-                </span>
-                <span className="stat-pill">
-                  🃏 Deck: <b>{game.automa.deck.length}</b> (Last: #{game.automa.lastCardId ?? '—'})
-                </span>
-                <span className="stat-pill">
-                  🎯 Goal Cubes: <b>{game.automa.goalCubes}</b>
-                </span>
-                <span className="stat-pill">
-                  🪶 Face-Up: <b>{game.automa.faceUpBirds.length}</b> · Face-Down:{' '}
-                  <b>{game.automa.faceDownBirds}</b>
-                </span>
-                <span className="stat-pill">
-                  🥚 Eggs: <b>{game.automa.eggs}</b>
-                </span>
-                {game.automa.hoardTokens > 0 && (
-                  <span className="stat-pill">
-                    🧺 Hoard: <b>{game.automa.hoardTokens}</b>
-                  </span>
+          <div className="card">
+            <div className="side-tabs-bar">
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'play' ? ' active' : ''}`}
+                onClick={() => setSideTab('play')}
+              >
+                🏆 Standings {game.automa ? '& Automa' : ''}
+              </button>
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
+                onClick={() => setSideTab('log')}
+              >
+                📜 Log ({game.log.length})
+              </button>
+            </div>
+
+            {sideTab === 'play' ? (
+              <>
+                {game.automa && (
+                  <div style={{ marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                    <h3>⚙️ Automa Solo Deck ({game.automa.difficulty})</h3>
+                    <div className="stat-pills">
+                      <span className="stat-pill">
+                        📜 Bonus: <b>{bonusCard(game.automa.bonusCardId).name}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🃏 Deck: <b>{game.automa.deck.length}</b> (Last: #{game.automa.lastCardId ?? '—'})
+                      </span>
+                      <span className="stat-pill">
+                        🎯 Goal Cubes: <b>{game.automa.goalCubes}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🪶 Face-Up: <b>{game.automa.faceUpBirds.length}</b> · Face-Down:{' '}
+                        <b>{game.automa.faceDownBirds}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🥚 Eggs: <b>{game.automa.eggs}</b>
+                      </span>
+                      {game.automa.hoardTokens > 0 && (
+                        <span className="stat-pill">
+                          🧺 Hoard: <b>{game.automa.hoardTokens}</b>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
+                {game.playerOrder.map((pid) => {
+                  const p = getPlayer(game, pid);
+                  const sc = scorePlayer(game, p);
+                  return (
+                    <div key={pid} className="standing-row">
+                      <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
+                      <b>{p.name}</b>
+                      <span className="spacer" />
+                      <span className="muted" style={{ fontSize: '0.73rem' }}>
+                        🪶{sc.birdPoints} · 🥚{sc.eggs} · 📜{sc.bonusPoints} · 🎯{sc.goalPoints}
+                      </span>
+                      <b className="badge">{sc.total} VP</b>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="log">
+                {game.log.slice(-60).map((e) => (
+                  <div key={e.seq}>{e.msg}</div>
+                ))}
               </div>
-            </div>
-          )}
-
-          <div className="card">
-            <h3>🏆 Live Standings</h3>
-            {game.playerOrder.map((pid) => {
-              const p = getPlayer(game, pid);
-              const sc = scorePlayer(game, p);
-              return (
-                <div key={pid} className="standing-row">
-                  <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
-                  <b>{p.name}</b>
-                  <span className="spacer" />
-                  <span className="muted" style={{ fontSize: '0.73rem' }}>
-                    🪶{sc.birdPoints} · 🥚{sc.eggs} · 📜{sc.bonusPoints} · 🎯{sc.goalPoints}
-                  </span>
-                  <b className="badge">{sc.total} VP</b>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="card">
-            <h3>📜 Preserve Log</h3>
-            <div className="log">
-              {game.log.slice(-60).map((e) => (
-                <div key={e.seq}>{e.msg}</div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
 
@@ -370,7 +387,7 @@ function CommonRow({
               <button
                 type="button"
                 className="secondary"
-                onClick={() => setDraft({ kind: 'gainFood', reroll: true, picks: [] })}
+                onClick={() => setDraft({ kind: 'gainFood', reroll: true, picks: [], splitTake: draft.splitTake })}
               >
                 ↻ Reroll (all same)
               </button>
@@ -572,7 +589,7 @@ function PlayerMatView({
                           return;
                         }
                       }
-                      if (playHere && controls) {
+                      if (playHere && controls && draft.kind === 'playBird') {
                         const pay = autoPayBird(player, draft.cardId);
                         if (!pay) return;
                         dispatch({
@@ -584,6 +601,7 @@ function PlayerMatView({
                           foodPayments: pay.foodPayments,
                           cachedFoodPayments: pay.cachedFoodPayments,
                           cardPayments: pay.cardPayments,
+                          coverTwo: draft.coverTwo,
                         });
                         setDraft(null);
                       } else if (eggTarget && laying && draft.kind === 'layEggs') {
@@ -892,23 +910,57 @@ function ActionsPanel({
       )}
       {draft?.kind === 'gainFood' && (
         <div className="row" style={{ marginBottom: 8 }}>
+          {draft.picks.some((idx) => game.feederIn[idx] === 'split') && (
+            <div className="row">
+              <span className="muted">Split die:</span>
+              <button
+                type="button"
+                className={draft.splitTake === 'invertebrate' ? 'primary' : 'secondary'}
+                onClick={() => setDraft({ ...draft, splitTake: 'invertebrate' })}
+              >
+                <FoodIcon food="invertebrate" size={14} /> Invert
+              </button>
+              <button
+                type="button"
+                className={draft.splitTake === 'seed' ? 'primary' : 'secondary'}
+                onClick={() => setDraft({ ...draft, splitTake: 'seed' })}
+              >
+                <FoodIcon food="seed" size={14} /> Seed
+              </button>
+            </div>
+          )}
           <button
             className="primary"
             disabled={
               draft.picks.length !== diceCount &&
-              !(draft.reroll && draft.picks.length === diceCount)
+              !(draft.reroll && draft.picks.length === 0)
             }
             onClick={() => {
+              // Convert displayed feeder indices to live shrinking-feeder indices:
+              const livePicks = draft.picks.map((origIdx, k) => {
+                const shift = draft.picks.slice(0, k).filter((pIdx) => pIdx < origIdx).length;
+                return { die: origIdx - shift, take: draft.splitTake as FoodType };
+              });
+              // If rerolling before picking, default to first diceCount dice of the fresh roll.
+              const finalPicks =
+                draft.reroll && livePicks.length === 0
+                  ? Array.from({ length: diceCount }, () => ({
+                      die: 0,
+                      take: draft.splitTake as FoodType,
+                    }))
+                  : livePicks;
               dispatch({
                 type: 'gainFood',
                 playerId: acting,
                 reroll: draft.reroll || undefined,
-                picks: draft.picks.map((die) => ({ die, take: 'seed' as FoodType })),
+                picks: finalPicks,
               });
               setDraft(null);
             }}
           >
-            Take Food ({draft.picks.length}/{diceCount})
+            {draft.reroll && draft.picks.length === 0
+              ? `Reroll & Take ${diceCount}`
+              : `Take Food (${draft.picks.length}/${diceCount})`}
           </button>
           <button onClick={() => setDraft(null)}>Cancel</button>
         </div>
@@ -963,7 +1015,11 @@ function ActionsPanel({
       )}
       {!draft && fresh && (
         <div className="action-btn-stack">
-          <button onClick={() => setDraft({ kind: 'gainFood', reroll: false, picks: [] })}>
+          <button
+            onClick={() =>
+              setDraft({ kind: 'gainFood', reroll: false, picks: [], splitTake: 'seed' })
+            }
+          >
             <HabitatIcon habitat="forest" size={16} /> Gain Food (×{diceCount})
           </button>
           <button onClick={() => setDraft({ kind: 'layEggs', placements: [] })}>

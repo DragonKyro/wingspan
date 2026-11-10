@@ -1763,6 +1763,98 @@ h3 {
   text-align: left;
 }
 
+.side-tabs-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-tab-btn {
+  flex: 1;
+  justify-content: center;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+
+.side-tab-btn.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: #c28732;
+}
+
+.rules-toc {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rules-toc-btn {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.rules-toc-btn.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: #c28732;
+}
+
+/* Mobile & Tablet Responsive Polish */
+@media (max-width: 768px) {
+  .screen {
+    padding: 8px 10px 24px;
+  }
+
+  .app-header {
+    padding: 8px 12px;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  .mat,
+  .ocean-mat,
+  .wyrm-mat {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .hab-row,
+  .mat-col-costs {
+    min-width: 680px;
+  }
+
+  .ocean-sites-header,
+  .ocean-row {
+    min-width: 640px;
+  }
+
+  .wyrm-cave-row .slots {
+    min-width: 580px;
+  }
+
+  .hand .bird,
+  .tray .bird {
+    width: 132px;
+    min-height: 152px;
+  }
+
+  .rules-modal {
+    max-height: 92vh;
+  }
+
+  .rules-modal-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
 .ms-total-row td {
   border-top: 2px solid var(--accent);
 }

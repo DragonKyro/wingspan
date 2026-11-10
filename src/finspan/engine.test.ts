@@ -25,7 +25,7 @@ import {
   setPlayer,
   slotAt,
 } from './helpers';
-import { gameEndWavePoints, scoreAchievement } from './scoring';
+import { gameEndWavePoints, scoreAchievement, scorePlayer, waveCondMet } from './scoring';
 import type { PlayerState } from './types';
 
 function newGame(seed: number, players = 2, sets = ['base']) {
@@ -322,16 +322,52 @@ describe('scoring', () => {
     expect(scoreAchievement(p, ACHIEVEMENTS.sideA[0]!)).toBe(4);
   });
 
-  it('awards wave points when conditions are met', () => {
-    let s = newGame(1);
+  it('awards wave points when conditions are met across all 8 WaveCond kinds and verifies ScoreBreakdown total', () => {
+    let s = newGame(1, 2, ['base', 'sr']);
     let p = getPlayer(s, 'p1');
-    // Card 1: "3 [Wave] if no tokens on this fish"; card 30: "6 [Wave] if exactly 2 young".
+    // Card 1: "3 [Wave] if no tokens on this fish"
+    // Card 30: "6 [Wave] if [YoungFish][YoungFish] (exactly 2 on this fish)"
     const slots = p.ocean.slots.map((r) => r.map((x) => ({ ...x })));
     slots[0]![0] = { stack: [1], eggs: 0, young: 0, school: false };
     slots[1]![0] = { stack: [30], eggs: 0, young: 2, school: false };
     p = { ...p, ocean: { ...p.ocean, slots } };
     s = setPlayer(s, p);
     expect(gameEndWavePoints(getPlayer(s, 'p1'))).toBe(9);
+
+    // Exercise every GameEnd [Wave] fish in FISH against waveCondMet:
+    const waveFish = FISH.filter((c) => c.abilityType === 'GameEnd' && c.ability?.includes('[Wave]'));
+    expect(waveFish.length).toBeGreaterThanOrEqual(10);
+    for (const c of waveFish) {
+      const parsed = parseAbility(c.ability)!;
+      expect(parsed.wave).toBeDefined();
+      const cond = parsed.wave!.cond;
+      let testP = getPlayer(s, 'p1');
+      const testSlots = testP.ocean.slots.map((r) => r.map((x) => ({ ...x })));
+      const ref = { row: cond.kind === 'bottomRow' ? 5 : 0, col: 0 };
+      testSlots[ref.row]![ref.col] = {
+        stack: cond.kind === 'consumedAtLeast' ? [1, 2, 3, c.id] : [c.id],
+        eggs: cond.kind === 'eggYoungSchool' ? 1 : 0,
+        young: cond.kind === 'exactlyYoung' ? cond.n : cond.kind === 'eggYoungSchool' ? 1 : 0,
+        school: cond.kind === 'schoolOnFish' || cond.kind === 'eggYoungSchool',
+      };
+      const corals: [number, number, number] =
+        cond.kind === 'coralEachSiteAtLeast' || cond.kind === 'coralThisSiteAtLeast'
+          ? [5, 5, 5]
+          : [0, 0, 0];
+      testP = { ...testP, ocean: { slots: testSlots, corals } };
+      expect(waveCondMet(testP, ref, cond), `${c.name}: ${c.ability}`).toBe(true);
+    }
+
+    const bd = scorePlayer(s, getPlayer(s, 'p1'));
+    expect(bd.total).toBe(
+      bd.achievementPoints +
+        bd.gameEndAbilityPoints +
+        bd.fishPoints +
+        bd.consumedPoints +
+        bd.eggYoungPoints +
+        bd.schoolPoints +
+        bd.coralPoints,
+    );
   });
 
   it('counts 2 predator tags on über predators for the Predator Tag achievement', () => {

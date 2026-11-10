@@ -180,6 +180,23 @@ export function canPayFood(food: Record<FoodType, number>, cost: FoodCost): bool
   return payFoodPlan(food, cost) !== null;
 }
 
+/** Reduce `cost` by 1 unit of `discount` (or 1 wild if `discount` is present). */
+export function discountFoodCost(cost: FoodCost, discount?: FoodType): FoodCost {
+  if (!discount || cost.kind === 'none') return cost;
+  if (cost.kind === 'any') {
+    return cost.count <= 1 ? { kind: 'none' } : { kind: 'any', count: cost.count - 1 };
+  }
+  if (cost.kind === 'or') {
+    return cost.foods.includes(discount) ? { kind: 'none' } : cost;
+  }
+  const idx = cost.items.findIndex((i) => i.food === discount);
+  if (idx < 0) return cost;
+  const items = cost.items
+    .map((item, i) => (i === idx ? { ...item, count: item.count - 1 } : item))
+    .filter((item) => item.count > 0);
+  return items.length === 0 ? { kind: 'none' } : { kind: 'and', items };
+}
+
 /** The tokens a payment uses; null when impossible (used to auto-build payments). */
 export function payFoodPlan(food: Record<FoodType, number>, cost: FoodCost): FoodType[] | null {
   if (cost.kind === 'none') return [];

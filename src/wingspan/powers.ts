@@ -325,16 +325,14 @@ function discardFoodToTuckDeck(food: FoodType, count: number): PowerFn {
   return (state, playerId, ref) => {
     const p = getPlayer(state, playerId);
     if (p.food[food] <= 0) return appendLog(state, `${playerId}: no ${food} to discard`);
-    let s = setPlayer(state, { ...p, food: { ...p.food, [food]: p.food[food] - 1 } });
-    let tucked = 0;
-    for (let i = 0; i < count; i++) {
-      if (s.deck.length === 0) break;
-      const id = s.deck[s.deck.length - 1]!;
-      s = { ...s, deck: s.deck.slice(0, -1) };
-      s = tuckCardOnBird(s, playerId, ref, id);
-      tucked++;
+    if (state.deck.length === 0 && state.discard.length === 0) {
+      return appendLog(state, `${playerId}: deck is empty`);
     }
-    if (tucked > 0) s = firePinkTriggers(s, playerId, { kind: 'tuck' });
+    const before = p.board[ref.habitat]?.[ref.index]?.tucked.length ?? 0;
+    let s = setPlayer(state, { ...p, food: { ...p.food, [food]: p.food[food] - 1 } });
+    s = tuckFromDeck(s, playerId, ref, count);
+    const after = getPlayer(s, playerId).board[ref.habitat]?.[ref.index]?.tucked.length ?? 0;
+    if (after > before) s = firePinkTriggers(s, playerId, { kind: 'tuck' });
     return s;
   };
 }
@@ -733,12 +731,8 @@ function cubesThen(habitat: Habitat, effect: string, ref: BirdRef): PowerFn {
 function oystercatcher(): PowerFn {
   return (state, playerId) => {
     const n = state.players.length + 1;
-    const drawn: number[] = [];
-    let s = state;
-    for (let i = 0; i < n && s.deck.length > 0; i++) {
-      drawn.push(s.deck[s.deck.length - 1]!);
-      s = { ...s, deck: s.deck.slice(0, -1) };
-    }
+    const { s, ids: drawn } = drawToPool(state, n);
+    if (drawn.length === 0) return appendLog(s, `${playerId}: deck is empty`);
     // Queue picks: actor first, then clockwise through players. The
     // 'oystercatcher' tag in the resolver shrinks the pool and queues the
     // next player's pick; the actor keeps the leftover card.

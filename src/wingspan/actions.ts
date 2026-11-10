@@ -131,6 +131,9 @@ function rowHumAction(state: GameState, playerId: PlayerId, habitat: Habitat): G
 /** Called whenever the activation track drains: queue the owed hummingbird
  *  action (if any). */
 function activationDone(state: GameState, playerId: PlayerId): GameState {
+  if (state.pending.some((st) => st.kind === 'moveBirdHabitat' && st.then?.effect === 'amCubeMove')) {
+    return state;
+  }
   return state.activation == null ? queueRowHumAction(state, playerId) : state;
 }
 
@@ -349,6 +352,9 @@ function playOnTop(
     tucked: [...target.tucked, target.cardId],
     cached: [],
   };
+  if (row[ref.index + 1]?.ghost) {
+    row.splice(ref.index + 1, 1);
+  }
   pl = {
     ...pl,
     hand: pl.hand.filter((id) => id !== action.cardId),

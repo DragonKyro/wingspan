@@ -7,14 +7,14 @@ import { describe, expect, it } from 'vitest';
 import { chooseAction } from '@/wingspan/ai/chooseAction';
 import { greedyChoice } from '@/wingspan/ai/choices';
 import { finishRound, internals } from './actions';
-import { bird } from './cards';
+import { bird, BIRDS, BONUS_CARDS } from './cards';
 import { HUM_BONUS_SPACES } from './constants';
 import { createGame } from './createGame';
 import { DUET_MAP, duetFoodsFor, FLOCK_GOAL_POINTS } from './duetMap';
 import { applyAction, settle } from './engine';
 import { actingPlayerId, getPlayer } from './helpers';
 import { firePinkTriggers, resetPinkFlags, runPower, setPlayer } from './powers';
-import { bonusCardVp, bonusUnits, goalScore, nectarPoints } from './scoring';
+import { bonusCardVp, bonusUnits, finalScore, goalScore, nectarPoints } from './scoring';
 import type { BirdRef, GameState, PlayerId, PlayerState, PlayedBird } from './types';
 
 const COMMON_YELLOWTHROAT = 94; // brown: draw 2, discard 1 at end of turn.
@@ -560,3 +560,300 @@ describe('activation order', () => {
     expect(s.activation).toBeNull();
   });
 });
+
+describe('bonus card, goal tile, and edge-case audit', () => {
+  it('exercises bonusCardVp across every non-automa bonus card in bonusCards.json (none return 0 when qualifying)', () => {
+    const base = autoSetup(
+      createGame({
+        playerNames: ['A', 'B'],
+        playerTypes: ['human', 'human'],
+        playerColors: ['red', 'blue'],
+        seed: 1,
+        settings: {
+          sets: [
+            'core',
+            'european',
+            'oceania',
+            'asia',
+            'americas',
+            'promoUS',
+            'promoEurope',
+            'promoAsia',
+            'promoNZ',
+            'promoCA',
+            'promoUK',
+          ],
+        },
+      }),
+    );
+    const p0 = getPlayer(base, 'p1');
+
+    const nonAutoma = BONUS_CARDS.filter((bc) => !bc.name.startsWith('[automa]'));
+    expect(nonAutoma.length).toBe(56);
+
+    for (const bc of nonAutoma) {
+      let p: PlayerState = { ...p0 };
+      if (
+        bc.name === 'Apiarist' ||
+        bc.name === 'Brilliant Specialist' ||
+        bc.name === 'Emerald Specialist' ||
+        bc.name === 'Mango Specialist' ||
+        bc.name === 'Topaz Specialist' ||
+        bc.name === 'Hummingbird Counter' ||
+        bc.name === 'Hummingbird Gardener'
+      ) {
+        p = {
+          ...p,
+          humTrack: { bee: 8, brilliant: 8, emerald: 8, mango: 8, topaz: 8 },
+        };
+      } else if (bc.name === 'Ecolodge Owner') {
+        // Difference 0 between highest and lowest token values -> 6 VP.
+        p = {
+          ...p,
+          humTrack: { bee: 5, brilliant: 5, emerald: 5, mango: 5, topaz: 5 },
+        };
+      } else if (bc.name === 'Visionary Leader') {
+        p = { ...p, hand: [1, 2, 3, 4, 5, 6, 7, 8] };
+      } else if (bc.name === 'Winter Feeder') {
+        p = {
+          ...p,
+          food: { invertebrate: 3, seed: 3, fish: 2, fruit: 0, rodent: 0, nectar: 0 },
+        };
+      } else if (bc.name === 'Pellet Dissector') {
+        p = {
+          ...p,
+          board: {
+            forest: [mkBird(WOODCOCK, { cached: ['fish', 'fish', 'rodent', 'rodent'] })],
+            grassland: [],
+            wetland: [],
+          },
+        };
+      } else if (bc.name === 'Behaviorist' || bc.name === 'Ethologist') {
+        // Column 0 has brown (Acorn Woodpecker 2), white/none (Woodcock 13), pink (Eastern Kingbird 104).
+        // Forest row also has brown, white, pink -> 3 power colors in one habitat.
+        p = {
+          ...p,
+          board: {
+            forest: [mkBird(ACORN_WOODPECKER), mkBird(WOODCOCK), mkBird(EASTERN_KINGBIRD)],
+            grassland: [mkBird(WOODCOCK)],
+            wetland: [mkBird(EASTERN_KINGBIRD)],
+          },
+        };
+      } else if (bc.name === 'Mechanical Engineer' || bc.name === 'Site Selection Expert') {
+        // 94 Common Yellowthroat = bowl, 2 Acorn Woodpecker = cavity, 13 Woodcock = ground, 573 Acadian Flycatcher = wild.
+        p = {
+          ...p,
+          board: {
+            forest: [mkBird(94), mkBird(2), mkBird(13), mkBird(573)],
+            grassland: [mkBird(94)],
+            wetland: [mkBird(573)],
+          },
+        };
+      } else if (bc.name.endsWith('Data Analyst') || bc.name.endsWith('Ranger')) {
+        // Strictly ascending points AND ascending wingspans:
+        const b1 = BIRDS.find((b) => b.points === 1 && typeof b.wingspan === 'number' && b.wingspan <= 30)!;
+        const b2 = BIRDS.find((b) => b.points === 3 && typeof b.wingspan === 'number' && b.wingspan > 30 && b.wingspan <= 60)!;
+        const b3 = BIRDS.find((b) => b.points >= 6 && typeof b.wingspan === 'number' && b.wingspan > 60)!;
+        const row = [mkBird(b1.id), mkBird(b2.id), mkBird(b3.id)];
+        p = {
+          ...p,
+          board: { forest: row, grassland: row, wetland: row },
+        };
+      } else if (bc.name.endsWith('Population Monitor')) {
+        // Bowl (94), cavity (2), ground (13), wild (573), wild (573) = 5 nest types!
+        const row = [mkBird(94), mkBird(2), mkBird(13), mkBird(573), mkBird(573)];
+        p = {
+          ...p,
+          board: { forest: row, grassland: row, wetland: row },
+        };
+      } else {
+        // Find qualifying birds for this bonus card and populate all 15 board spaces with them
+        // (with full eggs and tucked cards so Oologist, Breeding Manager, Avian Theriogenologist,
+        // Citizen Scientist, Ecologist, Omnivore Specialist, etc. all qualify).
+        const matchingBirds = BIRDS.filter((b) => {
+          if (bc.name === 'Omnivore Specialist') {
+            return (
+              b.cost.kind === 'any' ||
+              (b.cost.kind === 'and' && b.cost.items.some((i) => i.food === 'any'))
+            );
+          }
+          if (bc.name === 'Diet Specialist') {
+            if (b.cost.kind === 'none') return false;
+            if (b.cost.kind === 'any') return b.cost.count === 3;
+            if (b.cost.kind === 'or') return false;
+            return b.cost.items.reduce((n, i) => n + i.count, 0) === 3;
+          }
+          if (bc.name === 'Endangered Species Protector') return b.bonusPower;
+          if (bc.name === '[Fan Made] Caprimulgiform Specialist') {
+            return /hummingbird|swift|needletail|nightjar|nighthawk|poor-?will|widow|frogmouth|potoo|pauraque|oilbird/i.test(
+              b.name,
+            );
+          }
+          if (
+            bc.name === 'Breeding Manager' ||
+            bc.name === 'Oologist' ||
+            bc.name === 'Avian Theriogenologist' ||
+            bc.name === 'Citizen Scientist' ||
+            bc.name === 'Ecologist'
+          ) {
+            return b.eggLimit >= 4;
+          }
+          return b.bonusFlags.includes(bc.name);
+        });
+        expect(matchingBirds.length, `no matching birds found for ${bc.name}`).toBeGreaterThan(0);
+        const makeRow = (offset: number) =>
+          Array.from({ length: 5 }, (_, i) => {
+            const c = matchingBirds[(offset + i) % matchingBirds.length]!;
+            return mkBird(c.id, {
+              eggs: Math.max(4, c.eggLimit),
+              tucked: [1],
+            });
+          });
+        p = {
+          ...p,
+          board: {
+            forest: makeRow(0),
+            grassland: makeRow(5),
+            wetland: makeRow(10),
+          },
+        };
+      }
+
+      const units = bonusUnits(p, bc.name);
+      const vp = bonusCardVp(p, bc.id);
+      if (bc.name !== 'Ecolodge Owner') {
+        expect(units, `${bc.name} (${bc.id}) units`).toBeGreaterThan(0);
+      }
+      expect(vp, `${bc.name} (${bc.id}) vp`).toBeGreaterThan(0);
+    }
+  });
+
+  it('scores Duet tile 2042 in pairs of 2 tokens and maintains exact ScoreBreakdown sums', () => {
+    let s = autoSetup(
+      createGame({
+        playerNames: ['A', 'B'],
+        playerTypes: ['human', 'human'],
+        playerColors: ['red', 'blue'],
+        seed: 7,
+        settings: { sets: ['core', 'asia'], mode: 'duet' },
+      }),
+    );
+    const map = s.duet!.map.slice();
+    // Find 3 spaces on DUET_MAP with the exact same criterion (e.g. forest cavity at indices 0 and 8, wetland cavity at 26).
+    map[0] = 'p1';
+    map[8] = 'p1';
+    map[26] = 'p1';
+    s = { ...s, duet: { ...s.duet!, map } };
+    // 3 tokens on cavity nest spaces = 1 pair = 2 qualifying tokens (the 3rd has no partner).
+    expect(goalScore(s, 'p1', 2042)).toBe(2);
+
+    const bd = finalScore(s, 'p1');
+    expect(bd.total).toBe(
+      bd.birdPoints +
+        bd.bonusPoints +
+        bd.goalPoints +
+        bd.eggs +
+        bd.cached +
+        bd.tucked +
+        bd.nectar +
+        bd.duetTokens +
+        bd.hummingbirds,
+    );
+  });
+
+  it('handles sideways bird cover/swap, empty deck+discard, amCubeMove humAction, and foodDiscount', () => {
+    const BLACKBIRD = 77; // sideways forest bird
+    const RED_KITE = 195; // cover bird
+    const CASSOWARY = 342; // swap forest bird
+    const GREAT_KISKADEE = 630; // moveWithCube
+    const RED_CROWNED_CRANE = BIRDS.find(
+      (b) => b.powerText === 'Play 1 additional bird in your [grassland]. You may ignore 1 [seed] or 1 [egg] in its cost.',
+    )!.id;
+
+    let s = autoSetup(
+      newGame(12, ['core', 'european', 'oceania', 'asia', 'americas']),
+    );
+    const pid = actingPlayerId(s);
+
+    // 1. Covering a sideways bird removes its ghost placeholder.
+    s = edit(s, pid, {
+      hand: [RED_KITE],
+      board: {
+        forest: [mkBird(BLACKBIRD), mkBird(BLACKBIRD, { ghost: true })],
+        grassland: [],
+        wetland: [],
+      },
+    });
+    s = applyAction(s, {
+      type: 'playBird',
+      playerId: pid,
+      cardId: RED_KITE,
+      habitat: 'forest',
+      eggPayments: [],
+      foodPayments: [],
+      coverBird: { habitat: 'forest', index: 0 },
+    });
+    expect(getPlayer(s, pid).board.forest.length).toBe(1);
+    expect(getPlayer(s, pid).board.forest[0]!.cardId).toBe(RED_KITE);
+
+    // 2. Cassowary swapping out a sideways bird removes its ghost placeholder too.
+    s = edit(s, pid, {
+      board: {
+        forest: [mkBird(BLACKBIRD), mkBird(BLACKBIRD, { ghost: true }), mkBird(CASSOWARY)],
+        grassland: [],
+        wetland: [],
+      },
+    });
+    s = runPower(s, pid, ref('forest', 2));
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: pid,
+      choice: { kind: 'birds', birds: [ref('forest', 0)] },
+    });
+    expect(getPlayer(s, pid).board.forest.length).toBe(1);
+    expect(getPlayer(s, pid).board.forest[0]!.cardId).toBe(CASSOWARY);
+
+    // 3. Great Kiskadee (moveWithCube) as the last brown bird in forest moves the owed humAction to wetland.
+    s = {
+      ...s,
+      turnTookAction: true,
+      humAction: 'forest',
+      activation: { habitat: 'forest', remaining: [0] },
+    };
+    s = edit(s, pid, {
+      board: { forest: [mkBird(GREAT_KISKADEE)], grassland: [], wetland: [] },
+      humBoard: { forest: null, grassland: null, wetland: null },
+    });
+    s = applyAction(s, { type: 'activatePower', playerId: pid });
+    // Before resolving moveBirdHabitat, forest's humAction must NOT have been queued yet!
+    expect(s.pending.map((st) => st.kind)).toEqual(['moveBirdHabitat']);
+    s = applyAction(s, {
+      type: 'resolveChoice',
+      playerId: pid,
+      choice: { kind: 'habitat', habitat: 'wetland' },
+    });
+    // Now wetland's humAction is queued!
+    expect(s.pending[0]).toMatchObject({ kind: 'chooseHumSource', habitat: 'wetland' });
+    s = autoResolve(s);
+
+    // 4. chooseAdditionalPlay with foodDiscount allows playing a 1-seed grassland bird with 0 food!
+    const oneSeedGrassland = BIRDS.find(
+      (b) =>
+        b.habitats.includes('grassland') &&
+        b.cost.kind === 'and' &&
+        b.cost.items.length === 1 &&
+        b.cost.items[0]!.food === 'seed' &&
+        b.cost.items[0]!.count === 1,
+    )!;
+    s = edit(s, pid, {
+      hand: [oneSeedGrassland.id],
+      food: { invertebrate: 0, seed: 0, fish: 0, fruit: 0, rodent: 0, nectar: 0 },
+      board: { forest: [], grassland: [], wetland: [mkBird(RED_CROWNED_CRANE)] },
+    });
+    s = runPower(s, pid, ref('wetland', 0));
+    expect(s.pending[0]?.kind).toBe('chooseAdditionalPlay');
+    s = autoResolve(s);
+    expect(getPlayer(s, pid).board.grassland.some((b) => b.cardId === oneSeedGrassland.id)).toBe(true);
+  });
+});
+

@@ -67,6 +67,7 @@ export function WyrmspanScreen() {
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
   const [viewIdx, setViewIdx] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [sideTab, setSideTab] = useState<'play' | 'log'>('play');
   const [giveRes, setGiveRes] = useState<[Resource, Resource]>(['meat', 'meat']);
   const [getRes, setGetRes] = useState<Resource>('gold');
 
@@ -552,66 +553,84 @@ export function WyrmspanScreen() {
         </div>
 
         {/* Right Side Panel: Dragon Guild + Standings + Log */}
-        <div>
-          {state.automa && (
-            <div className="card">
-              <h3>
-                ⚙️ Automa Solo Deck (Level {state.automa.difficulty}
-                {state.automa.ravelMode ? ' · Ravel' : ''})
-              </h3>
-              <div className="stat-pills">
-                <span className="stat-pill">
-                  🃏 Deck: <b>{state.automa.deck.length}</b> (Last: {state.automa.lastCard ?? '—'})
-                </span>
-                <span className="stat-pill">
-                  🪙 Obj Coins: <b>{state.automa.objectiveCoins}</b>
-                </span>
-                <span className="stat-pill">
-                  🐉 Dragons: <b>{state.automa.collectedDragons}</b>
-                </span>
-                <span className="stat-pill">
-                  🪨 Caves: <b>{state.automa.collectedCaves}</b>
-                </span>
-                <span className="stat-pill">
-                  🛡 Guild Markers Left: <b>{state.automa.availableGuildMarkers}</b>
-                </span>
-                {state.automa.cacheTokens > 0 && (
-                  <span className="stat-pill">
-                    💎 Cache Tokens: <b>{state.automa.cacheTokens}</b>
-                  </span>
-                )}
-              </div>
+        <div className="side-column">
+          <div className="card">
+            <div className="side-tabs-bar">
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'play' ? ' active' : ''}`}
+                onClick={() => setSideTab('play')}
+              >
+                🧭 Guild & Standings
+              </button>
+              <button
+                type="button"
+                className={`side-tab-btn${sideTab === 'log' ? ' active' : ''}`}
+                onClick={() => setSideTab('log')}
+              >
+                📜 Log ({state.log.length})
+              </button>
             </div>
-          )}
+
+            {sideTab === 'play' ? (
+              <>
+                {state.automa && (
+                  <div style={{ marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                    <h3>
+                      ⚙️ Automa Solo Deck (Level {state.automa.difficulty}
+                      {state.automa.ravelMode ? ' · Ravel' : ''})
+                    </h3>
+                    <div className="stat-pills">
+                      <span className="stat-pill">
+                        🃏 Deck: <b>{state.automa.deck.length}</b> (Last: {state.automa.lastCard ?? '—'})
+                      </span>
+                      <span className="stat-pill">
+                        🪙 Obj Coins: <b>{state.automa.objectiveCoins}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🐉 Dragons: <b>{state.automa.collectedDragons}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🪨 Caves: <b>{state.automa.collectedCaves}</b>
+                      </span>
+                      <span className="stat-pill">
+                        🛡 Guild Markers Left: <b>{state.automa.availableGuildMarkers}</b>
+                      </span>
+                      {state.automa.cacheTokens > 0 && (
+                        <span className="stat-pill">
+                          💎 Cache Tokens: <b>{state.automa.cacheTokens}</b>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <h3 style={{ marginTop: 4 }}>🏆 Live Standings</h3>
+                {state.players.map((p) => {
+                  const sc = scorePlayer(state, p);
+                  return (
+                    <div key={p.id} className="standing-row">
+                      <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
+                      <b>{p.name}</b>
+                      <span className="spacer" />
+                      <span className="muted" style={{ fontSize: '0.74rem' }}>
+                        🐉{sc.printedDragonVp} · 🥚{sc.eggs} · 💎{sc.cached} · 🛡{sc.guildTile}
+                      </span>
+                      <b className="badge">{sc.total} VP</b>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="log">
+                {state.log.slice(-50).map((msg, i) => (
+                  <div key={i}>{msg}</div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <DragonGuildPanel state={state} />
-
-          <div className="card">
-            <h3>🏆 Live Standings</h3>
-            {state.players.map((p) => {
-              const sc = scorePlayer(state, p);
-              return (
-                <div key={p.id} className="standing-row">
-                  <span className="pcolor" style={{ background: playerColorHex(p.color) }} />
-                  <b>{p.name}</b>
-                  <span className="spacer" />
-                  <span className="muted" style={{ fontSize: '0.74rem' }}>
-                    🐉{sc.printedDragonVp} · 🥚{sc.eggs} · 💎{sc.cached} · 🛡{sc.guildTile}
-                  </span>
-                  <b className="badge">{sc.total} VP</b>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="card">
-            <h3>📜 Sanctuary Log</h3>
-            <div className="log">
-              {state.log.slice(-50).map((msg, i) => (
-                <div key={i}>{msg}</div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {headPending && (
@@ -828,6 +847,11 @@ function WyrmspanPendingBar({
   dispatch: (a: Action) => void;
 }) {
   const p = player(state, step.playerId);
+  const [setupKeeps, setSetupKeeps] = useState<number[]>(() =>
+    step.kind === 'setupCards' ? step.offer.slice(0, step.keep) : [],
+  );
+  const [setupRes, setSetupRes] = useState<Resource[]>(['meat', 'gold', 'crystal']);
+
   if (!controls) {
     return (
       <div className="pending-bar">
@@ -845,6 +869,108 @@ function WyrmspanPendingBar({
     <div className="pending-bar">
       <span className="badge">{p.name}</span>
       <b>{step.kind}</b>
+
+      {step.kind === 'setupCards' && (
+        <div className="row">
+          <span className="muted">Pick {step.keep} of 6 cards to keep:</span>
+          {step.offer.map((cid) => {
+            const on = setupKeeps.includes(cid);
+            return (
+              <button
+                key={cid}
+                type="button"
+                className={on ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setSetupKeeps((cur) =>
+                    cur.includes(cid)
+                      ? cur.filter((x) => x !== cid)
+                      : cur.length < step.keep
+                        ? [...cur, cid]
+                        : [...cur.slice(1), cid],
+                  );
+                }}
+              >
+                {on ? '✓ ' : ''}
+                {isDragonCard(cid) ? '🐉 ' : '🪨 '}
+                {cardName(cid)}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="primary"
+            disabled={setupKeeps.length !== step.keep}
+            onClick={() =>
+              dispatch({
+                type: 'resolveChoice',
+                playerId: step.playerId,
+                answer: { kind: 'cards', cardIds: setupKeeps },
+              })
+            }
+          >
+            ✓ Keep {setupKeeps.length}/{step.keep} Cards
+          </button>
+        </div>
+      )}
+
+      {step.kind === 'setupResources' && (
+        <div className="row">
+          <span className="muted">Pick {step.count} starting resources:</span>
+          {[0, 1, 2].map((slotIdx) => (
+            <select
+              key={slotIdx}
+              value={setupRes[slotIdx] ?? 'meat'}
+              onChange={(e) => {
+                const next = setupRes.slice();
+                next[slotIdx] = e.target.value as Resource;
+                setSetupRes(next);
+              }}
+            >
+              {RESOURCES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          ))}
+          <button
+            type="button"
+            className="primary"
+            onClick={() =>
+              dispatch({
+                type: 'resolveChoice',
+                playerId: step.playerId,
+                answer: { kind: 'resources', resources: setupRes.slice(0, step.count) },
+              })
+            }
+          >
+            ✓ Gain {setupRes.slice(0, step.count).join(' + ')}
+          </button>
+        </div>
+      )}
+
+      {step.kind === 'chooseDisplay' && (
+        <div className="row">
+          {(step.deck === 'dragon' ? state.dragonDisplay : state.caveDisplay).map((cid, idx) =>
+            cid != null ? (
+              <button
+                key={idx}
+                type="button"
+                className="primary"
+                onClick={() =>
+                  dispatch({
+                    type: 'resolveChoice',
+                    playerId: step.playerId,
+                    answer: { kind: 'index', index: idx },
+                  })
+                }
+              >
+                Take {cardName(cid)}
+              </button>
+            ) : null,
+          )}
+        </div>
+      )}
 
       {step.kind === 'chooseResource' && (
         <div className="row">

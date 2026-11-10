@@ -153,7 +153,9 @@ export type Cond =
   /** "If you do, ..." — true when the immediately-preceding optional step ran. */
   | { kind: 'didPrecede' }
   /** "If you tuck it here, ..." — true when the last tuck targeted this dragon. */
-  | { kind: 'tuckedHere' };
+  | { kind: 'tuckedHere' }
+  /** "you have a hatchling, a small dragon, and a large dragon in this cave". */
+  | { kind: 'hasSizesInCave'; sizes: Size[] };
 
 export type Step =
   | { op: 'gain'; items: GainItem[] }

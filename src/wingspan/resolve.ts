@@ -10,6 +10,7 @@ import {
   adjacentRefs,
   appendLog,
   birdAt,
+  discountFoodCost,
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
@@ -48,6 +49,7 @@ import {
   POWER_IMPLS,
   pushPending,
   queueHumAction,
+  queueRowHumAction,
   refillFeeder,
   refillTray,
   rollDice,
@@ -174,11 +176,21 @@ function feasible(state: GameState, step: PendingStep): number {
       const ok = habitats.some((habitat) => {
         if (!habitat) return false;
         if (p.board[habitat].length >= 5) return false;
-        const eggsNeeded = Math.max(0, playEggCost(p, habitat) - (step.eggDiscount ?? 0));
-        if (totalEggs(p) < eggsNeeded) return false;
+        const baseEggs = playEggCost(p, habitat);
+        const discEggs = Math.max(0, baseEggs - (step.eggDiscount ?? 0));
+        const totalEggsOnMat = totalEggs(p);
         return p.hand.some((id) => {
           const c = bird(id);
-          return c.habitats.includes(habitat) && payFoodPlan(p.food, c.cost) !== null;
+          if (!c.habitats.includes(habitat)) return false;
+          if (totalEggsOnMat >= discEggs && payFoodPlan(p.food, c.cost) !== null) return true;
+          if (
+            step.foodDiscount &&
+            totalEggsOnMat >= baseEggs &&
+            payFoodPlan(p.food, discountFoodCost(c.cost, step.foodDiscount)) !== null
+          ) {
+            return true;
+          }
+          return false;
         });
       });
       return ok ? 1 : 0;
@@ -813,16 +825,16 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
           } else if (fits.length === 1) {
             habitat = fits[0]!;
           } else {
-            habitat = autoPickHabitat(p0, cardId, step.eggDiscount ?? 0);
+            habitat = autoPickHabitat(p0, cardId, step.eggDiscount ?? 0, step.foodDiscount);
             if (p0.board[habitat].length !== step.column) {
               throw new Error('pick a habitat in this column');
             }
           }
         } else {
-          habitat = choice.habitat ?? autoPickHabitat(p0, cardId, step.eggDiscount ?? 0);
+          habitat = choice.habitat ?? autoPickHabitat(p0, cardId, step.eggDiscount ?? 0, step.foodDiscount);
         }
       } else habitat = step.habitat;
-      s = playAdditionalBird(s, playerId, cardId, habitat, step.eggDiscount ?? 0);
+      s = playAdditionalBird(s, playerId, cardId, habitat, step.eggDiscount ?? 0, step.foodDiscount);
       break;
     }
     case 'chooseCacheFood': {
@@ -1928,9 +1940,14 @@ function continueEffect(
       const me = row[meRef.index];
       if (!victim || !me || victim.ghost || me.ghost) return s;
       const gone = [victim.cardId, ...victim.tucked];
-      const next = row.filter((_, i) => i !== target.index && i !== meRef.index);
-      const insertAt = target.index < meRef.index ? target.index : target.index - 1;
-      next.splice(insertAt, 0, { ...me });
+      const ghostIdx = row[target.index + 1]?.ghost ? target.index + 1 : -1;
+      const next = [...row];
+      next[target.index] = { ...me };
+      const removeIdxs = [meRef.index, ...(ghostIdx >= 0 ? [ghostIdx] : [])].sort((a, b) => b - a);
+      for (const idx of removeIdxs) {
+        if (idx !== target.index) next.splice(idx, 1);
+      }
+      const insertAt = next.findIndex((b) => b.cardId === me.cardId && !b.ghost);
       s = setPlayer(s, { ...p, board: { ...p.board, forest: next } });
       s = { ...s, discard: [...s.discard, ...gone] };
       s = setPlayer(s, addEggs(getPlayer(s, playerId), { habitat: 'forest', index: insertAt }, 4));
@@ -2525,11 +2542,12 @@ function continueEffect(
         const c = bird(b.cardId);
         if (c.powerColor === 'brown' && c.powerText && hasPowerImpl(c.id)) remaining.push(i);
       }
-      return {
+      const next: GameState = {
         ...s,
         activation: remaining.length ? { habitat: h, remaining } : null,
         humAction: s.humAction != null ? h : s.humAction,
       };
+      return next.turnTookAction && next.activation == null ? queueRowHumAction(next, playerId) : next;
     }
     case 'amRepeatAll': {
       // Re-offer the row's brown powers until declined (ids = used indexes).
@@ -3180,13 +3198,22 @@ function autoPickHabitat(
   p: ReturnType<typeof getPlayer>,
   cardId: number,
   eggDiscount = 0,
+  foodDiscount?: FoodType,
 ): Habitat {
   const card = bird(cardId);
   for (const h of card.habitats) {
     if (p.board[h].length >= 5) continue;
-    if (totalEggsAvail(p) < Math.max(0, playEggCost(p, h) - eggDiscount)) continue;
-    if (payFoodPlan(p.food, card.cost) == null) continue;
-    return h;
+    const baseEggs = playEggCost(p, h);
+    const discEggs = Math.max(0, baseEggs - eggDiscount);
+    const totalEggsOnMat = totalEggsAvail(p);
+    if (totalEggsOnMat >= discEggs && payFoodPlan(p.food, card.cost) != null) return h;
+    if (
+      foodDiscount &&
+      totalEggsOnMat >= baseEggs &&
+      payFoodPlan(p.food, discountFoodCost(card.cost, foodDiscount)) != null
+    ) {
+      return h;
+    }
   }
   throw new Error('no habitat can take this bird');
 }
@@ -3199,6 +3226,7 @@ function playAdditionalBird(
   cardId: number,
   habitat: 'forest' | 'grassland' | 'wetland',
   eggDiscount = 0,
+  foodDiscount?: FoodType,
 ): GameState {
   const p = getPlayer(state, playerId);
   const card = bird(cardId);
@@ -3206,8 +3234,27 @@ function playAdditionalBird(
   if (!card.habitats.includes(habitat)) throw new Error(`this bird can't live in the ${habitat}`);
   if (p.board[habitat].length >= 5) throw new Error('row is full');
   const slot = p.board[habitat].length;
-  const eggCost = Math.max(0, playEggCost(p, habitat) - eggDiscount);
-  const paid = payFoodPlan(p.food, card.cost);
+  const baseEggCost = playEggCost(p, habitat);
+  const discEggCost = Math.max(0, baseEggCost - eggDiscount);
+  const discFoodCost = discountFoodCost(card.cost, foodDiscount);
+  const fullPaid = payFoodPlan(p.food, card.cost);
+  const discPaid = foodDiscount ? payFoodPlan(p.food, discFoodCost) : null;
+  let paid: FoodType[] | null = null;
+  let eggCost = discEggCost;
+  // "You may ignore 1 [food] or 1 [egg] in its cost": use the food discount
+  // when needed to afford the food cost or when the column egg cost is 0.
+  if (
+    foodDiscount &&
+    discPaid &&
+    totalEggsAvail(p) >= baseEggCost &&
+    (!fullPaid || baseEggCost === 0 || discPaid.length < fullPaid.length)
+  ) {
+    paid = discPaid;
+    eggCost = baseEggCost;
+  } else {
+    paid = fullPaid;
+    eggCost = discEggCost;
+  }
   if (!paid) throw new Error('cannot afford the food cost');
   if (eggCost > 0 && totalEggsAvail(p) < eggCost) throw new Error('not enough eggs for the column');
 
