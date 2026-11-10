@@ -387,6 +387,13 @@ export function isFlock(state: GameState): boolean {
   return state.settings.mode === 'flock';
 }
 
+/** Solo mode against the Automa (or true when `playerId` is the Automa seat). */
+export function isAutoma(state: GameState, playerId?: PlayerId): boolean {
+  if (!state.automa) return false;
+  if (playerId == null) return true;
+  return playerId === (state.playerOrder[1] ?? 'p2');
+}
+
 /** Wingspan as a number for power/bonus comparisons. Flightless birds are
  *  printed '*' — they count as 0 (see Oceania appendix: e.g. they qualify
  *  for "wingspan less than Xcm" and never for "over Xcm"). */

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { bird, goalTile } from '@/wingspan/cards';
+import { bird, bonusCard, goalTile } from '@/wingspan/cards';
 import {
   COLUMN_EGG_COST,
   FOREST_DICE,
@@ -164,6 +164,35 @@ export function GameScreen() {
             canAct={canAct}
             dispatch={dispatch}
           />
+
+          {game.automa && (
+            <div className="card">
+              <h3>⚙️ Automa Solo Deck ({game.automa.difficulty})</h3>
+              <div className="stat-pills">
+                <span className="stat-pill">
+                  📜 Bonus: <b>{bonusCard(game.automa.bonusCardId).name}</b>
+                </span>
+                <span className="stat-pill">
+                  🃏 Deck: <b>{game.automa.deck.length}</b> (Last: #{game.automa.lastCardId ?? '—'})
+                </span>
+                <span className="stat-pill">
+                  🎯 Goal Cubes: <b>{game.automa.goalCubes}</b>
+                </span>
+                <span className="stat-pill">
+                  🪶 Face-Up: <b>{game.automa.faceUpBirds.length}</b> · Face-Down:{' '}
+                  <b>{game.automa.faceDownBirds}</b>
+                </span>
+                <span className="stat-pill">
+                  🥚 Eggs: <b>{game.automa.eggs}</b>
+                </span>
+                {game.automa.hoardTokens > 0 && (
+                  <span className="stat-pill">
+                    🧺 Hoard: <b>{game.automa.hoardTokens}</b>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="card">
             <h3>🏆 Live Standings</h3>

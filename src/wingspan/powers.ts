@@ -27,6 +27,7 @@ import {
   emptySlots,
   getPlayer,
   humIdsOnMat,
+  isAutoma,
   isOceania,
   nestMatches,
   playedBirds,
@@ -59,11 +60,48 @@ import { BASE_DIE_FACES, BASE_FOODS, FOOD_TYPES, HABITATS, HUM_GROUPS, NEST_TYPE
 // === low-level state writers ===
 
 export const setPlayer: (state: GameState, p: PlayerState) => GameState = shared.setPlayer;
-export const pushPending: (state: GameState, ...steps: PendingStep[]) => GameState = shared.pushPending;
+
+export function pushPending(state: GameState, ...steps: PendingStep[]): GameState {
+  if (!state.automa) return shared.pushPending(state, ...steps);
+  let hoardAdded = 0;
+  const kept: PendingStep[] = [];
+  for (const st of steps) {
+    if (isAutoma(state, st.playerId)) {
+      if (
+        state.settings.automa?.hoard &&
+        (st.kind === 'chooseBirdForEgg' ||
+          st.kind === 'pickDie' ||
+          st.kind === 'chooseSupplyFood' ||
+          st.kind === 'chooseDrawnCard')
+      ) {
+        hoardAdded += 'count' in st ? st.count : 1;
+      }
+      continue;
+    }
+    kept.push(st);
+  }
+  const next: GameState =
+    hoardAdded > 0
+      ? {
+          ...state,
+          automa: { ...state.automa, hoardTokens: state.automa.hoardTokens + hoardAdded },
+        }
+      : state;
+  return kept.length > 0 ? shared.pushPending(next, ...kept) : next;
+}
 
 /** Draw `n` cards from the deck into the player's hand, reshuffling the
  *  discard pile (with rng) into a new deck when the deck runs out. */
 export function drawFromDeck(state: GameState, playerId: PlayerId, n: number): GameState {
+  if (isAutoma(state, playerId)) {
+    if (state.settings.automa?.hoard && state.automa && n > 0) {
+      return {
+        ...state,
+        automa: { ...state.automa, hoardTokens: state.automa.hoardTokens + n },
+      };
+    }
+    return state;
+  }
   let p = getPlayer(state, playerId);
   let deck = state.deck;
   let rng = state.rngState;
@@ -164,6 +202,15 @@ export function grantSupplyFood(
   food: FoodType,
   n = 1,
 ): GameState {
+  if (isAutoma(state, playerId)) {
+    if (state.settings.automa?.hoard && state.automa && n > 0) {
+      return {
+        ...state,
+        automa: { ...state.automa, hoardTokens: state.automa.hoardTokens + n },
+      };
+    }
+    return state;
+  }
   let p = getPlayer(state, playerId);
   p = addFood(p, food, n);
   for (let i = 0; i < n; i++) p = recordFoodGain(p, food);
@@ -350,24 +397,30 @@ function allDraw(count: number): PowerFn {
   };
 }
 
-/** Players tied for fewest birds in `habitat` each draw `count` cards. */
+/** Players tied for fewest birds in `habitat` each draw `count` cards.
+ *  Automa rule: any brown powers requiring comparison to the Automa, Automa loses. */
 function fewestInHabitatDraw(habitat: 'forest' | 'grassland' | 'wetland'): PowerFn {
   return (state) => {
-    const min = Math.min(...state.players.map((p) => p.board[habitat].length));
+    const participants = state.players.filter((p) => !isAutoma(state, p.id));
+    if (participants.length === 0) return state;
+    const min = Math.min(...participants.map((p) => p.board[habitat].length));
     let s = state;
-    for (const p of state.players) {
+    for (const p of participants) {
       if (p.board[habitat].length === min) s = drawFromDeck(s, p.id, 1);
     }
     return s;
   };
 }
 
-/** Players tied for fewest birds in `habitat` each pick a die from the feeder. */
+/** Players tied for fewest birds in `habitat` each pick a die from the feeder.
+ *  Automa rule: any brown powers requiring comparison to the Automa, Automa loses. */
 function fewestInHabitatGainDie(habitat: 'forest' | 'grassland' | 'wetland'): PowerFn {
   return (state) => {
-    const min = Math.min(...state.players.map((p) => p.board[habitat].length));
+    const participants = state.players.filter((p) => !isAutoma(state, p.id));
+    if (participants.length === 0) return state;
+    const min = Math.min(...participants.map((p) => p.board[habitat].length));
     let s = state;
-    for (const p of state.players) {
+    for (const p of participants) {
       if (p.board[habitat].length === min && s.feederIn.length > 0) {
         s = pushPending(s, { kind: 'pickDie', playerId: p.id, count: 1, then: { effect: 'feederGain' } });
       }
@@ -1113,7 +1166,7 @@ function drawKeepIf(pred: (c: BirdCard) => boolean): PowerFn {
   return (state, playerId) => {
     let s = drawFromDeck(state, playerId, 1);
     for (const pid of s.playerOrder) {
-      if (pid === playerId) continue;
+      if (pid === playerId || isAutoma(s, pid)) continue;
       if (s.deck.length === 0 && s.discard.length > 0) {
         const [deck, rng] = shuffle(s.rngState, s.discard);
         s = { ...s, deck, discard: [], rngState: rng };
@@ -3175,6 +3228,7 @@ export const POWER_IMPLS: Record<string, PowerFn> = {
   'All players draw 4 [card] from the deck, add 1 to their hands, and discard the rest. You may tuck 1 card behind this bird instead of discarding it.': (s, pid, ref) => {
     const steps: PendingStep[] = [];
     for (const other of s.playerOrder) {
+      if (isAutoma(s, other)) continue;
       const { s: s1, ids } = drawToPool(s, 4);
       s = s1;
       if (ids.length === 0) continue;
@@ -3192,7 +3246,7 @@ export const POWER_IMPLS: Record<string, PowerFn> = {
     return pushPending(s, ...steps);
   },
   'All other players draw 2 from the deck, keep 1, and give 1 to you. Draw 2 additional cards from the deck, then keep 2 cards and discard the rest.': (s, pid) => {
-    const others = s.playerOrder.filter((x) => x !== pid);
+    const others = s.playerOrder.filter((x) => x !== pid && !isAutoma(s, x));
     if (others.length === 0) {
       const { s: s1, ids } = drawToPool(s, 2);
       if (ids.length === 0) return s1;
@@ -3747,7 +3801,7 @@ export const POWER_IMPLS: Record<string, PowerFn> = {
   'If you have more [wild] in your supply than each of your neighbors has in theirs, gain 1 [die] from the birdfeeder.': (s, pid, ref) => {
     const myFood = totalFood(getPlayer(s, pid));
     const neighbors = [playerToLeft(s, pid), playerToRight(s, pid)].filter(
-      (x): x is PlayerId => x != null,
+      (x): x is PlayerId => x != null && !isAutoma(s, x),
     );
     if (!neighbors.every((n) => myFood > totalFood(getPlayer(s, n)))) return s;
     return gainDice(1, {})(s, pid, ref);
@@ -5105,6 +5159,32 @@ export function firePinkTriggers(
       row[ref.index] = { ...b, pinkUsed: true };
       s = setPlayer(s, { ...cur, board: { ...cur.board, [ref.habitat]: row } });
       s = def.fn(s, p.id, ref, { actor, trigger });
+    }
+  }
+  return s;
+}
+
+/** Automa "Activate All Pink Powers": trigger every pink-power bird on human
+ *  players' boards once (unless `pinkUsed` is already true). */
+export function fireAllPinkPowersForAutoma(state: GameState, automaPlayerId: PlayerId): GameState {
+  let s = state;
+  for (const p of s.players) {
+    if (p.id === automaPlayerId || isAutoma(s, p.id)) continue;
+    for (const { ref, bird: b } of playedBirds(p)) {
+      if (b.pinkUsed) continue;
+      const card = BIRD_BY_ID.get(b.cardId);
+      if (!card || card.powerColor !== 'pink' || !card.powerText) continue;
+      const def = PINK_IMPLS[card.powerText];
+      if (!def) continue;
+      const cur = getPlayer(s, p.id);
+      const row = [...cur.board[ref.habitat]];
+      row[ref.index] = { ...row[ref.index]!, pinkUsed: true };
+      s = setPlayer(s, { ...cur, board: { ...cur.board, [ref.habitat]: row } });
+      const trigger: PinkTrigger =
+        def.trigger.kind === 'actionUpgrade'
+          ? { kind: 'actionUpgrade', egg: true }
+          : def.trigger;
+      s = def.fn(s, p.id, ref, { actor: automaPlayerId, trigger });
     }
   }
   return s;

@@ -1,7 +1,14 @@
 // Handlers for the four turn actions, setup, activation and end-turn.
 // Every handler validates the action fully; invalid actions throw.
 
+import {
+  advanceAutomaHummingbird,
+  automaCard,
+  placeAutomaDuetToken,
+  selectAutomaTrayBirds,
+} from './automa';
 import { bird, goalTile } from './cards';
+import { shuffle } from '../shared/rng';
 import {
   CUBES_PER_ROUND,
   FOREST_DICE,
@@ -27,6 +34,7 @@ import {
   canHoldEggs,
   getPlayer,
   isAmericas,
+  isAutoma,
   isCardCostBird,
   isCoverBird,
   isDuet,
@@ -45,10 +53,12 @@ import { goalScore } from './scoring';
 import {
   drawFromDeck,
   feederReset,
+  fireAllPinkPowersForAutoma,
   firePinkTriggers,
   hasPowerImpl,
   pushPending,
   queueRowHumAction,
+  refillFeeder,
   refillHumGarden,
   refillTray,
   resetPinkFlags,
@@ -693,6 +703,209 @@ export function duetReset(state: GameState, action: DuetResetAction): GameState 
   return s;
 }
 
+// === automa solo turn ===
+
+function drawAutomaFaceDown(state: GameState): { s: GameState; drawnId: number | null } {
+  let deck = state.deck;
+  let discard = state.discard;
+  let rngState = state.rngState;
+  if (deck.length === 0 && discard.length > 0) {
+    [deck, rngState] = shuffle(rngState, discard);
+    discard = [];
+  }
+  let drawnId: number | null = null;
+  if (deck.length > 0) {
+    drawnId = deck[deck.length - 1]!;
+    deck = deck.slice(0, -1);
+  }
+  return {
+    s: {
+      ...state,
+      deck,
+      discard,
+      rngState,
+      automa: {
+        ...state.automa!,
+        faceDownBirds: state.automa!.faceDownBirds + 1,
+      },
+    },
+    drawnId,
+  };
+}
+
+export function automaTurn(state: GameState, playerId: PlayerId): GameState {
+  if (!state.automa || !isAutoma(state, playerId)) {
+    throw new Error('not an automa player');
+  }
+  requireTurn(state, playerId);
+  const p = getPlayer(state, playerId);
+  let s: GameState = setPlayer(state, { ...p, actionCubes: p.actionCubes - 1 });
+
+  let automaDeck = s.automa!.deck.slice();
+  let automaDiscard = s.automa!.discard.slice();
+  let rng = s.rngState;
+  if (automaDeck.length === 0 && automaDiscard.length > 0) {
+    [automaDeck, rng] = shuffle(rng, automaDiscard);
+    automaDiscard = [];
+  }
+  const cardId = automaDeck.pop()!;
+  automaDiscard.push(cardId);
+  s = {
+    ...s,
+    rngState: rng,
+    automa: {
+      ...s.automa!,
+      deck: automaDeck,
+      discard: automaDiscard,
+      lastCardId: cardId,
+    },
+  };
+
+  const card = automaCard(cardId);
+  const section = card.rounds[Math.max(0, Math.min(3, s.round))]!;
+
+  for (const act of section) {
+    switch (act.kind) {
+      case 'drawCards': {
+        const trayCards = s.tray.filter((id): id is number => id != null);
+        s = {
+          ...s,
+          discard: [...s.discard, ...trayCards],
+          tray: [null, null, null],
+        };
+        s = drawAutomaFaceDown(s).s;
+        break;
+      }
+      case 'gainFood': {
+        if (s.feederIn.length === 0 || allSameFace(s.feederIn)) {
+          s = refillFeeder(s);
+        }
+        const oceania = isOceania(s);
+        for (const want of act.order) {
+          const effFace: DieFace = oceania && want === 'split' ? 'nectar' : want;
+          if (!s.feederIn.includes(effFace)) continue;
+          const removed = s.feederIn.filter((f) => f === effFace);
+          const remaining = s.feederIn.filter((f) => f !== effFace);
+          s = {
+            ...s,
+            feederIn: remaining,
+            feederOut: [...s.feederOut, ...removed],
+          };
+          if (oceania && effFace === 'nectar') {
+            const hab = HABITATS[s.round % 3]!;
+            const nextNectar = {
+              ...s.automa!.nectarSpent,
+              [hab]: s.automa!.nectarSpent[hab] + removed.length,
+            };
+            const pl = getPlayer(s, playerId);
+            s = {
+              ...setPlayer(s, {
+                ...pl,
+                nectarSpent: {
+                  ...pl.nectarSpent,
+                  [hab]: pl.nectarSpent[hab] + removed.length,
+                },
+              }),
+              automa: {
+                ...s.automa!,
+                nectarSpent: nextNectar,
+              },
+            };
+          }
+          if (s.feederIn.length === 0) {
+            s = refillFeeder(s);
+          }
+          break;
+        }
+        break;
+      }
+      case 'playBird': {
+        const { keep, discard, matchedIndices } = selectAutomaTrayBirds(
+          s.tray,
+          s.automa!.bonusCardId,
+          s.automa!.difficulty,
+        );
+        let duetCardId: number | null = null;
+        if (keep.length > 0) {
+          const nextTray = s.tray.map((id, i) => (matchedIndices.includes(i) ? null : id));
+          s = {
+            ...s,
+            tray: nextTray,
+            discard: [...s.discard, ...discard],
+            automa: {
+              ...s.automa!,
+              faceUpBirds: [...s.automa!.faceUpBirds, ...keep],
+            },
+          };
+          duetCardId = keep[0]!;
+        } else {
+          const r = drawAutomaFaceDown(s);
+          s = r.s;
+          duetCardId = r.drawnId;
+        }
+        if (isDuet(s)) {
+          s = placeAutomaDuetToken(s, duetCardId);
+        }
+        if (isAmericas(s)) {
+          s = advanceAutomaHummingbird(s);
+        }
+        break;
+      }
+      case 'layEggs': {
+        s = {
+          ...s,
+          automa: {
+            ...s.automa!,
+            eggs: s.automa!.eggs + act.count,
+          },
+        };
+        break;
+      }
+      case 'placeGoalCube': {
+        s = {
+          ...s,
+          automa: {
+            ...s.automa!,
+            goalCubes: s.automa!.goalCubes + 1,
+          },
+        };
+        break;
+      }
+      case 'removeGoalCube': {
+        s = {
+          ...s,
+          automa: {
+            ...s.automa!,
+            goalCubes: Math.max(0, s.automa!.goalCubes - 1),
+          },
+        };
+        break;
+      }
+      case 'activatePink': {
+        s = fireAllPinkPowersForAutoma(s, playerId);
+        break;
+      }
+    }
+  }
+
+  s = refillTray(s);
+  if (isAmericas(s)) s = refillHumGarden(s);
+
+  let next = s.currentPlayerIndex;
+  let guard = 0;
+  do {
+    next = (next + 1) % s.playerOrder.length;
+    guard++;
+  } while (getPlayer(s, s.playerOrder[next]!).actionCubes <= 0 && guard <= s.playerOrder.length);
+  const anyLeft = s.players.some((pl) => pl.actionCubes > 0);
+  if (!anyLeft) {
+    return endRound(s);
+  }
+  s = { ...s, currentPlayerIndex: next, turnTookAction: false };
+  s = resetPinkFlags(s, s.playerOrder[next]!);
+  return s;
+}
+
 // === round / game end ===
 
 /** Turn order starting at the first-player marker (used to sequence the
@@ -812,7 +1025,7 @@ export function finishRound(state: GameState): GameState {
       const order = s.playerOrder
         .map((pid, i) => ({ pid, units: units[i]! }))
         .filter((x) =>
-          humPointsGoal
+          humPointsGoal && !isAutoma(s, x.pid)
             ? HUM_GROUPS.some((g) => getPlayer(s, x.pid).humTrack[g] > 0)
             : x.units > 0,
         )
@@ -850,12 +1063,39 @@ export function finishRound(state: GameState): GameState {
   }
 
   const nextRound = s.round + 1;
+  if (s.automa) {
+    // Automa round-end adjustment: reset goal cubes, remove the card marked
+    // "Remove after round N" (round + 1), and reshuffle the Automa deck.
+    const completedRound = s.round + 1;
+    const remainingAutoma = [...s.automa.deck, ...s.automa.discard].filter(
+      (id) => automaCard(id).removeAfterRound !== completedRound,
+    );
+    let nextAutomaDeck = remainingAutoma;
+    let rng = s.rngState;
+    if (nextRound < 4) {
+      [nextAutomaDeck, rng] = shuffle(rng, remainingAutoma);
+    }
+    s = {
+      ...s,
+      rngState: rng,
+      firstPlayerIndex: 0,
+      automa: {
+        ...s.automa,
+        deck: nextAutomaDeck,
+        discard: [],
+        goalCubes: 0,
+      },
+    };
+  }
   if (nextRound < 4) {
-    // First player of the new round: duet gives the token to the round-goal
-    // loser (set during goal scoring); other modes pass it clockwise.
-    const nextFirst = isDuet(s)
-      ? s.firstPlayerIndex
-      : (s.firstPlayerIndex + 1) % s.playerOrder.length;
+    // First player of the new round: Automa games always keep the human player
+    // first ("You always go first"); duet gives the token to the round-goal
+    // loser; other modes pass it clockwise.
+    const nextFirst = s.automa
+      ? 0
+      : isDuet(s)
+        ? s.firstPlayerIndex
+        : (s.firstPlayerIndex + 1) % s.playerOrder.length;
     // Oceania "no goal": each completed round with "no goal" lets players
     // keep their action cube, granting +1 turn in all following rounds.
     const keptCubes = s.goalTiles

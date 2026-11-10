@@ -7,6 +7,7 @@
 
 import * as shared from '../shared/state';
 import { parseAbility, warnUnsupported } from './abilities';
+import { automaCacheTokensForMaySteps, grantAutomaCacheTokens } from './automa';
 import { cardAbilityTypes, cardName, caveCard, dragonCard, dragonMatchesCond, isDragonCard } from './cards';
 import { GUILD_TILES, GUILD_TRACK, INCOME_SECTIONS, incomeSectionIndex } from './guild';
 import {
@@ -278,6 +279,16 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
       case 'opponentsGain': {
         // Clockwise order starting with the player after the owner.
         for (const op of orderedOthers(s, ctx.playerId)) {
+          if (s.automa && op.id === 'p2') {
+            // Base Automa (dragon automa.txt line 398): "When you trigger an
+            // ability or benefit, if other players are supposed to gain
+            // something, Automa gains nothing."
+            // Dragon Academy (academy_p07.png): Automa gains 2 cache tokens
+            // for each thing she will gain without paying a cost.
+            const things = step.items.reduce((a, it) => a + it.count, 0);
+            s = grantAutomaCacheTokens(s, 2 * things);
+            continue;
+          }
           const [deferred, s2] = applyGainItems(s, op, step.items);
           s = s2;
           for (const it of deferred) {
@@ -298,13 +309,23 @@ export function runSteps(state: GameState, steps: Step[], ctx: EffectCtx): GameS
         // player after the owner; the last carries the continuation.
         const ops = orderedOthers(s, ctx.playerId);
         if (!ops.length) break;
-        ops.forEach((op, i) => {
+        const humanOps: PlayerState[] = [];
+        for (const op of ops) {
+          if (s.automa && op.id === 'p2') {
+            const tokens = automaCacheTokensForMaySteps(step.steps);
+            s = grantAutomaCacheTokens(s, tokens);
+          } else {
+            humanOps.push(op);
+          }
+        }
+        if (!humanOps.length) break;
+        humanOps.forEach((op, i) => {
           s = pushPending(s, {
             kind: 'opponentMay',
             playerId: op.id,
             label: 'an offered benefit',
             steps: step.steps,
-            resume: i === ops.length - 1 ? { steps: rest, ctx } : undefined,
+            resume: i === humanOps.length - 1 ? { steps: rest, ctx } : undefined,
           });
         });
         return s;
@@ -1021,6 +1042,10 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
         q2.resources[res] += selfN - 1; // already got 1 above
         s = setPlayer(s, q2);
         for (const op of otherPlayers(s, playerId)) {
+          if (s.automa && op.id === 'p2') {
+            s = grantAutomaCacheTokens(s, 2 * oppN);
+            continue;
+          }
           const oq = clone(op);
           oq.resources[res] += oppN;
           s = setPlayer(s, oq);
@@ -1746,6 +1771,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, answer: Choi
 
 /** Collect one player's claimed income space (Academy round end, step 5). */
 export function collectIncome(state: GameState, playerId: PlayerId): GameState {
+  if (state.automa && playerId === 'p2') return state;
   const section = INCOME_SECTIONS[incomeSectionIndex(state.round)]!;
   const idx = state.incomeChoices[playerId];
   const space = idx !== undefined ? section[idx] : undefined;

@@ -137,6 +137,29 @@ export function gameEndWavePoints(p: PlayerState): number {
 
 export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
   const isSR = state.settings.sets.includes('sr');
+  if (state.nautoma && p.id === 'p2') {
+    const n = state.nautoma;
+    const fishPoints = n.fish.length * (n.difficulty <= 2 ? 3 : 4);
+    const schoolPoints = n.schools * (n.difficulty <= 2 ? 5 : 6);
+    const eggYoungPoints = n.young * 1 + Math.floor(n.eggs / 2);
+    const achievementPoints = (n.difficulty === 1 ? 0 : p.achievementPoints) + n.ravelPoints;
+    const coralBonus =
+      n.difficulty === 3 || n.difficulty === 5 ? Math.floor(n.corals / 6) * 5 : 0;
+    const coralPoints = isSR ? n.corals + coralBonus : 0;
+    const total =
+      achievementPoints + fishPoints + schoolPoints + eggYoungPoints + coralPoints;
+    return {
+      achievementPoints,
+      gameEndAbilityPoints: 0,
+      fishPoints,
+      consumedPoints: 0,
+      eggYoungPoints,
+      schoolPoints,
+      coralPoints,
+      total,
+    };
+  }
+
   let fishPoints = 0;
   let consumed = 0;
   for (const { slot } of allSlots(p.ocean)) {
@@ -169,7 +192,9 @@ export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
   };
 }
 
-/** Final scores + winner. Tie-breaker: most fish cards in hand. */
+/** Final scores + winner. Tie-breaker: in Nautoma solo mode, the human player
+ *  (p1) always wins ties ("In the event of a tie, you win!"); in multiplayer,
+ *  most fish cards in hand. */
 export function finalScores(state: GameState): {
   scores: Record<PlayerId, ScoreBreakdown>;
   winner: PlayerId[];
@@ -179,10 +204,14 @@ export function finalScores(state: GameState): {
   const best = Math.max(...state.players.map((p) => scores[p.id]!.total));
   let winner = state.players.filter((p) => scores[p.id]!.total === best).map((p) => p.id);
   if (winner.length > 1) {
-    const handBest = Math.max(
-      ...state.players.filter((p) => winner.includes(p.id)).map((p) => p.hand.length),
-    );
-    winner = winner.filter((id) => state.players.find((p) => p.id === id)!.hand.length === handBest);
+    if (state.nautoma && winner.includes('p1')) {
+      winner = ['p1'];
+    } else {
+      const handBest = Math.max(
+        ...state.players.filter((p) => winner.includes(p.id)).map((p) => p.hand.length),
+      );
+      winner = winner.filter((id) => state.players.find((p) => p.id === id)!.hand.length === handBest);
+    }
   }
   return { scores, winner };
 }

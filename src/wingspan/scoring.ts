@@ -1,11 +1,13 @@
 // Round-goal unit counting and end-of-game scoring.
 
+import { automaFaceDownVp, automaGoalScore } from './automa';
 import { bonusCard, BIRD_BY_ID, goalTile, hummingbird } from './cards';
 import { HUM_BONUS_SPACES, HUM_LADDER, NECTAR_POINTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS, duetIsEdge, duetNeighbors } from './duetMap';
 import {
   humIdsOnMat,
   isAmericas,
+  isAutoma,
   isFlock,
   isGoalDouble,
   isOceania,
@@ -138,6 +140,9 @@ export function duetLargestGroup(state: GameState, playerId: PlayerId): number {
 
 /** Units a player has for a goal tile (ranked comparison happens in actions.ts). */
 export function goalScore(state: GameState, playerId: PlayerId, tileId: number): number {
+  if (isAutoma(state, playerId)) {
+    return automaGoalScore(state, tileId);
+  }
   const tile = goalTile(tileId);
   const p = state.players.find((x) => x.id === playerId)!;
   const g = tile.goal;
@@ -553,15 +558,19 @@ function unitsToVp(vp: { kind: string; tiers?: { min: number; max: number | null
 export function nectarPoints(state: GameState, playerId: PlayerId): number {
   if (!isOceania(state)) return 0;
   const p = state.players.find((x) => x.id === playerId)!;
+  const spentOf = (x: PlayerState, h: Habitat) =>
+    isAutoma(state, x.id)
+      ? Math.max(x.nectarSpent[h], state.automa?.nectarSpent[h] ?? 0)
+      : x.nectarSpent[h];
   let total = 0;
   for (const h of HABITATS) {
     const ranked = state.players
-      .map((x) => ({ id: x.id, n: x.nectarSpent[h] }))
+      .map((x) => ({ id: x.id, n: spentOf(x, h) }))
       .filter((x) => x.n > 0)
       .sort((a, b) => b.n - a.n);
     if (isFlock(state)) {
       const values = [...new Set(ranked.map((x) => x.n))];
-      const myN = p.nectarSpent[h];
+      const myN = spentOf(p, h);
       if (myN > 0) {
         const idx = values.indexOf(myN);
         if (idx >= 0 && idx < NECTAR_POINTS.length) total += NECTAR_POINTS[idx]!;
@@ -603,16 +612,51 @@ export function bonusPoints(p: PlayerState): number {
 /** Full end-of-game score for one player. */
 export function finalScore(state: GameState, playerId: PlayerId): ScoreBreakdown {
   const p = state.players.find((x) => x.id === playerId)!;
-  const birdPoints = playedBirds(p).reduce((n, { bird: b }) => n + BIRD_BY_ID.get(b.cardId)!.points, 0);
-  const bonus = bonusPoints(p);
-  const eggs = totalEggs(p);
-  const cached = totalCached(p);
-  const tucked = totalTucked(p);
   const idx = state.playerOrder.indexOf(playerId);
   const goalPoints = state.goalScores.reduce((n, round) => n + (round[idx] ?? 0), 0);
   const nectar = nectarPoints(state, playerId);
   // Duet mode: 1 pt per token in the largest contiguous group on the map.
   const duetTokens = state.duet ? duetLargestGroup(state, playerId) : 0;
+
+  if (isAutoma(state, playerId) && state.automa) {
+    const faceUpVp = state.automa.faceUpBirds.reduce(
+      (n, id) => n + (BIRD_BY_ID.get(id)?.points ?? 0),
+      0,
+    );
+    const faceDownVp =
+      state.automa.faceDownBirds * automaFaceDownVp(state.automa.difficulty);
+    const birdPoints = faceUpVp + faceDownVp;
+    const bonus = state.settings.automa?.hoard ? state.automa.hoardTokens : 0;
+    const eggs = state.automa.eggs;
+    const hummingbirds = isAmericas(state)
+      ? HUM_GROUPS.reduce(
+          (n, g) =>
+            n +
+            (HUM_LADDER[Math.max(state.automa!.humTrack[g] ?? 0, p.humTrack[g] ?? 0)] ?? 0),
+          0,
+        )
+      : 0;
+    const total =
+      birdPoints + bonus + eggs + goalPoints + nectar + duetTokens + hummingbirds;
+    return {
+      birdPoints,
+      bonusPoints: bonus,
+      eggs,
+      cached: 0,
+      tucked: 0,
+      nectar,
+      duetTokens,
+      hummingbirds,
+      goalPoints,
+      total,
+    };
+  }
+
+  const birdPoints = playedBirds(p).reduce((n, { bird: b }) => n + BIRD_BY_ID.get(b.cardId)!.points, 0);
+  const bonus = bonusPoints(p);
+  const eggs = totalEggs(p);
+  const cached = totalCached(p);
+  const tucked = totalTucked(p);
   // Americas: each hummingbird-track token is worth the printed point value
   // of the space it rests on (the START space is worth -3).
   const hummingbirds = isAmericas(state)

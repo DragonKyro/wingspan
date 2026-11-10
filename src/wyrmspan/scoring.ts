@@ -22,6 +22,66 @@ function dragonVp(p: PlayerState, card: ReturnType<typeof dragonCard>): number {
 }
 
 export function scorePlayer(state: GameState, p: PlayerState): ScoreBreakdown {
+  if (state.automa && p.id === 'p2') {
+    const automa = state.automa;
+    const dragonVpPer = automa.difficulty === 3 && !automa.ravelMode ? 8 : 7;
+    const printedDragonVp = automa.collectedDragons * dragonVpPer;
+    const tucked = automa.collectedCaves * 2;
+    const cached = state.expansions.includes('academy') ? Math.floor(automa.cacheTokens / 2) : 0;
+
+    // 1 VP for each step beyond the last brown space visited (0 if on space 0 or 6).
+    const guildPos = state.guild.track.p2 ?? 0;
+    let guildTile = guildPos % 6;
+
+    // In Ravel Mode only, score VP for any of her markers on the Dragon Guild
+    // tile placed on fixed VP end-game benefits.
+    if (automa.ravelMode) {
+      const tile = GUILD_TILES[state.guild.tile];
+      state.guild.squares.forEach((occupants, i) => {
+        const n = occupants.filter((id) => id === p.id).length;
+        if (n <= 0) return;
+        const eg = tile.squares[i]?.endGame;
+        if (eg && !eg.counter && !eg.gamblerDraw4) {
+          guildTile += n * (eg.flat ?? eg.vpPer);
+        }
+      });
+    }
+
+    const objectives = p.objectiveVps.reduce((a, b) => a + b, 0);
+    const endGameAbilities = 0;
+    const eggs = 0;
+    const coins = 0;
+    const leftovers = 0;
+    const bonusVP = p.bonusVP;
+    const total =
+      guildTile +
+      printedDragonVp +
+      endGameAbilities +
+      eggs +
+      cached +
+      tucked +
+      objectives +
+      coins +
+      leftovers +
+      bonusVP;
+
+    return {
+      playerId: p.id,
+      guildTile,
+      printedDragonVp,
+      endGameAbilities,
+      eggs,
+      cached,
+      tucked,
+      objectives,
+      coins,
+      bonusVP,
+      leftovers,
+      total,
+      visibleDragons: automa.collectedDragons,
+    };
+  }
+
   const dragons = allDragons(p);
 
   // Guild tile squares the player marked.
@@ -107,8 +167,13 @@ export function scoreGame(state: GameState): { scores: ScoreBreakdown[]; winners
   const max = Math.max(...scores.map((s) => s.total));
   let winners = scores.filter((s) => s.total === max).map((s) => s.playerId);
   if (winners.length > 1) {
-    const maxDragons = Math.max(...winners.map((id) => scores.find((s) => s.playerId === id)!.visibleDragons));
-    winners = winners.filter((id) => scores.find((s) => s.playerId === id)!.visibleDragons === maxDragons);
+    // Automa tiebreaker (dragon automa.txt line 449): "In the event of a tie, you win!"
+    if (state.automa && winners.includes('p1')) {
+      winners = ['p1'];
+    } else {
+      const maxDragons = Math.max(...winners.map((id) => scores.find((s) => s.playerId === id)!.visibleDragons));
+      winners = winners.filter((id) => scores.find((s) => s.playerId === id)!.visibleDragons === maxDragons);
+    }
   }
   return { scores, winners };
 }

@@ -1,20 +1,41 @@
 // Deterministic game setup from a numeric seed.
 
+import { automaDeckIds, isAutomaBonusEligible } from './automa';
 import { birdsInSets, bonusCardsInSets, goalsForSets, hummingbirdsInSets } from './cards';
 import { CUBES_PER_ROUND, HUM_GARDEN_SLOTS } from './constants';
 import { DUET_MAP, DUET_TILE_PAIRS } from './duetMap';
 import { rollBirdfeeder, rngInt, shuffle } from '../shared/rng';
 import type {
+  AutomaState,
   CreateGameOptions,
   GameMode,
   GameState,
   GoalTile,
+  PlayerColor,
   PlayerState,
 } from './types';
 import { BASE_DIE_FACES, OCEANIA_DIE_FACES } from './types';
 
 export function createGame(opts: CreateGameOptions): GameState {
   let rng = opts.seed >>> 0;
+
+  const automaCfg = opts.settings?.automa;
+  let playerNames = opts.playerNames.slice();
+  let playerTypes = opts.playerTypes.slice();
+  let playerColors: PlayerColor[] = opts.playerColors.slice();
+
+  if (automaCfg != null) {
+    if (playerNames.length === 1) {
+      playerNames.push('Automa');
+      playerTypes.push('ai');
+      playerColors.push(playerColors[0] === 'red' ? 'blue' : 'red');
+    } else if (playerNames.length === 2) {
+      playerTypes[1] = 'ai';
+      if (!playerColors[1]) playerColors[1] = playerColors[0] === 'red' ? 'blue' : 'red';
+    } else {
+      throw new Error('automa mode requires 1 player');
+    }
+  }
 
   const mode: GameMode = opts.settings?.mode ?? 'standard';
   let sets = opts.settings?.sets ?? ['core'];
@@ -24,13 +45,13 @@ export function createGame(opts: CreateGameOptions): GameState {
   }
 
   // Player-count validation per mode.
-  if (mode === 'duet' && opts.playerNames.length !== 2) {
+  if (mode === 'duet' && playerNames.length !== 2) {
     throw new Error('duet mode requires exactly 2 players');
   }
-  if (mode === 'flock' && (opts.playerNames.length < 6 || opts.playerNames.length > 7)) {
+  if (mode === 'flock' && (playerNames.length < 6 || playerNames.length > 7)) {
     throw new Error('flock mode requires 6-7 players');
   }
-  if (mode === 'standard' && (opts.playerNames.length < 1 || opts.playerNames.length > 5)) {
+  if (mode === 'standard' && (playerNames.length < 1 || playerNames.length > 5)) {
     throw new Error('standard mode requires 1-5 players');
   }
 
@@ -39,6 +60,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     goalSide: opts.settings?.goalSide ?? 'green',
     mode,
     aiLevel: opts.settings?.aiLevel,
+    ...(automaCfg != null ? { automa: automaCfg } : {}),
   };
 
   // Decks.
@@ -46,6 +68,43 @@ export function createGame(opts: CreateGameOptions): GameState {
   [deck, rng] = shuffle(rng, birdsInSets(sets));
   let bonusDeck: number[];
   [bonusDeck, rng] = shuffle(rng, bonusCardsInSets(sets));
+
+  // Automa setup: draw an eligible "% of cards" bonus card before dealing to p1,
+  // and shuffle the Automa decision deck.
+  let automa: AutomaState | undefined;
+  if (automaCfg != null) {
+    const skippedBonus: number[] = [];
+    let automaBonusId: number | null = null;
+    while (bonusDeck.length > 0) {
+      const candidate = bonusDeck.pop()!;
+      if (isAutomaBonusEligible(candidate)) {
+        automaBonusId = candidate;
+        break;
+      }
+      skippedBonus.push(candidate);
+    }
+    if (skippedBonus.length > 0) {
+      [bonusDeck, rng] = shuffle(rng, [...bonusDeck, ...skippedBonus]);
+    }
+    if (automaBonusId == null) automaBonusId = 1000;
+
+    let automaDeck: number[];
+    [automaDeck, rng] = shuffle(rng, automaDeckIds(Boolean(automaCfg.automubonSociety)));
+    automa = {
+      difficulty: automaCfg.difficulty ?? 'eagle',
+      bonusCardId: automaBonusId,
+      deck: automaDeck,
+      discard: [],
+      lastCardId: null,
+      faceUpBirds: [],
+      faceDownBirds: 0,
+      eggs: 0,
+      goalCubes: 0,
+      hoardTokens: 0,
+      nectarSpent: { forest: 0, grassland: 0, wetland: 0 },
+      humTrack: { bee: 0, brilliant: 0, emerald: 0, mango: 0, topaz: 0 },
+    };
+  }
 
   // Goal tiles: duet mode uses 4 of the 6 double-sided duet tiles (random
   // side each); other modes draw 4 supported tiles from the included sets.
@@ -83,25 +142,35 @@ export function createGame(opts: CreateGameOptions): GameState {
   // Tray: 3 face-up cards (top of deck = end of array).
   const tray = [deck.pop()!, deck.pop()!, deck.pop()!];
 
-  const players: PlayerState[] = opts.playerNames.map((name, i) => {
-    const hand = deck.splice(0, 5);
-    const bonusHand = bonusDeck.splice(0, 2);
+  const players: PlayerState[] = playerNames.map((name, i) => {
+    const isAutomaSeat = automa != null && i === 1;
+    const hand = isAutomaSeat ? [] : deck.splice(0, 5);
+    const bonusHand = isAutomaSeat ? [automa!.bonusCardId] : bonusDeck.splice(0, 2);
     return {
       id: `p${i + 1}` as PlayerState['id'],
       name,
-      color: opts.playerColors[i]!,
-      isAI: opts.playerTypes[i] === 'ai',
+      color: playerColors[i]!,
+      isAI: isAutomaSeat || playerTypes[i] === 'ai',
       hand,
       bonusHand,
-      // Oceania: each player also starts with 1 nectar (gained after setup).
-      food: {
-        invertebrate: 1,
-        seed: 1,
-        fish: 1,
-        fruit: 1,
-        rodent: 1,
-        nectar: oceania ? 1 : 0,
-      },
+      // Oceania: each human/AI player starts with 1 nectar (Automa has no food supply).
+      food: isAutomaSeat
+        ? {
+            invertebrate: 0,
+            seed: 0,
+            fish: 0,
+            fruit: 0,
+            rodent: 0,
+            nectar: 0,
+          }
+        : {
+            invertebrate: 1,
+            seed: 1,
+            fish: 1,
+            fruit: 1,
+            rodent: 1,
+            nectar: oceania ? 1 : 0,
+          },
       board: { forest: [], grassland: [], wetland: [] },
       actionCubes: CUBES_PER_ROUND[0]!,
       roundCubes: { forest: 0, grassland: 0, wetland: 0, playBird: 0 },
@@ -111,10 +180,10 @@ export function createGame(opts: CreateGameOptions): GameState {
       nectarSpent: { forest: 0, grassland: 0, wetland: 0 },
       feederGainedThisTurn: [],
       copiedBonus: [],
-      // Americas: a random hummingbird starts on each grassland space.
+      // Americas: a random hummingbird starts on each non-Automa player's grassland space.
       humBoard: {
         forest: null,
-        grassland: americas ? (humDeck.pop() ?? null) : null,
+        grassland: !isAutomaSeat && americas ? (humDeck.pop() ?? null) : null,
         wetland: null,
       },
       humTrack: { bee: 0, brilliant: 0, emerald: 0, mango: 0, topaz: 0 },
@@ -129,8 +198,13 @@ export function createGame(opts: CreateGameOptions): GameState {
     return id == null ? [] : [id];
   });
 
-  let startIdx;
-  [startIdx, rng] = rngInt(rng, players.length);
+  let startIdx: number;
+  if (automa != null) {
+    // Automa rule: "You always go first."
+    startIdx = 0;
+  } else {
+    [startIdx, rng] = rngInt(rng, players.length);
+  }
 
   const playerOrder = players.map((p) => p.id);
 
@@ -154,11 +228,12 @@ export function createGame(opts: CreateGameOptions): GameState {
       mode === 'duet'
         ? { map: DUET_MAP.map(() => null), reset: [] }
         : undefined,
+    ...(automa != null ? { automa } : {}),
     goalScores: [],
     pending: [],
     activation: null,
     turnTookAction: false,
-    setupRemaining: playerOrder.slice(),
+    setupRemaining: automa != null ? [playerOrder[0]!] : playerOrder.slice(),
     roundEndQueue: [],
     gameEndQueue: null,
     humDeck,

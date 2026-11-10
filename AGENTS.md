@@ -254,7 +254,8 @@ AI — and only Wingspan has a UI so far.
 ## Known gaps (future work)
 
 - All 707 Wingspan birds (Core, European, Oceania, Asia, Americas, and all 6
-  Promo packs), all 300 Wyrmspan/Academy abilities + 9 Dragon Guild tiles, and
-  all 215 Finspan/S&R abilities are implemented and verified against the
-  official rulebook PDFs in `docs/`.
-- Automa solo-deck modes and RL policy training are future work.
+  Promo packs), all 300 Wyrmspan/Academy abilities + 9 Dragon Guild tiles,
+  all 215 Finspan/S&R abilities, and the official Automa / Nautoma solo card
+  modes for all three games (+ Ravel Mode & expansion Automa rules) are
+  implemented and verified against the 12 official rulebook PDFs in `docs/`.
+- RL policy training is future work.

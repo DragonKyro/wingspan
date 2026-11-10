@@ -4,7 +4,14 @@
 // rotate the first-player token); the final week hands off to the gameEnd
 // phase, whose queue drains in engine.settle().
 
+import { shuffle } from '../shared/rng';
 import { parseAbility } from './abilities';
+import {
+  dealNautomaDeck,
+  getNautomaDecisionCard,
+  nautomaAchievementBase,
+  scoreRavelWeek,
+} from './automa';
 import { fish } from './cards';
 import { DIVE_BONUSES, MAX_CORAL, REEF_DISCARD_ITEMS } from './constants';
 import {
@@ -31,6 +38,8 @@ import type {
   DiveAction,
   EndTurnAction,
   GameState,
+  NautomaState,
+  NautomaTurnAction,
   PendingStep,
   PlayFishAction,
   PlayerId,
@@ -212,6 +221,93 @@ export function doDive(state: GameState, a: DiveAction): GameState {
   return { ...s, turnTookAction: true };
 }
 
+// === nautoma turn =========================================================
+
+export function doNautomaTurn(state: GameState, a: NautomaTurnAction): GameState {
+  requireTurn(state, a);
+  if (!state.nautoma || a.playerId !== 'p2') {
+    throw new Error('nautomaTurn is only valid for Nautoma (p2)');
+  }
+
+  let s = state;
+  const p2 = getPlayer(s, 'p2');
+  s = setPlayer(s, { ...p2, diversUsed: p2.diversUsed + 1 });
+
+  let nautoma: NautomaState = { ...s.nautoma! };
+  if (nautoma.deck.length === 0) {
+    throw new Error('Nautoma decision deck is empty');
+  }
+  const cardId = nautoma.deck[nautoma.deck.length - 1]!;
+  nautoma.deck = nautoma.deck.slice(0, -1);
+  nautoma.lastCardId = cardId;
+  const card = getNautomaDecisionCard(cardId);
+
+  s = appendLog(s, `Nautoma draws decision card #${cardId}`);
+
+  // 1. Adjust Achievement Marker (ignored at difficulty 1 or during week 4).
+  if (nautoma.difficulty !== 1 && s.week !== 3) {
+    if (card.achievementDelta === 1) {
+      nautoma.achievementDivers += 1;
+    } else if (card.achievementDelta === -1) {
+      nautoma.achievementDivers = Math.max(0, nautoma.achievementDivers - 1);
+    }
+  }
+
+  // 2. Dive (1x 3 young -> 1 school; <=4x egg -> young; gain eggs).
+  if (card.dive) {
+    if (nautoma.young >= 3) {
+      nautoma.young -= 3;
+      nautoma.schools += 1;
+    }
+    const flip = Math.min(4, nautoma.eggs);
+    nautoma.eggs -= flip;
+    nautoma.young += flip;
+    nautoma.eggs += card.diveEggs;
+  }
+
+  // S&R: Add Coral (convert 1 egg -> 1 coral, or 2 coral at difficulty 4-5).
+  if (s.settings.sets.includes('sr') && card.addCoral && nautoma.eggs >= 1) {
+    nautoma.eggs -= 1;
+    nautoma.corals += nautoma.difficulty >= 4 ? 2 : 1;
+  }
+
+  // 3. Play a Fish Card (draw 1 fish; if (all players), human gains benefit once).
+  let drawnFishId: number | null = null;
+  if (card.playFish) {
+    if (s.deck.length === 0) {
+      const pool = s.players.flatMap((pl) => pl.discard);
+      if (pool.length > 0) {
+        const [deck, rng] = shuffle(s.rngState, pool);
+        s = {
+          ...s,
+          deck,
+          rngState: rng,
+          players: s.players.map((pl) => ({ ...pl, discard: [] })),
+        };
+        s = appendLog(s, 'fish deck reshuffled from all discard piles');
+      }
+    }
+    if (s.deck.length > 0) {
+      drawnFishId = s.deck[s.deck.length - 1]!;
+      s = { ...s, deck: s.deck.slice(0, -1) };
+      nautoma.fish = [...nautoma.fish, drawnFishId];
+    }
+  }
+
+  s = { ...s, nautoma, turnTookAction: true };
+
+  if (drawnFishId != null) {
+    const drawnCard = fish(drawnFishId);
+    s = appendLog(s, `Nautoma gains fish ${drawnCard.name}`);
+    const parsed = parseAbility(drawnCard.ability);
+    if (parsed?.allPlayers) {
+      s = fireAbility(s, 'p2', drawnCard.ability, undefined, `${drawnCard.name} (Nautoma all players)`);
+    }
+  }
+
+  return s;
+}
+
 // === end turn / week =======================================================
 
 export function doEndTurn(state: GameState, a: EndTurnAction): GameState {
@@ -234,16 +330,42 @@ export function doEndTurn(state: GameState, a: EndTurnAction): GameState {
   // Everyone is out of divers -> end of week.
   s = appendLog(s, `week ${s.week + 1} ends`);
 
+  // Ravel Mode end-of-week scoring (all 4 weeks, fish_automa_p06.png..p07.png).
+  if (s.nautoma?.ravelMode && s.nautoma.ravelCardId) {
+    const ravelPts = scoreRavelWeek(
+      getPlayer(s, 'p1'),
+      s.nautoma.ravelCardId,
+      s.nautoma.ravelStrength,
+    );
+    s = {
+      ...s,
+      nautoma: { ...s.nautoma, ravelPoints: s.nautoma.ravelPoints + ravelPts },
+    };
+    s = appendLog(s, `Nautoma gains ${ravelPts} Ravel Mode points`);
+  }
+
   if (s.week < 3) {
     const ach = s.achievements[s.week]!;
-    const weekly = s.playerOrder.map((pid) => ({ pid, pts: scoreAchievement(getPlayer(s, pid), ach) }));
+    const weekly: { pid: PlayerId; pts: number }[] = s.playerOrder.map((pid) => {
+      if (s.nautoma && pid === 'p2') {
+        if (s.nautoma.difficulty === 1) return { pid, pts: 0 };
+        const side = s.nautoma.difficulty <= 3 ? 'calm' : 'stormy';
+        const base = nautomaAchievementBase(s.week + 1, ach.kind, side);
+        const units = Math.max(0, base + s.nautoma.achievementDivers);
+        return { pid, pts: units * ach.per };
+      }
+      return { pid, pts: scoreAchievement(getPlayer(s, pid), ach) };
+    });
     for (const { pid, pts } of weekly) {
       const p = getPlayer(s, pid);
       s = setPlayer(s, { ...p, achievementPoints: p.achievementPoints + pts });
       s = appendLog(s, `${p.name} scores ${pts} for "${ach.name}"`);
     }
-    // Side-B leader bonus: player(s) with the most points this week get +3.
-    if (s.settings.achievementSide === 'B') {
+    // Leader +3 bonus: in multiplayer on Side B; in Nautoma games ONLY at difficulty 5.
+    const awardLeaderBonus = s.nautoma
+      ? s.nautoma.difficulty === 5
+      : s.settings.achievementSide === 'B';
+    if (awardLeaderBonus) {
       const best = Math.max(...weekly.map((x) => x.pts));
       if (best > 0) {
         for (const { pid } of weekly.filter((x) => x.pts === best)) {
@@ -253,18 +375,35 @@ export function doEndTurn(state: GameState, a: EndTurnAction): GameState {
         }
       }
     }
-    // New week: divers + bottom bonuses reset, first player rotates.
+    // New week: divers + bottom bonuses reset; in Nautoma games human always goes first
+    // and the 7 decision cards are reshuffled with 1 set aside unseen.
+    let nextRng = s.rngState;
+    let nextNautoma = s.nautoma;
+    if (nextNautoma) {
+      const dealt = dealNautomaDeck(nextRng);
+      nextRng = dealt.rng;
+      nextNautoma = {
+        ...nextNautoma,
+        deck: dealt.deck,
+        setAside: dealt.setAside,
+        lastCardId: null,
+        achievementDivers: 0,
+      };
+    }
+    const nextFirst = s.nautoma ? 0 : (s.firstPlayerIndex + 1) % n;
     s = {
       ...s,
+      rngState: nextRng,
+      ...(nextNautoma ? { nautoma: nextNautoma } : {}),
       week: s.week + 1,
-      firstPlayerIndex: (s.firstPlayerIndex + 1) % n,
+      firstPlayerIndex: nextFirst,
+      currentPlayerIndex: nextFirst,
       players: s.players.map((pl) => ({
         ...pl,
         diversUsed: 0,
         bottomTaken: [false, false, false],
       })),
     };
-    s = { ...s, currentPlayerIndex: s.firstPlayerIndex };
     return appendLog(s, `week ${s.week + 1} begins`);
   }
 
@@ -272,6 +411,7 @@ export function doEndTurn(state: GameState, a: EndTurnAction): GameState {
   const queue: { playerId: PlayerId; slot: SlotRef }[] = [];
   for (let i = 0; i < n; i++) {
     const pid = s.playerOrder[(s.firstPlayerIndex + i) % n]!;
+    if (s.nautoma && pid === 'p2') continue;
     const p = getPlayer(s, pid);
     for (const { ref } of allSlots(p.ocean)) {
       const card = topFish(slotAt(p.ocean, ref));

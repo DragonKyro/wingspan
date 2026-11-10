@@ -1,6 +1,7 @@
 // The four turn actions: excavate, entice, explore, pass — plus the free
 // any-time exchange. Turn progression and round/upkeep live in engine.ts.
 
+import { passAutoma } from './automa';
 import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { excavateAt, runSteps, tryPlayDragonAt } from './effects';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
@@ -164,8 +165,17 @@ export function explore(state: GameState, playerId: PlayerId, cave: number): Gam
 // PASS — sit out the rest of the round.
 
 export function pass(state: GameState, playerId: PlayerId): GameState {
+  if (state.automa && playerId === 'p2') {
+    return passAutoma(state, playerId);
+  }
   const p = clone(player(state, playerId));
   p.passed = true;
+  // Ravel Mode (dragon automa.txt line 403): "In Ravel Mode only, you may not
+  // store more than 2 coins between rounds; you must discard down to 2 coins
+  // when you pass."
+  if (state.automa?.ravelMode && playerId === 'p1') {
+    p.coins = Math.min(2, p.coins);
+  }
   let s = setPlayer(state, p);
   s = log(s, `${p.name} passed`);
   // Academy: in rounds 1-3 a passing player claims an income space for next
@@ -173,7 +183,18 @@ export function pass(state: GameState, playerId: PlayerId): GameState {
   if (s.expansions.includes('academy') && s.round <= 3) {
     const section = INCOME_SECTIONS[incomeSectionIndex(s.round)]!;
     const claimed = new Set(Object.values(s.incomeChoices));
-    let options = section.map((_, i) => i).filter((i) => !claimed.has(i));
+    const automaPassedFirst = Boolean(s.automa && player(s, 'p2').passed);
+    let options = section
+      .map((_, i) => i)
+      .filter((i) => {
+        if (claimed.has(i)) return false;
+        // Dragon Academy Automa (academy_p06.png): "If Automa passes before you
+        // do, you may not choose a 6-coin income space when you pass."
+        if (automaPassedFirst && section[i]!.items.some((it) => it.kind === 'coin' && it.count === 6)) {
+          return false;
+        }
+        return true;
+      });
     // If every space is somehow taken, allow doubling up rather than stalling.
     if (!options.length) options = section.map((_, i) => i);
     s = {

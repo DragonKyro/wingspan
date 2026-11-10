@@ -464,7 +464,86 @@ export type Action =
   | { type: 'explore'; playerId: PlayerId; cave: number }
   | { type: 'pass'; playerId: PlayerId }
   | { type: 'exchange'; playerId: PlayerId; give: [Resource, Resource]; get: Resource }
-  | { type: 'resolveChoice'; playerId: PlayerId; answer: ChoiceAnswer };
+  | { type: 'resolveChoice'; playerId: PlayerId; answer: ChoiceAnswer }
+  | { type: 'automaTurn'; playerId: PlayerId };
+
+// ---------------------------------------------------------------------------
+// Automa solo mode
+// ---------------------------------------------------------------------------
+
+export type AutomaDifficulty = 1 | 2 | 3;
+
+export type AutomaCardId =
+  | '1'
+  | '2'
+  | '3'
+  | '4'
+  | '5'
+  | '6'
+  | '7'
+  | '8'
+  | '1/4'
+  | '2/5'
+  | '3/6'
+  | 'R1/4'
+  | 'R2'
+  | 'R2/5'
+  | 'R3/6'
+  | 'R8';
+
+export type AutomaGuildSteps =
+  | { kind: 'byRound'; steps: [number, number, number, number] }
+  | { kind: 'mostExcavated'; bonus?: number }
+  | { kind: 'leastExcavated'; bonus?: number };
+
+export interface AutomaBrownSpace {
+  dragonSlot: 1 | 2 | 3 | null;
+  caveSlot: 1 | 2 | 3 | null;
+  guildOval: number | null;
+}
+
+export interface AutomaCardDef {
+  id: AutomaCardId;
+  passIfLast: boolean;
+  refreshDragons: boolean;
+  objectiveCoinDelta: -1 | 0 | 1;
+  guildSteps: AutomaGuildSteps;
+  brownSpace: AutomaBrownSpace;
+}
+
+export interface AutomaOptions {
+  difficulty?: AutomaDifficulty;
+  ravelMode?: boolean;
+}
+
+export interface AutomaState {
+  difficulty: AutomaDifficulty;
+  ravelMode: boolean;
+  /** All 8 decision card IDs configured for this game. */
+  allCards: AutomaCardId[];
+  /** Face-down decision deck for the current round (starts at 7 cards). */
+  deck: AutomaCardId[];
+  /** Resolved decision cards this round. */
+  discard: AutomaCardId[];
+  /** The 1 decision card set aside unseen for the current round. */
+  setAside: AutomaCardId | null;
+  /** Most recently drawn decision card ID. */
+  lastCard: AutomaCardId | null;
+  /** Coins placed on the current round's objective tile by Automa. */
+  objectiveCoins: number;
+  /** Player markers currently available beside the Dragon Guild board for Automa. */
+  availableGuildMarkers: number;
+  /** Total dragons collected by Automa on brown spaces. */
+  collectedDragons: number;
+  /** Card IDs of dragons collected by Automa. */
+  dragonCards: number[];
+  /** Total cave cards collected by Automa on brown spaces. */
+  collectedCaves: number;
+  /** Card IDs of cave cards collected by Automa. */
+  caveCards: number[];
+  /** Dragon Academy: cache tokens in Automa's Cache (1 VP per 2 tokens at game end). */
+  cacheTokens: number;
+}
 
 export type ChoiceAnswer =
   | { kind: 'cards'; cardIds: number[] }
@@ -523,6 +602,8 @@ export interface GameState {
   turnEnding: boolean;
   /** Setup offers: playerId -> dealt 6 cards. */
   setupOffers: Record<string, number[]>;
+  /** Solo Automa state when playing against Automa. */
+  automa?: AutomaState;
   finalScores: ScoreBreakdown[] | null;
   winners: PlayerId[] | null;
   log: string[];

@@ -116,6 +116,17 @@ export function MenuScreen() {
   const [finSr, setFinSr] = useState(true);
   const [finSide, setFinSide] = useState<'A' | 'B'>('A');
 
+  // Official Automa Solo Mode options
+  const [automaOn, setAutomaOn] = useState(false);
+  const [wingAutomaDiff, setWingAutomaDiff] = useState<'eaglet' | 'eagle' | 'eagleEyed'>('eagle');
+  const [wingAutomubon, setWingAutomubon] = useState(false);
+  const [wingHoard, setWingHoard] = useState(false);
+  const [wyrmAutomaDiff, setWyrmAutomaDiff] = useState<1 | 2 | 3>(2);
+  const [wyrmRavel, setWyrmRavel] = useState(false);
+  const [finAutomaDiff, setFinAutomaDiff] = useState<1 | 2 | 3 | 4 | 5>(2);
+  const [finRavel, setFinRavel] = useState(false);
+  const [finRavelStrength, setFinRavelStrength] = useState<2 | 3 | 4>(2);
+
   // Online join / host
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState(myDisplayName);
@@ -131,8 +142,9 @@ export function MenuScreen() {
       : 5;
   const minPlayers = activeGameId === 'wingspan' && mode === 'flock' ? 6 : activeGameId === 'wingspan' && mode === 'duet' ? 2 : 1;
 
-  const seatsOk =
-    activeGameId === 'wingspan'
+  const seatsOk = automaOn
+    ? true
+    : activeGameId === 'wingspan'
       ? MODE_SEATS[mode].includes(seats.length)
       : seats.length >= 1 && seats.length <= 5;
 
@@ -194,7 +206,18 @@ export function MenuScreen() {
 
   const startLocal = () => {
     const seed = Math.floor(Math.random() * 0xffffffff);
+    const first = seats[0] ?? { id: 's1', name: 'Player 1', color: 'red' as const, isAI: false };
     if (activeGameId === 'wyrmspan') {
+      if (automaOn) {
+        startLocalWyrmspan({
+          seed,
+          playerNames: [first.name.trim() || 'Player 1'],
+          isAI: [first.isAI],
+          expansions: wyrmAcademy ? ['base', 'academy'] : ['base'],
+          automa: { difficulty: wyrmAutomaDiff, ravelMode: wyrmRavel },
+        });
+        return;
+      }
       startLocalWyrmspan({
         seed,
         playerNames: seats.map((s) => s.name.trim() || 'Player'),
@@ -204,6 +227,24 @@ export function MenuScreen() {
       return;
     }
     if (activeGameId === 'finspan') {
+      if (automaOn) {
+        startLocalFinspan({
+          seed,
+          playerNames: [first.name.trim() || 'Player 1'],
+          playerTypes: [first.isAI ? 'ai' : 'human'],
+          playerColors: [first.color],
+          settings: {
+            sets: finSr ? ['base', 'sr'] : ['base'],
+            achievementSide: finSide,
+            automa: {
+              difficulty: finAutomaDiff,
+              ravelMode: finRavel,
+              ravelStrength: finRavelStrength,
+            },
+          },
+        });
+        return;
+      }
       startLocalFinspan({
         seed,
         playerNames: seats.map((s) => s.name.trim() || 'Player'),
@@ -212,6 +253,25 @@ export function MenuScreen() {
         settings: {
           sets: finSr ? ['base', 'sr'] : ['base'],
           achievementSide: finSide,
+        },
+      });
+      return;
+    }
+    if (automaOn) {
+      startLocalGame({
+        playerNames: [first.name.trim() || 'Player 1'],
+        playerTypes: [first.isAI ? 'ai' : 'human'],
+        playerColors: [first.color],
+        seed,
+        settings: {
+          sets,
+          goalSide,
+          mode: mode === 'flock' ? 'standard' : mode,
+          automa: {
+            difficulty: wingAutomaDiff,
+            automubonSociety: wingAutomubon,
+            hoard: wingHoard,
+          },
         },
       });
       return;
@@ -465,7 +525,132 @@ export function MenuScreen() {
             </div>
 
             {/* Game-specific options */}
-            <h4 className="lobby-section-h">Game Options</h4>
+            <h4 className="lobby-section-h">Solo Automa & Game Options</h4>
+            <div className="option-group" style={{ marginBottom: 10 }}>
+              <span className="option-label">Solo Mode:</span>
+              <div className="pill-group">
+                <button
+                  type="button"
+                  className={!automaOn ? 'primary' : 'secondary'}
+                  onClick={() => setAutomaOn(false)}
+                >
+                  👥 Multiplayer / Standard AI Bots
+                </button>
+                <button
+                  type="button"
+                  className={automaOn ? 'primary' : 'secondary'}
+                  onClick={() => setAutomaOn(true)}
+                >
+                  ⚙️ Official Automa Solo Deck (1p vs Automa)
+                </button>
+              </div>
+            </div>
+
+            {automaOn && selectedGame === 'wingspan' && (
+              <div className="options-stack" style={{ marginBottom: 10 }}>
+                <div className="option-group">
+                  <span className="option-label">Automa Level:</span>
+                  <div className="pill-group">
+                    {(
+                      [
+                        { id: 'eaglet', label: 'Eaglet (3 pt / face-down bird)' },
+                        { id: 'eagle', label: 'Eagle — Normal (4 pt)' },
+                        { id: 'eagleEyed', label: 'Eagle-eyed Eagle (5 pt)' },
+                      ] as const
+                    ).map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className={wingAutomaDiff === d.id ? 'primary' : 'secondary'}
+                        onClick={() => setWingAutomaDiff(d.id)}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={wingAutomubon ? 'primary' : 'secondary'}
+                      onClick={() => setWingAutomubon((v) => !v)}
+                    >
+                      {wingAutomubon ? '✓ ' : ''}Automubon Society Card
+                    </button>
+                    <button
+                      type="button"
+                      className={wingHoard ? 'primary' : 'secondary'}
+                      onClick={() => setWingHoard((v) => !v)}
+                    >
+                      {wingHoard ? '✓ ' : ''}Automa&apos;s Hoard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {automaOn && selectedGame === 'wyrmspan' && (
+              <div className="options-stack" style={{ marginBottom: 10 }}>
+                <div className="option-group">
+                  <span className="option-label">Automa Level:</span>
+                  <div className="pill-group">
+                    {([1, 2, 3] as const).map((lv) => (
+                      <button
+                        key={lv}
+                        type="button"
+                        className={wyrmAutomaDiff === lv ? 'primary' : 'secondary'}
+                        onClick={() => setWyrmAutomaDiff(lv)}
+                      >
+                        Level {lv} {lv === 3 && !wyrmRavel ? '(8 VP/dragon)' : ''}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={wyrmRavel ? 'primary' : 'secondary'}
+                      onClick={() => setWyrmRavel((v) => !v)}
+                    >
+                      {wyrmRavel ? '✓ ' : ''}Ravel Mode Variant
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {automaOn && selectedGame === 'finspan' && (
+              <div className="options-stack" style={{ marginBottom: 10 }}>
+                <div className="option-group">
+                  <span className="option-label">Nautoma Diff:</span>
+                  <div className="pill-group">
+                    {([1, 2, 3, 4, 5] as const).map((lv) => (
+                      <button
+                        key={lv}
+                        type="button"
+                        className={finAutomaDiff === lv ? 'primary' : 'secondary'}
+                        onClick={() => setFinAutomaDiff(lv)}
+                      >
+                        ⭐ {lv} {lv <= 3 && lv >= 2 ? '(Calm)' : lv >= 4 ? '(Stormy)' : '(No Ach)'}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={finRavel ? 'primary' : 'secondary'}
+                      onClick={() => setFinRavel((v) => !v)}
+                    >
+                      {finRavel ? '✓ ' : ''}Ravel Mode
+                    </button>
+                    {finRavel &&
+                      ([2, 3, 4] as const).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          className={finRavelStrength === st ? 'primary' : 'secondary'}
+                          onClick={() => setFinRavelStrength(st)}
+                        >
+                          X={st}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {selectedGame === 'wingspan' && (
               <div className="options-stack">
                 <div className="option-group">

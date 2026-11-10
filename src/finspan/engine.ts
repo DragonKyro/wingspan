@@ -3,7 +3,7 @@
 // computes final scores / winner.
 
 import { parseAbility } from './abilities';
-import { doDive, doEndTurn, doPlayFish } from './actions';
+import { doDive, doEndTurn, doNautomaTurn, doPlayFish } from './actions';
 import { appendLog, getPlayer, slotAt, topFish } from './helpers';
 import { fireAbility } from './powers';
 import { dropInfeasible, resolveChoice } from './resolve';
@@ -18,6 +18,9 @@ export function applyAction(state: GameState, action: Action): GameState {
       break;
     case 'dive':
       s = doDive(state, action);
+      break;
+    case 'nautomaTurn':
+      s = doNautomaTurn(state, action);
       break;
     case 'endTurn':
       s = doEndTurn(state, action);

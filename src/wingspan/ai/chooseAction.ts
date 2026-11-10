@@ -17,6 +17,7 @@ import {
   birdCount,
   canPayFood,
   getPlayer,
+  isAutoma,
   isOceania,
   payFoodPlan,
   playEggCost,
@@ -276,6 +277,14 @@ export function chooseAction(state: GameState, playerId: PlayerId): Action | nul
   const resolve = resolveHeadAction(state, playerId);
   if (resolve) return resolve;
   if (state.pending.length > 0) return null;
+
+  if (isAutoma(state, playerId)) {
+    if (state.phase === 'main' && actingPlayerId(state) === playerId) {
+      const p = getPlayer(state, playerId);
+      if (p.actionCubes > 0) return { type: 'automaTurn', playerId };
+    }
+    return null;
+  }
 
   switch (state.phase) {
     case 'setup':

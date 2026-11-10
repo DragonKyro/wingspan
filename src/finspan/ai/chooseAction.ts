@@ -66,6 +66,10 @@ export function chooseAction(state: GameState, playerId: PlayerId): Action | nul
   const p = getPlayer(state, playerId);
   if (p.diversUsed >= DIVERS_PER_WEEK) return { type: 'endTurn', playerId };
 
+  if (state.nautoma && playerId === 'p2') {
+    return { type: 'nautomaTurn', playerId: 'p2' };
+  }
+
   // Best playable fish.
   const playable = p.hand
     .map((id) => fish(id))

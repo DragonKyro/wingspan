@@ -8,7 +8,7 @@ Modeled on the sibling `catan` and `card-collecting` projects.
 
 ```bash
 npm run dev          # dev server
-npm run test:run     # vitest (284 tests across 16 test files)
+npm run test:run     # vitest (342 tests across 19 test files)
 npm run build        # typecheck + production build
 npm run cards        # regenerate Wingspan card data from wingsearch
 npm run deploy:rules # merge + deploy Firebase RTDB rules
@@ -41,6 +41,11 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       all 111 set power texts, Americas goals & bonus cards
 - [x] **Promo Card Packs** — all 150 promo birds (`promoUS`, `promoEurope`,
       `promoAsia`, `promoNZ`, `promoCA`, `promoUK`) implemented
+- [x] **Automa Solo Mode** — 11-card Automa decision deck (`Automubon Society`),
+      Eaglet/Eagle/Eagle-eyed Eagle difficulty, `% of cards` & `[automa]` bonus
+      card tray matching, round-end goal base values + goal cubes, `Automa's
+      Hoard` / `Automa's Cache`, Oceania nectar, Asia Duet, and Americas
+      hummingbird Automa rules (`src/wingspan/automa.ts`)
 
 ### Wyrmspan & Dragon Academy (`src/wyrmspan/`)
 
@@ -55,6 +60,10 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       training, pass-income round tracker, Academy objectives, and replacement
       card deduplication
 - [x] Objectives (friendly ties), end-game scoring, tiebreakers, heuristic AI
+- [x] **Automa Solo Mode** — 16 decision cards across Levels 1–3 & Ravel Mode
+      Levels 1–3, Dragon Guild brown-space triggers, 4-round objective base
+      values, and Dragon Academy Automa (`Automa's Cache`, start-player
+      rotation, 6-coin pass block — `src/wyrmspan/automa.ts`)
 
 ### Finspan & Sharks & Reefs (`src/finspan/`)
 
@@ -66,6 +75,10 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       completion bonuses (`+6 / +8 / +5`), S&R fish + achievement tiles
 - [x] All 215 fish abilities implemented (including `[Discard]` discard-pile
       recovery and multi-step ability chaining) + heuristic AI
+- [x] **Nautoma Solo Mode** — 7 decision cards, 3-step Dive conversion,
+      `(all players)` benefit rules, Calm/Stormy weekly achievement base values
+      across Difficulties 1–5, 6 Ravel Mode scoring cards, and Sharks & Reefs
+      Nautoma coral rules (`src/finspan/automa.ts`)
 
 ### UI, UX, Thematic SVG Art & Animations (`src/ui/`)
 
@@ -85,17 +98,17 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
 
 ### Rules Audit & Verification
 
-- [x] Visual + textual audit against all 9 official rulebook PDFs (`bird.pdf`,
-      `bird europe.pdf`, `bird ocean.pdf`, `bird asia.pdf`, `bird america.pdf`,
-      `dragon.pdf`, `academy.pdf`, `fish.pdf`, `sharks.pdf`)
-- [x] AI self-play sweep across every set, player count, and mode of all three
-      games (`src/selfplay.test.ts`)
-- [x] 284 tests passing across 16 test files, `tsc` & `vite build` clean
+- [x] Visual + textual audit against all 12 official rulebook PDFs (`bird.pdf`,
+      `bird automa.pdf`, `bird europe.pdf`, `bird ocean.pdf`, `bird asia.pdf`,
+      `bird america.pdf`, `dragon.pdf`, `dragon automa.pdf`, `academy.pdf`,
+      `fish.pdf`, `fish automa.pdf`, `sharks.pdf`)
+- [x] AI & Automa self-play sweep across every set, player count, and mode of
+      all three games (`src/selfplay.test.ts`)
+- [x] 342 tests passing across 19 test files, `tsc` & `vite build` clean
 
 ### Still to do
 
 - [ ] Deploy GitHub Pages + Firebase rules (needs `firebase login`)
-- [ ] Automa / solo card-deck variant
 - [ ] Headless self-play runner & RL policy training loop
 
 ## Data sources

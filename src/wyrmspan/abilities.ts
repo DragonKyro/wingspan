@@ -946,7 +946,7 @@ const matchOppMayPay: Matcher = (s) => {
   const gm = /^gain (.*)$/.exec(m[2]!);
   if (gm && gm[1]!.includes('/')) {
     const options = gm[1]!.split('/').map((p) => iconsOf(p));
-    return [{ op: 'opponentsMay', steps: [{ op: 'chooseBenefits', count: 1, options }] }];
+    return [{ op: 'opponentsMay', steps: [{ op: 'pay', cost, then: [{ op: 'chooseBenefits', count: 1, options }] }] }];
   }
   const inner = parseClauses(m[2]! + '.');
   if (inner === null) return null;

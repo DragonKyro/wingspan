@@ -179,6 +179,13 @@ export function fireAbility(
 
   const targets = parsed.allPlayers ? benefitOrder(s, playerId) : [playerId];
   for (const pid of targets) {
+    if (s.nautoma && pid === 'p2') {
+      if (playerId !== 'p2' && parsed.allPlayers) {
+        s = { ...s, nautoma: { ...s.nautoma, eggs: s.nautoma.eggs + 1 } };
+        s = appendLog(s, 'Nautoma gains 1 egg from (all players) ability');
+      }
+      continue;
+    }
     for (const e of parsed.effects) {
       s = applyEffect(s, pid, ref, e, true);
     }

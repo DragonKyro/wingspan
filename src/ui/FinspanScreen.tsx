@@ -311,6 +311,42 @@ export function FinspanScreen() {
 
         {/* Right Side Panel */}
         <div>
+          {state.nautoma && (
+            <div className="card">
+              <h3>
+                ⚙️ Nautoma Solo Deck (⭐ {state.nautoma.difficulty}
+                {state.nautoma.ravelMode ? ` · Ravel X=${state.nautoma.ravelStrength}` : ''})
+              </h3>
+              <div className="stat-pills">
+                <span className="stat-pill">
+                  🃏 Deck: <b>{state.nautoma.deck.length}</b> (Last: #{state.nautoma.lastCardId ?? '—'})
+                </span>
+                <span className="stat-pill">
+                  🤿 Ach Divers: <b>{state.nautoma.achievementDivers}</b>
+                </span>
+                <span className="stat-pill">
+                  🐟 Fish: <b>{state.nautoma.fish.length}</b>
+                </span>
+                <span className="stat-pill">
+                  🐠 Schools: <b>{state.nautoma.schools}</b>
+                </span>
+                <span className="stat-pill">
+                  🐟 Young: <b>{state.nautoma.young}</b> · 🥚 Eggs: <b>{state.nautoma.eggs}</b>
+                </span>
+                {isSR && (
+                  <span className="stat-pill">
+                    🪸 Coral: <b>{state.nautoma.corals}</b>
+                  </span>
+                )}
+                {state.nautoma.ravelMode && (
+                  <span className="stat-pill">
+                    🏖 Ravel ({state.nautoma.ravelCardId}): <b>+{state.nautoma.ravelPoints} VP</b>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="card">
             <h3>🌊 Ocean Summary — {shownP.name}</h3>
             <div className="stat-pills">

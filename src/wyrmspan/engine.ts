@@ -3,6 +3,7 @@
 // wingspan engine's structure).
 
 import { entice, excavate, exchange, explore, nextTurnPlayer, pass } from './actions';
+import { buildAutomaRoundDeck, executeAutomaTurn } from './automa';
 import { cardAbilityTypes, dragonCard, parseIcons } from './cards';
 import { collectIncome, pushPending, resolveChoice, runAbility } from './effects';
 import { clone, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
@@ -48,6 +49,11 @@ export function applyAction(state: GameState, action: Action): GameState {
       // Free conversion, but only on your own turn.
       if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
       s = exchange(s, action.playerId, action.give, action.get);
+      break;
+    case 'automaTurn':
+      if (!s.automa || s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
+      s = executeAutomaTurn(s, action.playerId);
+      s = endAction(s);
       break;
   }
   return settle(s);
@@ -148,6 +154,7 @@ function finishRound(state: GameState): GameState {
   s = {
     ...s,
     players: s.players.map((p) => ({ ...p, objectiveVps: [...p.objectiveVps, scores[p.id] ?? 0] })),
+    automa: s.automa ? { ...s.automa, objectiveCoins: 0 } : undefined,
   };
   s = log(s, `objective scored: ${JSON.stringify(scores)}`);
 
@@ -155,35 +162,72 @@ function finishRound(state: GameState): GameState {
     return endGame(s);
   }
 
+  // Ravel Mode (dragon automa.txt line 403): "In Ravel Mode only, you may not
+  // store more than 2 coins between rounds."
+  if (s.automa?.ravelMode) {
+    s = {
+      ...s,
+      players: s.players.map((p) => (p.id === 'p1' ? { ...p, coins: Math.min(2, p.coins) } : p)),
+    };
+  }
+
   // Refresh both displays.
   s = refreshDisplays(s);
 
-  // Rotate the start player marker.
-  const startIdx = (s.playerOrder.indexOf(s.startPlayer) + 1) % s.playerOrder.length;
+  // Between-round Automa upkeep (dragon automa.txt lines 435-438):
+  //   1. Move 1 player marker from the round tracker beside the Dragon Guild.
+  //   2. Shuffle the 8 decision cards (including the 1 set aside) and set 1 aside unseen.
+  if (s.automa) {
+    const [built, sAuto] = buildAutomaRoundDeck(s, s.automa.allCards);
+    s = {
+      ...sAuto,
+      automa: {
+        ...sAuto.automa!,
+        deck: built.deck,
+        discard: built.discard,
+        setAside: built.setAside,
+        lastCard: null,
+        availableGuildMarkers: sAuto.automa!.availableGuildMarkers + 1,
+      },
+    };
+  }
+
+  // Rotate the start player marker (in Base Automa without Dragon Academy, p1
+  // is the starting player for every round: dragon automa.txt line 163).
+  const shouldRotateStart = !s.automa || s.expansions.includes('academy');
+  const startIdx = shouldRotateStart
+    ? (s.playerOrder.indexOf(s.startPlayer) + 1) % s.playerOrder.length
+    : s.playerOrder.indexOf('p1');
   const start = s.playerOrder[startIdx]!;
   s = { ...s, startPlayer: start };
 
   if (s.expansions.includes('academy')) {
     // Academy: each player collects the income space they claimed when
-    // passing, in turn order from the new start player. settle() drains
-    // incomeQueue and begins the next round once empty.
-    const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)];
+    // passing, in turn order from the new start player. Automa does not
+    // collect income (academy_p06.png). settle() drains incomeQueue and begins
+    // the next round once empty.
+    const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)].filter(
+      (pid) => !(s.automa && pid === 'p2'),
+    );
     s = { ...s, incomeQueue: order };
     return s;
   }
 
-  // Base upkeep: +6 coins, +1 egg, adventurers retrieved.
+  // Base upkeep: +6 coins, +1 egg, adventurers retrieved (Automa never gains
+  // coins, eggs, or resources).
   const players = s.players.map((p) => {
     const q = clone(p);
-    q.coins += 6;
-    // gain an egg if there's room (mat nests or any dragon capacity)
-    if (q.nestEggs < 2) q.nestEggs += 1;
-    else {
-      outer: for (const row of q.caves) {
-        for (const sp of row.spaces) {
-          if (sp.dragon && sp.dragon.eggs < dragonCard(sp.dragon.cardId).capacity) {
-            sp.dragon.eggs += 1;
-            break outer;
+    if (!(s.automa && q.id === 'p2')) {
+      q.coins += 6;
+      // gain an egg if there's room (mat nests or any dragon capacity)
+      if (q.nestEggs < 2) q.nestEggs += 1;
+      else {
+        outer: for (const row of q.caves) {
+          for (const sp of row.spaces) {
+            if (sp.dragon && sp.dragon.eggs < dragonCard(sp.dragon.cardId).capacity) {
+              sp.dragon.eggs += 1;
+              break outer;
+            }
           }
         }
       }

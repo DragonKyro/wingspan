@@ -17,6 +17,10 @@ export function chooseAction(state: GameState, playerId: PlayerId): Action | nul
   }
   if (state.phase !== 'main' || state.turn !== playerId || p.passed) return null;
 
+  if (state.automa && playerId === 'p2') {
+    return { type: 'automaTurn', playerId: 'p2' };
+  }
+
   // Prefer enticing a playable dragon we can afford.
   for (const id of p.hand.filter(isDragonCard)) {
     const card = dragonCard(id);

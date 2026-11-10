@@ -281,7 +281,11 @@ export interface EndTurnAction extends BaseAction {
   type: 'endTurn';
 }
 
-export type Action = PlayFishAction | DiveAction | ResolveChoiceAction | EndTurnAction;
+export interface NautomaTurnAction extends BaseAction {
+  type: 'nautomaTurn';
+}
+
+export type Action = PlayFishAction | DiveAction | ResolveChoiceAction | EndTurnAction | NautomaTurnAction;
 
 // === achievements ===========================================================
 
@@ -311,6 +315,40 @@ export interface Achievement {
 
 // === game state =============================================================
 
+export interface AutomaSettings {
+  difficulty?: 1 | 2 | 3 | 4 | 5;
+  ravelMode?: boolean;
+  ravelStrength?: 2 | 3 | 4;
+}
+
+export interface NautomaState {
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  ravelMode: boolean;
+  ravelStrength: 2 | 3 | 4;
+  /** ID of the Ravel Mode scoring card ('R1'..'R6') when ravelMode is true. */
+  ravelCardId: string | null;
+  /** Active decision deck for the week (6 cards at start of week; top = end). */
+  deck: number[];
+  /** The 1 decision card set aside unseen for the current week. */
+  setAside: number;
+  /** ID of the most recently drawn decision card this week (or null). */
+  lastCardId: number | null;
+  /** Egg tokens in Nautoma's play area (starts at 2). */
+  eggs: number;
+  /** Young tokens in Nautoma's play area (starts at 1). */
+  young: number;
+  /** School tokens in Nautoma's play area (starts at 0). */
+  schools: number;
+  /** S&R coral tokens in Nautoma's play area (starts at 0). */
+  corals: number;
+  /** Fish card IDs in Nautoma's play area (starts at []). */
+  fish: number[];
+  /** Divers currently on the achievement board for the week (starts at 0). */
+  achievementDivers: number;
+  /** Total Ravel Mode points accumulated at the end of each week. */
+  ravelPoints: number;
+}
+
 export interface GameSettings {
   /** 'base' or ['base','sr'] for the Sharks & Reefs expansion. */
   sets: string[];
@@ -323,6 +361,8 @@ export interface GameSettings {
    *  doDive falls back to REEF_DISCARD_ITEMS only if still absent. */
   reefCosts?: ('egg' | 'young' | 'card')[][];
   aiLevel?: number;
+  /** Official solo mode against Nautoma. */
+  automa?: AutomaSettings;
 }
 
 export interface ScoreBreakdown {
@@ -355,6 +395,8 @@ export interface GameState {
   /** True once the current player has used this turn's diver. */
   turnTookAction: boolean;
   settings: GameSettings;
+  /** Nautoma solo state when settings.automa is enabled. */
+  nautoma?: NautomaState;
   winner: PlayerId[] | null;
   finalScores: Record<PlayerId, ScoreBreakdown> | null;
   log: { seq: number; msg: string }[];

@@ -4,6 +4,7 @@
 
 import {
   activatePower,
+  automaTurn,
   drawCards,
   duetReset,
   endTurn,
@@ -18,7 +19,7 @@ import {
 } from './actions';
 import { dropImpossiblePending, resolveChoice } from './resolve';
 import { finalScore } from './scoring';
-import { getPlayer, totalFood } from './helpers';
+import { getPlayer, isAutoma, totalFood } from './helpers';
 import type { Action, GameState, PlayerId, ScoreBreakdown } from './types';
 
 export function applyAction(state: GameState, action: Action): GameState {
@@ -53,6 +54,9 @@ export function applyAction(state: GameState, action: Action): GameState {
       break;
     case 'duetReset':
       s = duetReset(state, action);
+      break;
+    case 'automaTurn':
+      s = automaTurn(state, action.playerId);
       break;
     default:
       return state;
@@ -89,10 +93,10 @@ export function settle(state: GameState): GameState {
   ) {
     const rec: Partial<Record<PlayerId, ScoreBreakdown>> = {};
     for (const pid of s.playerOrder) rec[pid] = finalScore(s, pid);
-    // Winner: highest total; ties broken by most leftover food, then shared.
+    // Winner: highest total; ties broken by most leftover food (Automa has 2), then shared.
     const best = Math.max(...s.playerOrder.map((pid) => rec[pid]!.total));
     const tied = s.playerOrder.filter((pid) => rec[pid]!.total === best);
-    const foodOf = (pid: PlayerId) => totalFood(getPlayer(s, pid));
+    const foodOf = (pid: PlayerId) => (isAutoma(s, pid) ? 2 : totalFood(getPlayer(s, pid)));
     const bestFood = Math.max(...tied.map(foodOf));
     const winner = tied.filter((pid) => foodOf(pid) === bestFood);
     s = { ...s, phase: 'gameOver', finalScores: rec as GameState['finalScores'], winner };

@@ -553,6 +553,37 @@ export function WyrmspanScreen() {
 
         {/* Right Side Panel: Dragon Guild + Standings + Log */}
         <div>
+          {state.automa && (
+            <div className="card">
+              <h3>
+                ⚙️ Automa Solo Deck (Level {state.automa.difficulty}
+                {state.automa.ravelMode ? ' · Ravel' : ''})
+              </h3>
+              <div className="stat-pills">
+                <span className="stat-pill">
+                  🃏 Deck: <b>{state.automa.deck.length}</b> (Last: {state.automa.lastCard ?? '—'})
+                </span>
+                <span className="stat-pill">
+                  🪙 Obj Coins: <b>{state.automa.objectiveCoins}</b>
+                </span>
+                <span className="stat-pill">
+                  🐉 Dragons: <b>{state.automa.collectedDragons}</b>
+                </span>
+                <span className="stat-pill">
+                  🪨 Caves: <b>{state.automa.collectedCaves}</b>
+                </span>
+                <span className="stat-pill">
+                  🛡 Guild Markers Left: <b>{state.automa.availableGuildMarkers}</b>
+                </span>
+                {state.automa.cacheTokens > 0 && (
+                  <span className="stat-pill">
+                    💎 Cache Tokens: <b>{state.automa.cacheTokens}</b>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <DragonGuildPanel state={state} />
 
           <div className="card">

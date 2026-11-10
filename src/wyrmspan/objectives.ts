@@ -134,6 +134,80 @@ export const OBJECTIVES: Record<ObjectiveId, ObjectiveDef> = {
 export const OBJECTIVE_IDS = Object.keys(OBJECTIVES) as ObjectiveId[];
 
 // ---------------------------------------------------------------------------
+// Automa 4-round base values (X/X/X/X printed on each objective tile) and
+// physical maximum caps per dragon automa.txt lines 405-420.
+
+export const AUTOMA_OBJECTIVE_BASE: Record<ObjectiveId, [number, number, number, number]> = {
+  hatchlingsOnMat: [0, 0, 1, 2],
+  mediumDragonsOnMat: [0, 1, 2, 3],
+  smallDragons: [0, 1, 2, 3],
+  largeDragons: [0, 1, 2, 3],
+  cardsInCrimson: [1, 2, 4, 5],
+  cardsInGolden: [1, 2, 4, 5],
+  cardsInAmethyst: [1, 2, 4, 5],
+  shyDragons: [0, 1, 2, 3],
+  playfulDragons: [0, 1, 2, 3],
+  helpfulDragons: [0, 1, 2, 3],
+  aggressiveDragons: [0, 1, 2, 3],
+  eggsOnMat: [1, 2, 5, 10],
+  tuckedCards: [0, 1, 3, 5],
+  cachedResources: [0, 1, 3, 5],
+  totalDragons: [1, 2, 4, 6],
+  caveCardsOnMat: [1, 2, 4, 6],
+  dragonsInOneCave: [1, 1, 2, 3],
+  dragonsInColumn: [0, 1, 2, 2],
+  guildMarkers: [0, 1, 2, 3],
+  resourcesInSupply: [0, 1, 2, 3],
+  costCrystal: [0, 1, 2, 4],
+  costMilk: [0, 1, 2, 3],
+  costMeat: [0, 1, 2, 4],
+  costGold: [0, 1, 2, 4],
+  vp4PlusDragons: [0, 1, 2, 3],
+  fledglingsOnMat: [0, 1, 1, 2],
+  trainedFledglings: [0, 0, 1, 2],
+  coinsSpentEntice: [0, 1, 1, 0],
+  setsOfTraits: [0, 0, 1, 1],
+};
+
+export const AUTOMA_OBJECTIVE_MAX: Partial<Record<ObjectiveId, number>> = {
+  hatchlingsOnMat: 12,
+  mediumDragonsOnMat: 12,
+  smallDragons: 12,
+  largeDragons: 12,
+  cardsInCrimson: 7,
+  cardsInGolden: 7,
+  cardsInAmethyst: 7,
+  shyDragons: 12,
+  playfulDragons: 12,
+  helpfulDragons: 12,
+  aggressiveDragons: 12,
+  totalDragons: 12,
+  caveCardsOnMat: 9,
+  dragonsInOneCave: 4,
+  dragonsInColumn: 3,
+  guildMarkers: 4,
+  resourcesInSupply: 9,
+  costCrystal: 12,
+  costMilk: 12,
+  costMeat: 12,
+  costGold: 12,
+  vp4PlusDragons: 12,
+  fledglingsOnMat: 12,
+  trainedFledglings: 12,
+  setsOfTraits: 3,
+};
+
+/** Compute Automa's unit count for the objective in `roundIndex` (0..3). */
+export function automaObjectiveUnits(state: GameState, roundIndex: number): number {
+  const objId = state.objectives[roundIndex]!;
+  const base = AUTOMA_OBJECTIVE_BASE[objId]?.[roundIndex] ?? 0;
+  const coins = state.automa?.objectiveCoins ?? 0;
+  const raw = Math.max(0, base + coins);
+  const cap = AUTOMA_OBJECTIVE_MAX[objId];
+  return cap !== undefined ? Math.min(raw, cap) : raw;
+}
+
+// ---------------------------------------------------------------------------
 // Round scoring. Each round's objective scores [1st, 2nd, 3rd, all-others] VP;
 // values escalate per round (mirrors the printed round-tracker).
 
@@ -151,7 +225,13 @@ export function scoreObjective(
 ): Record<PlayerId, number> {
   const obj = OBJECTIVES[state.objectives[roundIndex]!];
   const units = new Map<PlayerId, number>();
-  for (const p of state.players) units.set(p.id, obj.unit(state, p));
+  for (const p of state.players) {
+    if (state.automa && p.id === 'p2') {
+      units.set(p.id, automaObjectiveUnits(state, roundIndex));
+    } else {
+      units.set(p.id, obj.unit(state, p));
+    }
+  }
 
   const [v1, v2, v3, vRest] = ROUND_OBJECTIVE_VP[roundIndex]!;
   const sorted = [...state.players].sort((a, b) => units.get(b.id)! - units.get(a.id)!);

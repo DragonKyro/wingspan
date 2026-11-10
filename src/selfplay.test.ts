@@ -115,6 +115,30 @@ describe('wingspan self-play', () => {
         seed,
       ),
     ));
+  it('automa solo · all sets', () =>
+    sweep((seed) => {
+      const s = playOut(
+        wingCreate({
+          playerNames: ['P1'],
+          playerTypes: ['ai'],
+          playerColors: ['red'],
+          seed,
+          settings: {
+            sets: ['core', 'european', 'oceania', 'asia', 'americas'],
+            goalSide: 'green',
+            automa: { difficulty: 'eagle', automubonSociety: true, hoard: true },
+          },
+        }),
+        {
+          done: (s) => s.phase === 'gameOver',
+          actor: (s) => s.pending[0]?.playerId ?? (s.phase === 'setup' ? s.setupRemaining[0] : actingPlayerId(s)),
+          choose: (s, pid) => wingAI(s, pid as `p${number}`),
+          apply: wingApply,
+          maxActions: 6000,
+        },
+      );
+      for (const pid of s.playerOrder) expect(Number.isFinite(s.finalScores![pid]!.total)).toBe(true);
+    }));
 });
 
 describe('finspan self-play', () => {
@@ -142,6 +166,29 @@ describe('finspan self-play', () => {
           }));
       }
     }
+    it(`${sets.join('+')} · nautoma ravel`, () =>
+      sweep((seed) => {
+        playOut(
+          finCreate({
+            playerNames: ['P1'],
+            playerTypes: ['ai'],
+            playerColors: ['c0'],
+            seed,
+            settings: {
+              sets,
+              achievementSide: 'B',
+              automa: { difficulty: 4, ravelMode: true, ravelStrength: 3 },
+            },
+          }),
+          {
+            done: (s) => s.phase === 'gameOver',
+            actor: (s) => s.pending[0]?.playerId ?? s.playerOrder[s.currentPlayerIndex],
+            choose: (s, pid) => finAI(s, pid as `p${number}`),
+            apply: finApply,
+            maxActions: 8000,
+          },
+        );
+      }));
   }
 });
 
@@ -159,5 +206,24 @@ describe('wyrmspan self-play', () => {
           });
         }));
     }
+    it(`${expansions.join('+')} · automa ravel`, () =>
+      sweep((seed) => {
+        playOut(
+          wyrmCreate({
+            seed,
+            playerNames: ['P1'],
+            isAI: [true],
+            expansions,
+            automa: { difficulty: 2, ravelMode: true },
+          }),
+          {
+            done: (s) => s.phase === 'gameEnd',
+            actor: (s) => s.pending[0]?.playerId ?? s.turn,
+            choose: (s, pid) => wyrmAI(s, pid as `p${number}`),
+            apply: wyrmApply,
+            maxActions: 20000,
+          },
+        );
+      }));
   }
 });

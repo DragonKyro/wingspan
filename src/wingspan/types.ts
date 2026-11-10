@@ -465,8 +465,57 @@ export interface ScoreBreakdown {
  *  asia flock (6-7, flock goal board). */
 export type GameMode = 'standard' | 'duet' | 'flock';
 
+export type AutomaDifficulty = 'eaglet' | 'eagle' | 'eagleEyed';
+
+export interface AutomaSettings {
+  difficulty?: AutomaDifficulty;
+  automubonSociety?: boolean;
+  hoard?: boolean;
+}
+
+export type AutomaSectionAction =
+  | { kind: 'drawCards' }
+  | { kind: 'gainFood'; order: DieFace[] }
+  | { kind: 'playBird' }
+  | { kind: 'layEggs'; count: number }
+  | { kind: 'placeGoalCube' }
+  | { kind: 'removeGoalCube' }
+  | { kind: 'activatePink' };
+
+export interface AutomaCard {
+  id: number;
+  name?: string;
+  /** 1-based round (1, 2, or 3) after which this card is removed from the Automa deck. */
+  removeAfterRound: 1 | 2 | 3 | null;
+  expert?: boolean;
+  /** Section actions for Rounds 1..4 (0-indexed: rounds[0]..rounds[3]). */
+  rounds: [
+    AutomaSectionAction[],
+    AutomaSectionAction[],
+    AutomaSectionAction[],
+    AutomaSectionAction[],
+  ];
+}
+
+export interface AutomaState {
+  difficulty: AutomaDifficulty;
+  bonusCardId: number;
+  deck: number[];
+  discard: number[];
+  lastCardId: number | null;
+  faceUpBirds: number[];
+  faceDownBirds: number;
+  eggs: number;
+  goalCubes: number;
+  hoardTokens: number;
+  /** Oceania: spent nectar per habitat for end-game majority scoring. */
+  nectarSpent: Record<Habitat, number>;
+  /** Americas: hummingbird track token positions per group. */
+  humTrack: Record<HumGroup, number>;
+}
+
 export interface GameSettings {
-  /** Expansion set ids included in the deck, e.g. ['core'] or ['core','oceania']. */
+  /** Expansion set ids included in the deck, e.g. ['core'] or ['oceania']. */
   sets: string[];
   /** Goal board side: 'green' = ranked competitive scoring, 'blue' = 1 pt per item (max 5). */
   goalSide: 'green' | 'blue';
@@ -474,6 +523,8 @@ export interface GameSettings {
    *  'flock' = 6-7 player rules (flock goal board). */
   mode?: GameMode;
   aiLevel?: number;
+  /** Official solo mode against the Automa. */
+  automa?: AutomaSettings;
 }
 
 export interface GameState {
@@ -498,6 +549,8 @@ export interface GameState {
   goalTiles: number[];
   /** Duet mode board (asia), null in other modes. */
   duet?: DuetState;
+  /** Solo mode Automa state, undefined in standard multiplayer. */
+  automa?: AutomaState;
   /** Goal scores per round: [round][playerOrder index] = points awarded. */
   goalScores: number[][];
   /** Pending required choices, resolved in order (only head is answerable). */
@@ -656,6 +709,11 @@ export interface DuetResetAction extends BaseAction {
   target: 'feeder' | 'tray';
 }
 
+/** Solo mode: execute the Automa's entire turn from the top Automa deck card. */
+export interface AutomaTurnAction extends BaseAction {
+  type: 'automaTurn';
+}
+
 /** During setup, players may look (no-op) — reserved. */
 export type Action =
   | KeepSetupAction
@@ -667,7 +725,8 @@ export type Action =
   | SkipPowerAction
   | ResolveChoiceAction
   | EndTurnAction
-  | DuetResetAction;
+  | DuetResetAction
+  | AutomaTurnAction;
 
 export interface CreateGameOptions {
   playerNames: string[];

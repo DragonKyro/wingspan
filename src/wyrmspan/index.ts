@@ -12,3 +12,4 @@ export * from './actions';
 export * from './engine';
 export * from './scoring';
 export * from './ai';
+export * from './automa';

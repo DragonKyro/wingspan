@@ -13,6 +13,7 @@ import {
   eggStepTargets,
   eggsInHabitat,
   getPlayer,
+  isAutoma,
   isDuet,
   isGoalDouble,
   isSideways,
@@ -75,6 +76,7 @@ import { BASE_FOODS, FOOD_TYPES, HABITATS } from './types';
 
 /** Number of valid answers a pending step currently has (0 ⇒ auto-drop). */
 function feasible(state: GameState, step: PendingStep): number {
+  if (isAutoma(state, step.playerId)) return 0;
   const p = getPlayer(state, step.playerId);
   switch (step.kind) {
     case 'pickDie': {
@@ -739,14 +741,17 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
     }
     case 'chooseFirstPlayer': {
       if (choice.kind !== 'player') throw new Error('expected player');
-      // 'gainDie': each player clockwise from the chosen one picks a die.
+      // 'gainDie': each non-Automa player clockwise from the chosen one picks a die.
       const startIdx = s.playerOrder.indexOf(choice.playerId);
       if (startIdx < 0) throw new Error('unknown player');
-      const steps: PendingStep[] = s.playerOrder.map((_, i) => ({
-        kind: 'pickDie',
-        playerId: s.playerOrder[(startIdx + i) % s.playerOrder.length]!,
-        count: 1,
-      }));
+      const steps: PendingStep[] = s.playerOrder
+        .map((_, i) => s.playerOrder[(startIdx + i) % s.playerOrder.length]!)
+        .filter((pid) => !isAutoma(s, pid))
+        .map((pid) => ({
+          kind: 'pickDie',
+          playerId: pid,
+          count: 1,
+        }));
       s = { ...s, pending: [...steps, ...s.pending] };
       break;
     }
@@ -1606,10 +1611,20 @@ function continueEffect(
       if (remaining.length === 0) return s;
       // If every player picked, the actor keeps the leftover.
       if (remaining.length === 1 && offset >= s.playerOrder.length) {
-        const p = getPlayer(s, s.playerOrder[(actorIdx - offset + 1) % s.playerOrder.length] ?? playerId);
+        const p = getPlayer(s, s.playerOrder[(actorIdx - offset + 1 + s.playerOrder.length) % s.playerOrder.length] ?? playerId);
         return setPlayer(s, { ...p, hand: [...p.hand, remaining[0]!] });
       }
       const nextPid = s.playerOrder[(actorIdx + 1) % s.playerOrder.length]!;
+      if (isAutoma(s, nextPid)) {
+        // Automa does not participate in draft; actor keeps the extra card(s), discard rest.
+        const keep = remaining[0]!;
+        const rest = remaining.slice(1);
+        const p = getPlayer(s, playerId);
+        return {
+          ...setPlayer(s, { ...p, hand: [...p.hand, keep] }),
+          discard: [...s.discard, ...rest],
+        };
+      }
       return pushPending(s, {
         kind: 'chooseDrawnCard',
         playerId: nextPid,
@@ -1686,10 +1701,11 @@ function continueEffect(
     }
     case 'cachePerPredator': {
       if (choice.kind !== 'player' || !tag.bird) return s;
-      const target = getPlayer(s, choice.playerId);
-      const n = playedBirds(target).filter(
-        ({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.predator,
-      ).length;
+      const n = isAutoma(s, choice.playerId)
+        ? (s.automa?.goalCubes ?? 0)
+        : playedBirds(getPlayer(s, choice.playerId)).filter(
+            ({ bird: b }) => BIRD_BY_ID.get(b.cardId)!.predator,
+          ).length;
       for (let i = 0; i < n; i++) s = cacheOnBird(s, playerId, tag.bird, 'rodent');
       return s;
     }
@@ -1697,7 +1713,9 @@ function continueEffect(
       if (choice.kind !== 'player' || !tag.bird) return s;
       const h = HABITATS[tag.n?.[0] ?? -1];
       if (!h) return s;
-      const n = getPlayer(s, choice.playerId).roundCubes[h];
+      const n = isAutoma(s, choice.playerId)
+        ? (s.automa?.goalCubes ?? 0)
+        : getPlayer(s, choice.playerId).roundCubes[h];
       if (n <= 0) return s;
       return setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, n));
     }
@@ -1705,7 +1723,9 @@ function continueEffect(
       if (choice.kind !== 'player') return s;
       const h = HABITATS[tag.n?.[0] ?? -1];
       if (!h) return s;
-      const n = getPlayer(s, choice.playerId).roundCubes[h];
+      const n = isAutoma(s, choice.playerId)
+        ? (s.automa?.goalCubes ?? 0)
+        : getPlayer(s, choice.playerId).roundCubes[h];
       if (n <= 0) return s;
       return pushPending(s, { kind: 'chooseCacheOnBirds', playerId, count: n, food: 'any' });
     }
@@ -1713,7 +1733,9 @@ function continueEffect(
       if (choice.kind !== 'player' || !tag.bird) return s;
       const h = HABITATS[tag.n?.[0] ?? -1];
       if (!h) return s;
-      const n = getPlayer(s, choice.playerId).roundCubes[h];
+      const n = isAutoma(s, choice.playerId)
+        ? (s.automa?.goalCubes ?? 0)
+        : getPlayer(s, choice.playerId).roundCubes[h];
       if (n <= 0) return s;
       return pushPending(s, {
         kind: 'assignHandTucks',
@@ -1733,6 +1755,26 @@ function continueEffect(
       if (choice.kind !== 'player') return s;
       const victim = choice.playerId;
       const fIdx = tag.ids?.[0] ?? -1;
+      if (isAutoma(s, victim)) {
+        // European Automa rule: can only steal from Automa if it has any cubes
+        // on this round's goal tile (do not remove cubes). Gain comes from the
+        // supply and Automa gains nothing.
+        if ((s.automa?.goalCubes ?? 0) <= 0) {
+          return appendLog(s, `${victim}: Automa has no cubes on the goal tile`);
+        }
+        if (fIdx < 0) {
+          return pushPending(s, {
+            kind: 'chooseSupplyFood',
+            playerId,
+            count: 1,
+            options: 'any',
+          });
+        }
+        const food = FOOD_TYPES[fIdx]!;
+        return tag.bird
+          ? cacheOnBird(s, playerId, tag.bird, food)
+          : grantSupplyFood(s, playerId, food);
+      }
       const vp = getPlayer(s, victim);
       if (fIdx < 0) {
         // Steal "[wild]": the thief picks which food type to take.
@@ -1926,6 +1968,9 @@ function continueEffect(
       const moving = tag.ids.filter((id) => p.hand.includes(id));
       if (moving.length === 0) return s;
       s = setPlayer(s, { ...p, hand: p.hand.filter((id) => !moving.includes(id)) });
+      if (isAutoma(s, choice.playerId)) {
+        return { ...s, discard: [...s.discard, ...moving] };
+      }
       const v = getPlayer(s, choice.playerId);
       return setPlayer(s, { ...v, hand: [...v.hand, ...moving] });
     }
@@ -2125,6 +2170,9 @@ function continueEffect(
     }
     case 'asiaGivePool': {
       if (choice.kind !== 'player' || !tag.ids?.length) return s;
+      if (isAutoma(s, choice.playerId)) {
+        return { ...s, discard: [...s.discard, ...tag.ids] };
+      }
       const v = getPlayer(s, choice.playerId);
       return setPlayer(s, { ...v, hand: [...v.hand, ...tag.ids] });
     }
@@ -2145,8 +2193,12 @@ function continueEffect(
       const p = getPlayer(s, playerId);
       if (!p.hand.includes(id)) return s;
       s = setPlayer(s, { ...p, hand: p.hand.filter((x) => x !== id) });
-      const v = getPlayer(s, choice.playerId);
-      s = setPlayer(s, { ...v, hand: [...v.hand, id] });
+      if (isAutoma(s, choice.playerId)) {
+        s = { ...s, discard: [...s.discard, id] };
+      } else {
+        const v = getPlayer(s, choice.playerId);
+        s = setPlayer(s, { ...v, hand: [...v.hand, id] });
+      }
       if ((tag.n?.[0] ?? 0) === 0) return drawFromDeck(s, playerId, 2);
       return tag.bird ? setPlayer(s, addEggs(getPlayer(s, playerId), tag.bird, 2)) : s;
     }
@@ -2560,6 +2612,15 @@ function continueEffect(
         return setPlayer(s, { ...p, bonusHand: [...p.bonusHand, ...remaining] });
       }
       const nextPid = s.playerOrder[(actorIdx + nextOffset) % s.playerOrder.length]!;
+      if (isAutoma(s, nextPid)) {
+        const p = getPlayer(s, s.playerOrder[actorIdx]!);
+        const keep = remaining.slice(0, 1);
+        const rest = remaining.slice(1);
+        return {
+          ...setPlayer(s, { ...p, bonusHand: [...p.bonusHand, ...keep] }),
+          bonusDiscard: [...s.bonusDiscard, ...rest],
+        };
+      }
       return pushPending(s, {
         kind: 'chooseBonusCards',
         playerId: nextPid,
@@ -2990,6 +3051,9 @@ function continueEffect(
       const nextOffset = (tag.n?.[0] ?? 0) + 1;
       if (nextOffset >= s.playerOrder.length || remaining.length === 0) return s;
       const nextPid = s.playerOrder[(actorIdx + nextOffset) % s.playerOrder.length]!;
+      if (isAutoma(s, nextPid)) {
+        return { ...s, bonusDiscard: [...s.bonusDiscard, ...remaining] };
+      }
       return pushPending(s, {
         kind: 'chooseBonusCards',
         playerId: nextPid,
@@ -3083,6 +3147,7 @@ function continueEffect(
     case 'promoGiveBonusTo': {
       if (choice.kind !== 'player' || !tag.ids?.length) return s;
       const gift = tag.ids[0]!;
+      if (isAutoma(s, choice.playerId)) return s;
       const tp = getPlayer(s, choice.playerId);
       return {
         ...setPlayer(s, { ...tp, bonusHand: [...tp.bonusHand, gift] }),
@@ -3098,7 +3163,9 @@ function continueEffect(
       if (!tag.bird || choice.kind !== 'player') return s;
       const h = HABITATS[tag.n?.[0] ?? -1];
       if (!h) return s;
-      const n = getPlayer(s, choice.playerId).roundCubes[h];
+      const n = isAutoma(s, choice.playerId)
+        ? (s.automa?.goalCubes ?? 0)
+        : getPlayer(s, choice.playerId).roundCubes[h];
       if (n <= 0) return s;
       const out = tuckFromDeck(s, playerId, tag.bird, n);
       return firePinkTriggers(out, playerId, { kind: 'tuck' });
