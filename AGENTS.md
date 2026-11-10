@@ -17,7 +17,8 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 ## Commands
 
 - `npm run dev` — dev server
-- `npm run build` — `tsc` + `vite build`
+- `npm run build` — `tsc` + `vite build` + `scripts/check-bundle.mjs` (fails if a
+  game chunk or card data leaks into the first page load)
 - `npm run test:run` / `npx vitest run` — tests
 - `npx tsc --noEmit` — typecheck
 - `npm run cards` — regenerate `src/wingspan/data/*.json` from the card DB
@@ -67,8 +68,21 @@ AI — and only Wingspan has a UI so far.
 - `src/store/` — `gameStore` (game + dispatch/applyLocal/broadcast hooks),
   `networkStore` (rooms, lobby, ActionSync), `actionSync` (log replay /
   rollback), `lobbyGame` (lobby→createGame settings).
-- `src/ui/` — React. `GameScreen` runs a draft model for multi-click actions;
-  `PendingBar` renders each pending-step kind; `AIDriver` feeds AI seats.
+- `src/games/` — the lazy engine registry. `engines.ts`: `loadEngine(id)` /
+  `getEngine(id)`; `{wingspan,wyrmspan,finspan}Engine.ts` are the per-game
+  entry points (createGame / applyAction / chooseAction / aiToAct).
+  `catalog.ts` holds menu-facing metadata (set list, card-browser links).
+  **Code-split rule:** first-load code (src/ui/*.tsx, src/store, src/net,
+  src/shared, src/games/engines|catalog) may only reach game code via
+  `import()` or `import type`; `src/bundle.test.ts` and check-bundle enforce it.
+- `src/ui/` — React. Shared: App, MenuScreen, LobbyScreen, AIDriver (generic,
+  via the registry), fx, MatchCharts, RulesBook (lazy), svgArt, CreatureCard.
+  `screens.tsx` lazy-loads one screen per game; `preloadGame(id)` warms the
+  chunks when a game is picked. Per-game UI lives in `src/ui/wingspan/`
+  (GameScreen runs a draft model for multi-click actions; PendingBar +
+  StepPicker render each pending-step kind), `src/ui/wyrmspan/`, `src/ui/finspan/`.
+  `src/ui/icons.test.tsx` (every card-text token has an icon) and
+  `src/ui/smoke.test.tsx` (each screen renders through a full AI game) guard them.
 - `src/ui/art/` — procedural SVG card art (no image files). `core.tsx` holds
   `<ArtDefs/>` (every shared gradient, mounted ONCE in App — reference as
   `url(#ws-…)`, never add per-card <defs>), a seeded RNG over shared/rng and

@@ -1,20 +1,22 @@
 // Game picker + per-game local/online lobby screen, modeled on card-collecting
 // (GameLobby.tsx + App.tsx) and catan (HomeMenu.tsx + NewGame.tsx).
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore, warmUpNetwork } from '@/store/networkStore';
 import { GAME_TITLES, LOBBY_SETS } from '@/store/lobbyGame';
 import type { GameId, LobbyGame } from '@/net/types';
-import { SETS } from '@/wingspan/cards';
+import { CARD_SEARCH, WINGSPAN_SETS as SETS } from '@/games/catalog';
 import type { GameMode, PlayerColor } from '@/wingspan/types';
-import { RulesModal } from './RulesBook';
+import { preloadGame } from './screens';
 import {
   FinspanThumbnail,
   PLAYER_COLOR_HEX,
   WingspanThumbnail,
   WyrmspanThumbnail,
 } from './svgArt';
+
+const RulesModal = lazy(() => import('./RulesBook').then((m) => ({ default: m.RulesModal })));
 
 const COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'purple', 'pink', 'teal'];
 const OFFICIAL_SETS = ['core', 'european', 'oceania', 'asia', 'americas'];
@@ -130,6 +132,10 @@ export function MenuScreen() {
   } = useNetworkStore();
 
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
+  // Fetch the chosen game's chunks while the player configures it.
+  useEffect(() => {
+    if (selectedGame) preloadGame(selectedGame);
+  }, [selectedGame]);
   const [rulesGame, setRulesGame] = useState<GameId | null>(null);
   const [seats, setSeats] = useState<SeatDraft[]>([
     { id: 's1', name: 'Player 1', color: 'red', isAI: false },
@@ -466,6 +472,15 @@ export function MenuScreen() {
                     >
                       📖 Rulebook
                     </button>
+                    <a
+                      className="link-btn"
+                      href={CARD_SEARCH[id].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Browse every card on ${CARD_SEARCH[id].name} (opens in a new tab)`}
+                    >
+                      🔎 All cards ↗
+                    </a>
                   </div>
                 </div>
               </div>
@@ -753,7 +768,11 @@ export function MenuScreen() {
         </div>
       )}
 
-      {rulesGame && <RulesModal gameId={rulesGame} onClose={() => setRulesGame(null)} />}
+      {rulesGame && (
+        <Suspense fallback={null}>
+          <RulesModal gameId={rulesGame} onClose={() => setRulesGame(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -3,17 +3,13 @@ import type {
   CreateGameOptions as WingspanOptions,
   GameState as WingspanState,
 } from '@/wingspan/types';
-import { applyAction as applyWingspan } from '@/wingspan/engine';
-import { createGame as createWingspan } from '@/wingspan/createGame';
 import type { GameState as WyrmspanState } from '@/wyrmspan/types';
-import { applyAction as applyWyrmspan } from '@/wyrmspan/engine';
-import { createGame as createWyrmspan, type CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
+import type { CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
 import type {
   CreateGameOptions as FinspanOptions,
   GameState as FinspanState,
 } from '@/finspan/types';
-import { applyAction as applyFinspan } from '@/finspan/engine';
-import { createGame as createFinspan } from '@/finspan/createGame';
+import { getEngine, loadEngine } from '@/games/engines';
 import type { AnyAction, GameId } from '@/net/types';
 
 /** Snapshot of whichever game is active, used for online rollbacks and solo undo. */
@@ -66,9 +62,10 @@ interface AppStore {
   setWyrmspanState: (state: WyrmspanState, startedAt?: number) => void;
   setFinspanState: (state: FinspanState, startedAt?: number) => void;
 
-  startLocalGame: (options: WingspanOptions) => void;
-  startLocalWyrmspan: (options: WyrmspanOptions) => void;
-  startLocalFinspan: (options: FinspanOptions) => void;
+  /** Async: the game's engine chunk loads on first use. */
+  startLocalGame: (options: WingspanOptions) => Promise<void>;
+  startLocalWyrmspan: (options: WyrmspanOptions) => Promise<void>;
+  startLocalFinspan: (options: FinspanOptions) => Promise<void>;
   playAgainLocal: () => void;
 
   clearGame: () => void;
@@ -83,19 +80,12 @@ interface AppStore {
 
 type AnyState = WingspanState | WyrmspanState | FinspanState;
 
-/** Each game's store slot, reducer and constructor. A slot only ever holds
- *  its own game's state, so the casts at the call sites are safe. */
+/** Each game's store slot. A slot only ever holds its own game's state, and a
+ *  state can only exist once its engine has loaded (src/games/engines.ts), so
+ *  the getEngine() calls and casts at the call sites are safe. */
 const SLOT = { wingspan: 'game', wyrmspan: 'wyrmspanGame', finspan: 'finspanGame' } as const;
-const APPLY: Record<GameId, (state: never, action: never) => AnyState> = {
-  wingspan: applyWingspan,
-  wyrmspan: applyWyrmspan,
-  finspan: applyFinspan,
-};
-const CREATE: Record<GameId, (options: never) => AnyState> = {
-  wingspan: createWingspan,
-  wyrmspan: createWyrmspan,
-  finspan: createFinspan,
-};
+const apply = (gameId: GameId, state: AnyState, action: AnyAction) =>
+  getEngine(gameId).applyAction(state as never, action as never) as AnyState;
 
 /** Store fields making `gameId` the active game (other slots cleared). */
 function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
@@ -129,9 +119,10 @@ function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
 
   export const useGameStore = create<AppStore>((set, get) => {
     /** Start a fresh local match (remembered for Play Again). */
-    const startLocal = (start: NonNullable<AppStore['lastStart']>) => {
+    const startLocal = async (start: NonNullable<AppStore['lastStart']>) => {
       try {
-        const state = CREATE[start.gameId](start.options as never);
+        const engine = await loadEngine(start.gameId);
+        const state = engine.createGame(start.options as never) as AnyState;
         set({ ...activate(start.gameId, state), lastStart: start, startedAt: Date.now() });
       } catch (e) {
         set({ error: (e as Error).message });
@@ -160,7 +151,7 @@ function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
       const last = get().lastStart;
       if (!last) return;
       const seed = Math.floor(Math.random() * 0xffffffff);
-      startLocal({ ...last, options: { ...last.options, seed } } as NonNullable<AppStore['lastStart']>);
+      void startLocal({ ...last, options: { ...last.options, seed } } as NonNullable<AppStore['lastStart']>);
     },
 
     clearGame: () => {
@@ -188,7 +179,7 @@ function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
         const nextUndo = isOnline() ? [] : [...s.undoStack.slice(-24), before];
         const cur = s[SLOT[s.activeGameId]];
         if (!cur) return;
-        const next = APPLY[s.activeGameId](cur as never, action as never);
+        const next = apply(s.activeGameId, cur, action);
         set({ [SLOT[s.activeGameId]]: next, undoStack: nextUndo, error: null });
         broadcastHandler?.(action, before, at);
       } catch (e) {
@@ -201,7 +192,7 @@ function activate(gameId: GameId, state: AnyState): Partial<AppStore> {
       try {
         const cur = s[SLOT[s.activeGameId]];
         if (!cur) return false;
-        set({ [SLOT[s.activeGameId]]: APPLY[s.activeGameId](cur as never, action as never) });
+        set({ [SLOT[s.activeGameId]]: apply(s.activeGameId, cur, action) });
         return true;
       } catch (e) {
         console.warn('[gameStore] applyLocal rejected action:', (e as Error).message);

@@ -1,9 +1,8 @@
-// Bird cards (on the shared CreatureCard frame), Bonus Card and Hummingbird Card views
-// with FLIP card-flight registration and token-pulse animations.
+// Bird cards (on the shared CreatureCard frame), Bonus Card and Hummingbird Card views.
 
 import { bird, bonusCard, hummingbird } from '@/wingspan/cards';
 import type { BirdCard, PlayedBird } from '@/wingspan/types';
-import { useFlipCard, useValuePulse } from './fx';
+import { useFlipCard, useValuePulse } from '../fx';
 import {
   BirdIllustration,
   EggTokenSvg,
@@ -12,9 +11,9 @@ import {
   NestIcon,
   renderWingspanText,
   TokenIcon,
-} from './svgArt';
-import { shade } from './art/core';
-import { CreatureCard, FreeCost } from './CreatureCard';
+} from '../svgArt';
+import { shade } from '../art/core';
+import { CreatureCard, FreeCost } from '../CreatureCard';
 
 function CostIcons({ card }: { card: BirdCard }) {
   const cost = card.cost;
@@ -62,6 +61,7 @@ export const HAB_COLOR: Record<string, string> = {
   grassland: '#b59a32',
   wetland: '#3f84a6',
 };
+
 const HAB_ORDER = ['forest', 'grassland', 'wetland'] as const;
 
 function countBy<T extends string>(items: readonly T[]): [T, number][] {

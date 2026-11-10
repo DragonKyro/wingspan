@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/check-bundle.mjs",
+    "check:bundle": "node scripts/check-bundle.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",

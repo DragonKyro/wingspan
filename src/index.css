@@ -68,6 +68,30 @@ button:disabled {
   cursor: not-allowed;
 }
 
+a.link-btn {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+
+a.link-btn:hover {
+  background: var(--panel-hover);
+  border-color: #537866;
+}
+
+.screen-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+
 button.primary {
   background: var(--accent);
   color: var(--accent-ink);

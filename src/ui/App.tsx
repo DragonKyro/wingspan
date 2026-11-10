@@ -1,13 +1,11 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { useNetworkStore } from '@/store/networkStore';
 import { GAME_TITLES } from '@/store/lobbyGame';
 import { roomCodeFromUrl } from '@/net';
 import { MenuScreen } from './MenuScreen';
 import { LobbyScreen } from './LobbyScreen';
-import { GameScreen } from './GameScreen';
-import { WyrmspanScreen } from './WyrmspanScreen';
-import { FinspanScreen } from './FinspanScreen';
+import { FinspanScreen, WingspanScreen, WyrmspanScreen } from './screens';
 import { AIDriver } from './AIDriver';
 import { ArtDefs } from './art/core';
 
@@ -58,8 +56,9 @@ export function App() {
         )}
       </header>
       <main className="screen">
+        <Suspense fallback={<div className="screen-loading">Loading game…</div>}>
         {activeGameId === 'wingspan' && game ? (
-          <GameScreen />
+          <WingspanScreen />
         ) : activeGameId === 'wyrmspan' && wyrmspanGame ? (
           <WyrmspanScreen />
         ) : activeGameId === 'finspan' && finspanGame ? (
@@ -69,6 +68,7 @@ export function App() {
         ) : (
           <MenuScreen />
         )}
+        </Suspense>
         <AIDriver />
       </main>
     </div>

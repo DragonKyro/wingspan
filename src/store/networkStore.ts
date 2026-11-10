@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { CreateGameOptions as WingspanOptions, PlayerColor, PlayerId } from '@/wingspan/types';
-import { createGame as createWingspan } from '@/wingspan/createGame';
-import { createGame as createWyrmspan, type CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
-import { createGame as createFinspan } from '@/finspan/createGame';
+import type { CreateGameOptions as WyrmspanOptions } from '@/wyrmspan/createGame';
+import { loadEngine, type GameEngine } from '@/games/engines';
 import type { CreateGameOptions as FinspanOptions } from '@/finspan/types';
 import {
   type AnyAction,
@@ -251,23 +250,33 @@ export const useNetworkStore = create<NetStore>((set, get) => {
     addSystem(wasInLobby ? 'Game started' : isPlayer ? 'Rejoined the game' : 'Spectating');
     const gameId: GameId = rec.gameId ?? 'wingspan';
     // Every device builds the game from the host's options; the checksum
-    // catches a device whose build or data differs from the host's.
-    const install = <S>(g: S, setState: (g: S, startedAt?: number) => void) => {
-      if (gameChecksum(g) !== rec.check) {
-        addSystem("This device set up a different game from the host's. Reload every device's page.");
-      }
-      setState(g, rec.startedAt);
-    };
-    const store = useGameStore.getState();
-    try {
-      if (gameId === 'wyrmspan' && rec.wyrmspanOptions) install(createWyrmspan(rec.wyrmspanOptions), store.setWyrmspanState);
-      else if (gameId === 'finspan' && rec.finspanOptions) install(createFinspan(rec.finspanOptions), store.setFinspanState);
-      else install(createWingspan(rec.options), store.setGameState);
-    } catch (e) {
-      addSystem(`This device couldn't set up the game (${(e as Error).message}). Reload the page.`);
-      return;
-    }
-    sync?.begin();
+    // catches a device whose build or data differs from the host's. The
+    // engine chunk loads on demand; log entries arriving meanwhile are held
+    // by the sync until begin().
+    const options =
+      gameId === 'wyrmspan' ? rec.wyrmspanOptions : gameId === 'finspan' ? rec.finspanOptions : rec.options;
+    const mySync = sync;
+    loadEngine(gameId)
+      .then((engine) => {
+        if (sync !== mySync) return; // left the room while the game was loading
+        const store = useGameStore.getState();
+        const setState = (
+          gameId === 'wyrmspan' ? store.setWyrmspanState : gameId === 'finspan' ? store.setFinspanState : store.setGameState
+        ) as (g: never, startedAt?: number) => void;
+        try {
+          if (!options) throw new Error('missing game options');
+          const g = engine.createGame(options as never);
+          if (gameChecksum(g) !== rec.check) {
+            addSystem("This device set up a different game from the host's. Reload every device's page.");
+          }
+          setState(g as never, rec.startedAt);
+        } catch (e) {
+          addSystem(`This device couldn't set up the game (${(e as Error).message}). Reload the page.`);
+          return;
+        }
+        sync?.begin();
+      })
+      .catch((e: unknown) => addSystem(`Couldn't load the game (${(e as Error).message}). Check your connection and reload.`));
   }
 
   function onChat(msg: ChatMessage): void {
@@ -549,6 +558,14 @@ export const useNetworkStore = create<NetStore>((set, get) => {
         seed: final.seed,
         settings: lobbySettings(final),
       };
+      let engine: GameEngine;
+      try {
+        engine = await loadEngine(gameId);
+      } catch (e) {
+        reopen((e as Error).message);
+        return;
+      }
+      if (my !== session) return;
       let wyrmspanOptions: WyrmspanOptions | undefined;
       let finspanOptions: FinspanOptions | undefined;
       let check: string;
@@ -560,7 +577,7 @@ export const useNetworkStore = create<NetStore>((set, get) => {
             isAI: final.seats.map((s) => s.isAI),
             expansions: g.expansions ?? ['base', 'academy'],
           };
-          check = gameChecksum(createWyrmspan(wyrmspanOptions));
+          check = gameChecksum(engine.createGame(wyrmspanOptions as never));
         } else if (gameId === 'finspan') {
           finspanOptions = {
             playerNames: final.seats.map((s) => s.name),
@@ -572,9 +589,9 @@ export const useNetworkStore = create<NetStore>((set, get) => {
               achievementSide: g.achievementSide ?? 'A',
             },
           };
-          check = gameChecksum(createFinspan(finspanOptions));
+          check = gameChecksum(engine.createGame(finspanOptions as never));
         } else {
-          check = gameChecksum(createWingspan(options));
+          check = gameChecksum(engine.createGame(options as never));
         }
       } catch (e) {
         reopen((e as Error).message);

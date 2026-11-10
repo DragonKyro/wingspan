@@ -1,7 +1,7 @@
 // What the online lobby's choices mean for the game: gameId, card sets/expansions,
 // mode, and seat range. Shared by networkStore and the lobby screen.
 
-import { SETS } from '@/wingspan/cards';
+import { WINGSPAN_SETS as SETS } from '@/games/catalog';
 import type { GameSettings } from '@/wingspan/types';
 import type { GameId, LobbyGame, LobbyState } from '@/net/types';
 

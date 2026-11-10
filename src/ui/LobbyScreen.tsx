@@ -1,7 +1,7 @@
 // Online room lobby supporting Wingspan, Wyrmspan, and Finspan, modeled on
 // card-collecting's OnlineLobby.tsx.
 
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNetworkStore } from '@/store/networkStore';
 import {
   GAME_TITLES,
@@ -13,9 +13,11 @@ import {
 } from '@/store/lobbyGame';
 import { roomLink } from '@/net';
 import type { GameId } from '@/net/types';
-import { SETS } from '@/wingspan/cards';
+import { WINGSPAN_SETS as SETS } from '@/games/catalog';
 import { ColorSwatchPicker, OptionGroup, Pill } from './MenuScreen';
-import { RulesModal } from './RulesBook';
+import { preloadGame } from './screens';
+
+const RulesModal = lazy(() => import('./RulesBook').then((m) => ({ default: m.RulesModal })));
 
 export function LobbyScreen() {
   const {
@@ -40,6 +42,8 @@ export function LobbyScreen() {
 
   const g = normalizeLobbyGame(lobby.game);
   const gameId: GameId = g.gameId ?? 'wingspan';
+  // Fetch the room's game chunks while everyone waits in the lobby.
+  useEffect(() => preloadGame(gameId), [gameId]);
   const isHost = role === 'host';
   const problem = lobbyStartProblem(lobby);
 
@@ -272,7 +276,11 @@ export function LobbyScreen() {
         <ChatInput onSend={sendChat} />
       </section>
 
-      {showRules && <RulesModal gameId={gameId} onClose={() => setShowRules(false)} />}
+      {showRules && (
+        <Suspense fallback={null}>
+          <RulesModal gameId={gameId} onClose={() => setShowRules(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
