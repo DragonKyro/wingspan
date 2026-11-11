@@ -6,13 +6,10 @@
 
 import { parseAbility, type Effect } from './abilities';
 import {
-  addEgg,
   allSlots,
   appendLog,
   getPlayer,
   matchesSlotFilter,
-  placeCoral,
-  setPlayer,
   drawFromDeck,
   pushPending,
 } from './helpers';
@@ -39,17 +36,6 @@ function eggTargetExists(state: GameState, playerId: PlayerId, filter?: SlotFilt
     return true;
   }
   return false;
-}
-
-/** Auto-place eggs on every matching fish that lacks one ("on each"). */
-function eggsOnEach(state: GameState, playerId: PlayerId, filter?: SlotFilter): GameState {
-  let p = getPlayer(state, playerId);
-  for (const { ref, slot } of allSlots(p.ocean)) {
-    if (slot.stack.length === 0 || slot.eggs > 0) continue;
-    if (filter && !matchesSlotFilter(p.ocean, ref, filter)) continue;
-    p = addEgg(p, ref);
-  }
-  return setPlayer(state, p);
 }
 
 function hasAnyEgg(state: GameState, playerId: PlayerId): boolean {
@@ -79,7 +65,27 @@ function canRecoverOrDraw(state: GameState, playerId: PlayerId): boolean {
   );
 }
 
-function applyEffect(
+/** Run `f` on an empty queue and put what it queues in FRONT of the existing
+ *  steps (so a benefit's own choices come before anything queued earlier). */
+export function atFront(state: GameState, f: (s: GameState) => GameState): GameState {
+  const rest = state.pending;
+  const s = f({ ...state, pending: [] });
+  return { ...s, pending: [...s.pending, ...rest] };
+}
+
+/** How many different kinds of benefit an ability lists (move+move = 1). */
+function distinctKinds(effects: readonly Effect[]): number {
+  return new Set(effects.map((e) => JSON.stringify(e))).size;
+}
+
+export function effectLabel(e: Effect): string {
+  if (e.kind === 'egg') return e.onEach ? 'an egg on each matching fish' : 'an egg';
+  if (e.kind === 'coral') return e.site === 'any' ? 'a coral' : `a ${e.site} coral`;
+  if (e.kind === 'consume') return `consume ${e.n}`;
+  return e.kind;
+}
+
+export function applyEffect(
   state: GameState,
   playerId: PlayerId,
   source: SlotRef | undefined,
@@ -97,7 +103,14 @@ function applyEffect(
       if (!canRecoverOrDraw(state, playerId) && !hasPending) return state;
       return pushPending(state, { kind: 'chooseRecover', playerId, count: 1, optional });
     case 'egg': {
-      if (e.onEach) return eggsOnEach(state, playerId, e.filter);
+      if (e.onEach) {
+        // Optional like every benefit: the player may decline (e.g. to keep a
+        // "no tokens on this fish" bonus).
+        if (!eggTargetExists(state, playerId, e.filter) && !hasPending) return state;
+        return pushPending(state, {
+          kind: 'confirmBenefit', playerId, benefit: 'eggsOnEach', filter: e.filter, label: 'an egg on each matching fish', optional: true,
+        });
+      }
       if (!eggTargetExists(state, playerId, e.filter) && !hasPending) return state;
       return pushPending(state, { kind: 'chooseEggTargets', playerId, count: 1, filter: e.filter, optional });
     }
@@ -144,8 +157,11 @@ function applyEffect(
     case 'coral': {
       const p = getPlayer(state, playerId);
       if (e.site !== 'any') {
+        // Optional: the player may decline a fixed-site coral (e.g. to keep a
+        // "no coral in this fish's dive site" condition).
         const col = siteIndex(e.site);
-        return p.ocean.corals[col]! >= MAX_CORAL ? state : setPlayer(state, placeCoral(p, col));
+        if (p.ocean.corals[col]! >= MAX_CORAL && !hasPending) return state;
+        return pushPending(state, { kind: 'confirmBenefit', playerId, benefit: 'coral', col, label: `a ${e.site} coral`, optional: true });
       }
       if (p.ocean.corals.every((c) => c >= MAX_CORAL)) return state;
       return pushPending(state, { kind: 'chooseCoralSite', playerId, count: 1, optional });
@@ -162,6 +178,7 @@ export function fireAbility(
   rawAbility: string | null,
   ref: SlotRef | undefined,
   logLabel: string,
+  opts: { orderable?: boolean } = {},
 ): GameState {
   const parsed = parseAbility(rawAbility);
   if (!parsed || parsed.wave) return state;
@@ -183,6 +200,13 @@ export function fireAbility(
       }
       continue;
     }
+    // WHEN PLAYED: "If there is more than one benefit, you may choose the order
+    // in which you gain the benefits" (the acting player; two-part abilities
+    // keep their first-then-second order).
+    if (opts.orderable && pid === playerId && !parsed.alsoIf && distinctKinds(parsed.effects) >= 2) {
+      s = pushPending(s, { kind: 'chooseEffectOrder', playerId: pid, source: ref, effects: parsed.effects, label: logLabel, optional: true });
+      continue;
+    }
     for (const e of parsed.effects) {
       s = applyEffect(s, pid, ref, e, true);
     }
@@ -191,14 +215,15 @@ export function fireAbility(
   // Two-part IfActivated: gated on >=count coral of `site` in THIS dive site.
   // The colored icon literally means "this dive site is the <site> site AND
   // it holds >= count coral" — a fish in the wrong site can never satisfy it.
+  // The coral is counted when the second part is reached, after the first part
+  // (and anything queued before it, e.g. the dive's reef coral) has resolved.
   if (parsed.alsoIf && ref) {
-    const p = getPlayer(s, playerId);
     const coralCol = siteIndex(parsed.alsoIf.site);
-    if (ref.col === coralCol && p.ocean.corals[coralCol]! >= parsed.alsoIf.count) {
-      s = appendLog(s, `coral-gated part activates (${parsed.alsoIf.count} ${parsed.alsoIf.site} coral)`);
-      for (const e of parsed.alsoIf.effects) {
-        s = applyEffect(s, playerId, ref, e, true);
-      }
+    if (ref.col === coralCol) {
+      s = pushPending(s, {
+        kind: 'deferredEffects', playerId, source: ref, effects: parsed.alsoIf.effects,
+        gate: { col: coralCol, count: parsed.alsoIf.count },
+      });
     }
   }
 

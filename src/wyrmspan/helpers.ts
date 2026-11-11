@@ -9,13 +9,15 @@ import type {
   Counter,
   DragonCond,
   DragonTarget,
+  EggSpot,
   EggTarget,
   GameState,
   GainItem,
   PlayedDragon,
   PlayerId,
+  PayUnit,
   PlayerState,
-
+  Resource,
 } from './types';
 import { RESOURCES } from './types';
 
@@ -147,10 +149,12 @@ export function eggTargetSpots(
   target: EggTarget,
   ctxPos?: [number, number],
 ): { kind: 'nest' }[] | Pos[] {
+  // A context position can be an empty space (cave-card effects run with the
+  // excavated space as their context): no dragon there, no egg spot.
   const spotsFor = (positions: Pos[]): Pos[] =>
     positions.filter((pos) => {
-      const d = dragonAt(p, pos)!;
-      return d.eggs < dragonCard(d.cardId).capacity;
+      const d = dragonAt(p, pos);
+      return !!d && d.eggs < dragonCard(d.cardId).capacity;
     });
   switch (target.kind) {
     case 'any':
@@ -348,6 +352,147 @@ export function removeEggs(p: PlayerState, n: number): PlayerState {
   }
   if (left > 0) p.nestEggs = Math.max(0, p.nestEggs - left);
   return p;
+}
+
+/** Eggs on one spot (a dragon or the mat nests). */
+function eggsAt(p: PlayerState, spot: EggSpot): number {
+  if (spot.kind === 'nest') return p.nestEggs;
+  return p.caves[spot.pos[0]]?.spaces[spot.pos[1]]?.dragon?.eggs ?? 0;
+}
+
+/**
+ * Pay `cost` for player `p` (returns an updated clone), honoring the player's
+ * `payment` wherever the rules leave the choice to them: which resources pay
+ * an "any resource" cost, which hand cards pay a card cost, which eggs pay an
+ * egg cost ("from any dragon or nest"), and how 4th-column items / King's
+ * Guild tithes are mixed ("in any combination"). Each choosable unit of the
+ * cost takes the first unused, still-available unit of `payment` that fits it;
+ * otherwise the default: the most plentiful resource, the last matching hand
+ * card, eggs from dragons first (mat order) then the nests. Specific
+ * resources and coins have no choice. Returns the cards paid (for discards).
+ * The caller checks affordability first (canPay).
+ */
+export function payCost(p: PlayerState, cost: readonly GainItem[], payment?: readonly PayUnit[]): { player: PlayerState; discarded: number[] } {
+  const q = clone(p);
+  const discarded: number[] = [];
+  const units = payment ?? [];
+  const used = units.map(() => false);
+  for (const it of cost) {
+    if (it.kind === 'resource' && it.res !== 'any') q.resources[it.res] -= it.count;
+    else if (it.kind === 'coin') q.coins -= it.count;
+  }
+  const available = (u: PayUnit) =>
+    u.kind === 'resource' ? q.resources[u.res] > 0 : u.kind === 'card' ? q.hand.includes(u.cardId) : eggsAt(q, u.spot) > 0;
+  const spend = (u: PayUnit) => {
+    if (u.kind === 'resource') q.resources[u.res] -= 1;
+    else if (u.kind === 'card') {
+      q.hand.splice(q.hand.indexOf(u.cardId), 1);
+      discarded.push(u.cardId);
+    } else if (u.spot.kind === 'nest') q.nestEggs -= 1;
+    else q.caves[u.spot.pos[0]]!.spaces[u.spot.pos[1]]!.dragon!.eggs -= 1;
+  };
+  const chosen = (fits: (u: PayUnit) => boolean): boolean => {
+    for (let i = 0; i < units.length; i++) {
+      if (used[i] || !fits(units[i]!) || !available(units[i]!)) continue;
+      used[i] = true;
+      spend(units[i]!);
+      return true;
+    }
+    return false;
+  };
+  const anyResource = (): boolean => {
+    const r = [...RESOURCES].sort((a, b) => q.resources[b] - q.resources[a])[0]!;
+    if (q.resources[r] <= 0) return false;
+    q.resources[r] -= 1;
+    return true;
+  };
+  const lastCard = (deck?: DeckName): boolean => {
+    for (let c = q.hand.length - 1; c >= 0; c--) {
+      const id = q.hand[c]!;
+      if (deck && (deck === 'dragon') !== isDragonCard(id)) continue;
+      q.hand.splice(c, 1);
+      discarded.push(id);
+      return true;
+    }
+    return false;
+  };
+  const anyEgg = (): boolean => {
+    if (eggsOnMatCount(q) <= 0) return false;
+    removeEggs(q, 1);
+    return true;
+  };
+  for (const it of cost) {
+    for (let k = 0; k < it.count; k++) {
+      switch (it.kind) {
+        case 'resource':
+          if (it.res === 'any' && !chosen((u) => u.kind === 'resource')) anyResource();
+          break;
+        case 'card':
+          if (!chosen((u) => u.kind === 'card' && isDragonCard(u.cardId) === (it.deck === 'dragon'))) lastCard(it.deck);
+          break;
+        case 'egg':
+          if (!chosen((u) => u.kind === 'egg')) anyEgg();
+          break;
+        case 'item': // a resource, dragon card or cave card
+          if (!chosen((u) => u.kind !== 'egg')) void (anyResource() || lastCard());
+          break;
+        case 'tithe': // a resource, dragon card, cave card or egg
+          if (!chosen(() => true)) void (anyResource() || lastCard() || anyEgg());
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  return { player: q, discarded };
+}
+
+/** 2-resources-for-1 exchanges ("at any point during the game"). */
+export interface Exchange {
+  give: [Resource, Resource];
+  get: Resource;
+}
+
+/**
+ * The exchanges (2 resources → 1 of another) that make `cost` payable, or
+ * null if it can't be paid even then; [] = payable as is. Coins, eggs and
+ * cards can't be exchanged for; surplus resources are given most-plentiful first.
+ */
+export function exchangePlan(p: PlayerState, cost: readonly GainItem[]): Exchange[] | null {
+  if (canPay(p, cost as GainItem[])) return [];
+  const need: Record<Resource, number> = { meat: 0, gold: 0, crystal: 0, milk: 0 };
+  let any = 0;
+  for (const it of cost) {
+    if (it.kind === 'resource') {
+      if (it.res === 'any') any += it.count;
+      else need[it.res] += it.count;
+    }
+  }
+  const have = { ...p.resources };
+  const deficit: Resource[] = [];
+  for (const r of RESOURCES) for (let k = have[r]; k < need[r]; k++) deficit.push(r);
+  if (!deficit.length) return null; // short on coins / eggs / cards, not resources
+  const surplus = () => RESOURCES.filter((r) => have[r] > need[r]).sort((a, b) => have[b] - need[b] - (have[a] - need[a]));
+  const plan: Exchange[] = [];
+  for (const get of deficit) {
+    const give: Resource[] = [];
+    for (let k = 0; k < 2; k++) {
+      const r = surplus().find((x) => x !== get);
+      if (!r) return null;
+      have[r] -= 1;
+      give.push(r);
+    }
+    have[get] += 1;
+    plan.push({ give: [give[0]!, give[1]!], get });
+  }
+  const left = RESOURCES.reduce((a, r) => a + have[r] - need[r], 0);
+  if (left < any) return null;
+  return canPay({ ...p, resources: have }, cost as GainItem[]) ? plan : null;
+}
+
+/** Payable now, or after 2-for-1 resource exchanges. */
+export function canPayWithExchanges(p: PlayerState, cost: readonly GainItem[]): boolean {
+  return exchangePlan(p, cost) !== null;
 }
 
 /** The printed cost of a dragon card (resources/coins/eggs printed on it). */

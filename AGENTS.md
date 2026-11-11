@@ -25,6 +25,9 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   (reads `../wingsearch/src/assets/data/{master,bonus,goals}.json` — see
   `scripts/convert-cards.mjs`)
 - `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
+- `npm run train:build` — bundle the Wyrmspan training env (`training/dist/wyrmspan-env.mjs`)
+- `npm run wyrm:bench` — baseline Wyrmspan agents' scores (heuristic / greedy / random)
+- `python -m pytest training/wyrmspan -q` — training-side tests (conda env `train`; see training/README.md)
 
 ## Architecture
 
@@ -155,8 +158,10 @@ AI — and only Wingspan has a UI so far.
   a reroll before ANY food gain — `reroll` on GainFoodAction and on the
   'dice' Choice (pickDie pending steps).
 - Powers are officially "always optional": when-played/pink powers
-  auto-fire (all beneficial); optional sub-choices honor `optional`
+  auto-fire (mostly beneficial); optional sub-choices honor `optional`
   (chooseHandTuck decline skips `then`, chooseAdditionalPlay can pass).
+  See "Wingspan player decisions" below for the choices the engine leaves
+  to the player.
 
 ## Oceania expansion (`set: 'oceania'`, 95 birds)
 
@@ -281,6 +286,109 @@ AI — and only Wingspan has a UI so far.
 - Americas birds can cost nectar even without the oceania set — supply
   nectar is still obtainable via the nectar hummingbird benefit.
 
+## Wyrmspan learned agent (`src/wyrmspan/nn/`, `training/wyrmspan/`)
+
+Objective is the agent's **own final score** (not wins). Engine-side pieces
+(pure, no Node APIs) in `src/wyrmspan/nn/`; the offline env server, Python
+PPO trainer, evaluator and benchmark in `training/` (see training/README.md).
+
+- **Information boundary**: everything an agent reads goes through
+  `redact(state, me)` (view.ts) — deck order, opponents' hands, others' setup
+  offers / drawn cards, tucked-card identities, Automa's deck and the RNG are
+  replaced by a canonical (sorted) arrangement of the public pool. Lookahead
+  uses `determinize(view, me, seed)`. `nn.test.ts` checks that scrambling
+  hidden info changes no encoding, candidate or heuristic pick — keep it so.
+- **Encoder** (encode.ts): global vector + 41 card tokens; opponents are not
+  encoded beyond table size, who has passed and the objective race.
+- **Action space** (candidates.ts): pointer-style — each decision is a pick
+  among ≤ MAX_CANDS candidates (engine action sequences + features + the tokens
+  they use/target), one generator per PendingStep kind mirroring its
+  `resolveChoice` answer format. A new PendingStep kind needs a generator.
+- `ENCODER_VERSION` / `ACTION_SPACE_VERSION` + all dims are pinned in
+  nn.test.ts; bump the version when a layout changes (checkpoints refuse to load
+  across versions).
+- **Benchmark heuristic** (heuristic.ts): one-ply lookahead over the same
+  candidates on a determinized view, value-greedy follow-ups, `positionValue`
+  = points now + exchange-rate-priced potential (`WEIGHTS`). Its pick is the
+  imitation label.
+- The action space offers every rules choice below (ACTION_SPACE_VERSION 2):
+  payment mixes, display-or-deck, placements, tucks, declines, exchanges.
+
+## Wyrmspan player decisions (rules audit)
+
+The engine leaves to the player every choice the rulebook does. Answers carry
+optional fields; leaving them out falls back to the engine's old default, so
+older callers, the greedy AI and the UI keep working.
+
+- **Gaining a card**: plain "gain" = a face-up display card or the top of the
+  deck (`chooseDisplay` with `orDeck`; answer `index` or `decline` = deck);
+  "from the display" = face-up only; "draw" = deck only (parser sets
+  `source: 'deck'`). A gain of N cards is N picks (no refill until turn end).
+- **Paying**: `PayUnit[]` payments on `choosePay` / `payDragonCost` (`option`),
+  `chooseTrain` (`dragon`), `choosePlayDragon` (`index`/`play`) and the
+  excavate / entice / explore actions. They cover "any resource" / card /
+  egg ("any dragon or nest") / 4th-column item / tithe costs. `payCost`
+  (helpers.ts) applies them; default = most plentiful resource, last matching
+  card, dragon eggs first.
+- **Exchange** (2 resources → 1) "at any point": on your turn, or while your
+  own choice is pending. A "pay X" step is offered when an exchange makes it
+  affordable (`canPayWithExchanges`).
+- **Free plays** pick their cave (`play` answer, validated by
+  `legalPlaySpaces`); "keep/discard/tuck" draws pick the tucked card and its
+  dragon (`indexes` + `tucks`).
+- **Abilities are optional**: every cost-bearing step is declinable (pay,
+  cache, tuck, trade, train, play, excavate, swap, either/or); pure gains apply
+  (declining them never helps, and opponents collect theirs regardless, per the
+  rules). PendingBar's `DECLINABLE` shows Decline for these.
+- **Eggs**: "each opponent lays an egg" and the base game's round-upkeep egg
+  are placed by their owner (`chooseEggSpot`); "cache up to N" may cache fewer.
+- `chooseCache` accepts `{ kind: 'dragons', positions, resources }` so a
+  supply cache can name the resources spent.
+
+## Wingspan player decisions (rules audit)
+
+- **Card draws**: a plain "draw N [card]" (no "from the deck") is a
+  `chooseCardDraw` — each card a face-up tray card or the deck, one at a
+  time (`drawCardsChoice`; continuation tag `drawCardsChoice`). "From the
+  deck" draws and other players' draws stay `drawFromDeck`. Keep-1-of-N pools
+  stay deck draws (rule not confirmed).
+- **Birdfeeder**: `pickDie` accepts 1..count picks (the rest stay queued, so
+  a refill is seen first), `{picks: [], reroll: true}` (reset an all-same-face
+  feeder, then pick again) and `{picks: []}` (take nothing). It stays
+  answerable when a reset could turn up the wanted food; unrestricted picks
+  aren't capped by the dice showing. The gain-food / draw-cards actions accept
+  fewer picks: the rest are queued (after a reroll / tray reset, or past the
+  dice showing). "Gain all [X] in the birdfeeder" offers the reset (`confirm`).
+- **Payments**: `payFoodPlan` matches own types and nectar before any 2-for-1.
+  Additional plays take `foodPayments` / `eggPayments` / `ignore` on the
+  `handCards` answer. Cached food is spendable only per `spendableCached`
+  (Coal Tit, Eurasian Nuthatch, Pine Grosbeak, Great Spotted Kiwi, Rock Ptarmigan).
+- **Order**: 2+ waiting teal / yellow powers of one player → `choosePowerOrder`.
+- **Other players' choices**: Eurasian Siskin (each may give — a
+  `chooseFoodDiscard` each, then a `deferredEffect` check) and Black Robin
+  (each picks the bonus card passed left). `deferredEffect` is a
+  non-interactive step run by `dropImpossiblePending` when it reaches the head.
+- **Pinks "at the end of their turn"** queue in `state.endOfTurnPinks` and run
+  in `passTurn`, before the tray refills.
+- **Card fixes**: Magenta Petrel / Fernbird / Spotless Starling ask first
+  (`confirm` with a `prompt`); NZ Fairy Tern / Rusty Blackbird discard
+  "up to" (`discardBonusCards.upTo`); Yellow-Eyed Penguin / Dovekie pick the
+  bird and habitat (`choosePoolPlay`); a yellow power runs on an additional
+  play only during game end (no double fire).
+
+## Finspan player decisions (rules audit)
+
+- "These benefits are optional for each affected player": an egg on each
+  fish and a fixed-site coral are a `confirmBenefit` (`confirm` / `decline`),
+  per player for all-players abilities.
+- WHEN PLAYED with 2+ different benefits → `chooseEffectOrder` (answer `index`);
+  the rest continue via `deferredEffects`. Two-part abilities keep their order.
+- A two-part ability's coral gate is a `deferredEffects` step with `gate`,
+  checked when it reaches the head (after the first part and any reef coral).
+- GAME END abilities: 2+ of one player's → `chooseGameEndAbility`.
+- S&R: the reef overlay reprints the twilight bonus — the bonus applies, then
+  the reef offer.
+
 ## Known gaps (future work)
 
 - All 707 Wingspan birds (Core, European, Oceania, Asia, Americas, and all 6
@@ -288,4 +396,25 @@ AI — and only Wingspan has a UI so far.
   all 215 Finspan/S&R abilities, and the official Automa / Nautoma solo card
   modes for all three games (+ Ravel Mode & expansion Automa rules) are
   implemented and verified against the 12 official rulebook PDFs in `docs/`.
-- RL policy training is future work.
+- RL policy training is future work: the Wyrmspan framework (encoder, action
+  space, heuristic benchmark, PPO trainer, evaluator) is built but no run has
+  been trained; Wingspan and Finspan have none yet. No TS runtime for a network.
+- Wyrmspan UI: payments, free-play placement and draw-and-tuck choices are made
+  by "Auto-Resolve" (the engine default) — the engine accepts them, but
+  PendingBar has no pickers for them yet.
+- Wingspan decisions still made by the engine (rules audit, not yet fixed):
+  a declined or impossible pink still uses its once-between-turns; card picks
+  for Marsh Warbler, Phainopepla, Greater Racket-Tailed Drongo, Brown
+  Thrasher, Mandarin Duck, NZ Dabchick, Gyrfalcon, Greater Spotted Eagle,
+  Common Tailorbird (largest group), Whooper Swan, Mountain Quail (most common
+  face); forced "you may" for Brown Creeper, South Island Saddleback, North
+  Island Kokako / Scarlet Tanager resets, Prairie Falcon's branch, Indian
+  Paradise Flycatcher, Rose-Ringed Parakeet, Oriental Bay-Owl / Yellow-Billed
+  Magpie (all predators), Australian Magpie; Northern Pintail's redraws; no
+  decline gate for when-played / pink powers with a downside (e.g. Magnificent
+  Frigatebird's pink). The UI auto-pays bird plays and additional plays (no
+  payment pickers) and doesn't expose the mat trades. Duet: free pool plays
+  place no duet token.
+- Finspan: all-players doubled coral is merged to 1 per player (unverified
+  against the cards); benefit order is chosen only for WHEN PLAYED (the rule
+  text names only that).

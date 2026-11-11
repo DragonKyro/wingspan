@@ -39,3 +39,9 @@ coverage/
 docs/
 *.pdf
 /*.txt
+
+# Training (offline, never shipped)
+training/dist/
+training/runs/
+__pycache__/
+.pytest_cache/

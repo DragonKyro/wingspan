@@ -36,7 +36,12 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
         .map((face, die) => ({ die, face }))
         .filter(({ face }) => !step.faces || step.faces.some((w) => faceCovers(face, w)))
         .slice(0, step.count);
-      if (chosen.length < step.count) return null;
+      if (chosen.length === 0) {
+        // Nothing matching: reset an all-same-face feeder, else take nothing.
+        const same = state.feederIn.length > 0 && state.feederIn.every((f) => f === state.feederIn[0]);
+        return { kind: 'dice', picks: [], reroll: same || undefined };
+      }
+      // Fewer showing than the count: take these; the rest are picked after any refill.
       const picks = chosen.map(({ die, face }, k) => ({
         die: die - k,
         take: face === 'split' ? ('seed' as const) : face === 'nectar' ? ('seed' as const) : undefined,
@@ -149,6 +154,11 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       if (step.cardIds.length < step.keep) return null;
       return { kind: 'bonusCards', cardIds: step.cardIds.slice(0, step.keep) };
     case 'discardBonusCards':
+      // "Up to": the Fairy Tern's discards pay off (3 fish each); otherwise keep them.
+      if (step.upTo) {
+        const n = step.then?.effect === 'promoFairyTern' ? Math.min(step.count, p.bonusHand.length) : 0;
+        return { kind: 'bonusCards', cardIds: p.bonusHand.slice(0, n) };
+      }
       if (p.bonusHand.length < step.count) return null;
       return { kind: 'bonusCards', cardIds: p.bonusHand.slice(0, step.count) };
     case 'moveBirdHabitat': {
@@ -252,6 +262,31 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
           : (Object.keys(victim.food) as (keyof typeof victim.food)[]).find((x) => victim.food[x] > 0);
       if (!f || victim.food[f] <= 0) return null;
       return { kind: 'supplyFood', foods: [f] };
+    }
+    case 'choosePoolPlay': {
+      const ranked = [...step.cardIds].sort((a, b) => bird(b).points - bird(a).points);
+      for (const id of ranked) {
+        const p = getPlayer(state, step.playerId);
+        const hab = bird(id).habitats.find((h) => p.board[h].length < 5);
+        if (hab) return { kind: 'handCards', cardIds: [id], habitat: hab };
+      }
+      return { kind: 'handCards', cardIds: [] };
+    }
+    case 'deferredEffect':
+      return { kind: 'boolean', yes: true }; // never at the head (run by dropImpossiblePending)
+    case 'choosePowerOrder':
+      return { kind: 'repeatTarget', bird: step.birds[0]! };
+    case 'chooseCardDraw': {
+      // The most valuable face-up bird, else the deck.
+      let best = -1;
+      let bestPts = 2;
+      state.tray.forEach((id, i) => {
+        if (id != null && bird(id).points > bestPts) {
+          bestPts = bird(id).points;
+          best = i;
+        }
+      });
+      return best >= 0 ? { kind: 'trayPick', cardId: state.tray[best]! } : { kind: 'trayPick' };
     }
     case 'chooseTrayCard': {
       const idx = state.tray.findIndex(
@@ -387,6 +422,12 @@ export function greedyChoice(state: GameState, step: PendingStep): Choice | null
       return to ? { kind: 'habitat', habitat: to } : null;
     }
     case 'confirm':
+      if (step.then?.effect === 'takeAllReroll') {
+        // Reset only if the showing face isn't the wanted food.
+        const want = FOOD_TYPES[step.then.ids?.[0] ?? -1];
+        const face = state.feederIn[0];
+        return { kind: 'boolean', yes: !(want && face && faceCovers(face, want)) };
+      }
       return { kind: 'boolean', yes: true };
     case 'chooseHandPick': {
       if (p.hand.length < step.count) {

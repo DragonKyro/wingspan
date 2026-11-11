@@ -401,8 +401,9 @@ export type PendingStep =
   /** Pick `count` hand cards of `what` to discard/pay. `then` runs only when
    * the discard is actually performed (declined `upTo` skips it). */
   | { kind: 'chooseHandCards'; playerId: PlayerId; count: number; what: 'dragon' | 'cave' | 'any'; purpose: 'discard' | 'pay' | 'tuck' | 'cavesForEggs'; upTo?: boolean; perCard?: boolean; activateDiscarded?: boolean; then?: Step[]; resume?: Resume }
-  /** Pick a face-up display card. */
-  | { kind: 'chooseDisplay'; playerId: PlayerId; deck: 'dragon' | 'cave'; resume?: Resume }
+  /** Gain a card: a face-up display card (answer index), or — when `orDeck` (a
+   *  plain "gain", not "from the display") — the top of the deck (answer decline). */
+  | { kind: 'chooseDisplay'; playerId: PlayerId; deck: 'dragon' | 'cave'; orDeck?: boolean; resume?: Resume }
   /** Distribute just-drawn cards: choose which to keep/tuck/discard/play. */
   | { kind: 'distributeCards'; playerId: PlayerId; cardIds: number[]; keep?: number; tuck?: number | 'rest'; discard?: number | 'rest'; playFree?: number; orKeep?: boolean; tuckTarget?: DragonTarget; resume?: Resume }
   /** Pick an ability to activate (dragon ref + optional mat icon). */
@@ -439,7 +440,7 @@ export type PendingStep =
   | { kind: 'oncePerRoundPick'; playerId: PlayerId; positions: [number, number][]; resume?: Resume }
   /** Pick which benefit group (for "gain N different benefits"). */
   | { kind: 'chooseBenefits'; playerId: PlayerId; count: number; options: GainItem[][]; resume?: Resume }
-  /** Reveal resolution is automatic; kept for logging symmetry. */
+  /** Unused by the engine (egg payments ride on the answer's `payment`); kept for compatibility. */
   | { kind: 'chooseEggPayment'; playerId: PlayerId; count: number; resume?: Resume }
   /** Academy: on the turn a player passes (rounds 1-3), pick an income space.
    * `options` are indices into INCOME_SECTIONS[section]; answer.index selects
@@ -460,9 +461,10 @@ export interface AbilityCandidate {
 
 export type Action =
   | { type: 'keepSetup'; playerId: PlayerId; keepCards: number[]; resources: Resource[] }
-  | { type: 'excavate'; playerId: PlayerId; cave: number; cardId: number }
-  | { type: 'entice'; playerId: PlayerId; cave: number; cardId: number }
-  | { type: 'explore'; playerId: PlayerId; cave: number }
+  /** `payment`: which eggs pay the egg costs (default: dragons first, then the nests). */
+  | { type: 'excavate'; playerId: PlayerId; cave: number; cardId: number; payment?: PayUnit[] }
+  | { type: 'entice'; playerId: PlayerId; cave: number; cardId: number; payment?: PayUnit[] }
+  | { type: 'explore'; playerId: PlayerId; cave: number; payment?: PayUnit[] }
   | { type: 'pass'; playerId: PlayerId }
   | { type: 'exchange'; playerId: PlayerId; give: [Resource, Resource]; get: Resource }
   | { type: 'resolveChoice'; playerId: PlayerId; answer: ChoiceAnswer }
@@ -546,17 +548,40 @@ export interface AutomaState {
   cacheTokens: number;
 }
 
+/**
+ * One unit a player pays with, where the rules leave the choice to them: an
+ * "any resource" cost, a card of a type, an egg ("from any dragon or nest"),
+ * and the 4th-column items / King's Guild tithes ("in any combination").
+ * A payment lists the units in any order; each choosable part of a cost takes
+ * the first unused unit that fits it. Missing or invalid units fall back to
+ * the engine's default (most plentiful resource, last matching hand card,
+ * eggs from dragons first).
+ */
+export type PayUnit =
+  | { kind: 'resource'; res: Resource }
+  | { kind: 'card'; cardId: number }
+  | { kind: 'egg'; spot: EggSpot };
+
 export type ChoiceAnswer =
   | { kind: 'cards'; cardIds: number[] }
   | { kind: 'resources'; resources: Resource[] }
-  | { kind: 'index'; index: number }
-  | { kind: 'indexes'; indexes: number[] }
-  | { kind: 'dragon'; pos: [number, number] }
-  | { kind: 'dragons'; positions: [number, number][] }
+  /** `payment` (choosePlayDragon with a printed cost): how to pay it. */
+  | { kind: 'index'; index: number; payment?: PayUnit[] }
+  /** `tucks` (distributeCards with a tuck): which drawn cards go under which dragon. */
+  | { kind: 'indexes'; indexes: number[]; tucks?: { index: number; pos: [number, number] }[] }
+  /** `payment` (chooseTrain): how to pay the training box. */
+  | { kind: 'dragon'; pos: [number, number]; payment?: PayUnit[] }
+  /** `resources` (chooseCache only): which types to cache, in order — default: the first owned. */
+  | { kind: 'dragons'; positions: [number, number][]; resources?: Resource[] }
   | { kind: 'eggSpots'; spots: EggSpot[] }
   | { kind: 'decline' }
   | { kind: 'confirm' }
-  | { kind: 'option'; index: number }
+  /** `payment` (choosePay / payDragonCost): how to pay the chosen cost. */
+  | { kind: 'option'; index: number; payment?: PayUnit[] }
+  /** Play card `index` of the step's pool at `pos` (choosePlayDragon, distributeCards
+   *  "play 1 for free"): a dragon into the leftmost excavated space of one of its caves
+   *  (or onto a dragon when the step allows), a cave card into a cave's next space. */
+  | { kind: 'play'; index: number; pos: [number, number]; payment?: PayUnit[] }
   | { kind: 'assignTucks'; assignments: { cardId: number; pos: [number, number] }[] };
 
 export type EggSpot = { kind: 'nest' } | { kind: 'dragon'; pos: [number, number] };

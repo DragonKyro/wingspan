@@ -35,7 +35,7 @@ import {
   validateMove,
   validatePayments,
 } from './helpers';
-import { fireAbility } from './powers';
+import { applyEffect, atFront, fireAbility } from './powers';
 import type {
   Choice,
   GameState,
@@ -116,6 +116,18 @@ export function feasible(state: GameState, step: PendingStep): boolean {
         state.deck.length > 0 ||
         state.players.some((pl) => pl.discard.length > 0)
       );
+    case 'confirmBenefit': {
+      if (step.benefit === 'coral') return p.ocean.corals[step.col ?? 0]! < MAX_CORAL;
+      return slots.some(
+        ({ ref, slot }) => slot.stack.length > 0 && slot.eggs === 0 && (!step.filter || matchesSlotFilter(p.ocean, ref, step.filter)),
+      );
+    }
+    case 'chooseEffectOrder':
+      return step.effects.length > 0;
+    case 'chooseGameEndAbility':
+      return step.slots.length > 0;
+    case 'deferredEffects':
+      return false; // never answered: expanded by dropInfeasible
     case 'chooseUnSchool':
       return slots.some(({ slot }) => slot.school);
   }
@@ -129,6 +141,20 @@ export function dropInfeasible(state: GameState): GameState {
   let s = state;
   while (s.pending.length && !feasible(s, s.pending[0]!)) {
     const head = s.pending[0]!;
+    if (head.kind === 'deferredEffects') {
+      // Run the deferred effects now (their own choices go first), if the
+      // coral gate — counted now — is met.
+      s = { ...s, pending: s.pending.slice(1) };
+      const gate = head.gate;
+      if (!gate || getPlayer(s, head.playerId).ocean.corals[gate.col]! >= gate.count) {
+        s = atFront(s, (t) => {
+          let u = t;
+          for (const e of head.effects) u = applyEffect(u, head.playerId, head.source, e, true);
+          return u;
+        });
+      }
+      continue;
+    }
     if (head.kind === 'chooseUnSchool') {
       const fallback: PendingStep = {
         kind: 'chooseYoungSlots',
@@ -168,6 +194,10 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
 
   if (choice.kind === 'decline') {
     if (!('optional' in step && step.optional)) throw new Error('this choice is required');
+    if (step.kind === 'chooseGameEndAbility') {
+      // Decline = activate none of the remaining game-end abilities.
+      return { ...pop(s), gameEndQueue: (s.gameEndQueue ?? []).filter((e) => e.playerId !== playerId) };
+    }
     return pop(s);
   }
 
@@ -301,7 +331,7 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       s = setPlayer(s, p);
       s = pop(s);
       if (card.abilityType === 'WhenPlayed' && card.ability) {
-        s = fireAbility(s, playerId, card.ability, ref, `${card.name} (when played)`);
+        s = fireAbility(s, playerId, card.ability, ref, `${card.name} (when played)`, { orderable: true });
       } else if (s.phase === 'gameEnd' && card.abilityType === 'GameEnd' && card.ability) {
         const parsed = parseAbility(card.ability);
         if (parsed && !parsed.wave && parsed.effects.length > 0) {
@@ -347,6 +377,59 @@ export function resolveChoice(state: GameState, playerId: PlayerId, choice: Choi
       const short = step.count - choice.cardIds.length;
       if (short > 0) s = drawFromDeck(s, playerId, short);
       return pop(s);
+    }
+    case 'confirmBenefit': {
+      if (choice.kind !== 'confirm') break;
+      s = pop(s);
+      if (step.benefit === 'coral') {
+        const col = step.col ?? 0;
+        if (p.ocean.corals[col]! < MAX_CORAL) s = setPlayer(s, placeCoral(p, col));
+        return s;
+      }
+      let q = p;
+      for (const { ref, slot } of allSlots(q.ocean)) {
+        if (slot.stack.length === 0 || slot.eggs > 0) continue;
+        if (step.filter && !matchesSlotFilter(q.ocean, ref, step.filter)) continue;
+        q = addEgg(q, ref);
+      }
+      return setPlayer(s, q);
+    }
+    case 'chooseEffectOrder': {
+      if (choice.kind !== 'index') break;
+      const first = step.effects[choice.index];
+      if (!first) throw new Error('no such benefit');
+      const rest = step.effects.filter((_, i) => i !== choice.index);
+      s = pop(s);
+      // The chosen benefit's own choices come first, then the rest (another
+      // pick while 2+ different benefits remain).
+      return atFront(s, (t) => {
+        let u = applyEffect(t, playerId, step.source, first, true);
+        if (rest.length) {
+          const kinds = new Set(rest.map((e) => JSON.stringify(e))).size;
+          u = {
+            ...u,
+            pending: [
+              ...u.pending,
+              kinds >= 2
+                ? { ...step, effects: rest }
+                : { kind: 'deferredEffects', playerId, source: step.source, effects: rest },
+            ],
+          };
+        }
+        return u;
+      });
+    }
+    case 'chooseGameEndAbility': {
+      if (choice.kind !== 'slots' || choice.slots.length !== 1) break;
+      const pick = choice.slots[0]!;
+      if (!step.slots.some((r) => sameRef(r, pick))) throw new Error('not one of your game-end abilities');
+      s = pop(s);
+      const queue = s.gameEndQueue ?? [];
+      const at = queue.findIndex((e) => e.playerId === playerId && sameRef(e.slot, pick));
+      if (at >= 0) s = { ...s, gameEndQueue: [...queue.slice(0, at), ...queue.slice(at + 1)] };
+      const card = topFish(slotAt(getPlayer(s, playerId).ocean, pick));
+      if (card?.ability) s = fireAbility(s, playerId, card.ability, pick, `${card.name} (game end)`);
+      return s;
     }
     case 'chooseUnSchool': {
       if (choice.kind !== 'unSchool') break;

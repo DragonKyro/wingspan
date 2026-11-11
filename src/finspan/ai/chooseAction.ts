@@ -23,11 +23,8 @@ function diveValue(state: GameState, p: ReturnType<typeof getPlayer>, col: numbe
   const slots = [...allSlots(p.ocean)];
   for (let zi = 0; zi < ZONES.length; zi++) {
     const zone = ZONES[zi]!;
-    if (isSR && zi === 1) {
-      if (p.ocean.corals[col]! < 6) v += 1.2; // reef option
-    } else if (zoneHasFish(p.ocean, col, zone)) {
-      v += 1.5; // printed zone bonus
-    }
+    if (zoneHasFish(p.ocean, col, zone)) v += 1.5; // printed zone bonus (twilight's is reprinted on the reef overlay)
+    if (isSR && zi === 1 && p.ocean.corals[col]! < 6) v += 1.2; // reef option
     for (const { ref } of slots) {
       if (ref.col !== col || zoneOfRow(ref.row) !== zone) continue;
       const c = topFish(slotAt(p.ocean, ref));

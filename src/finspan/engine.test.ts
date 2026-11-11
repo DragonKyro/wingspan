@@ -486,7 +486,10 @@ describe('full games', () => {
       playerId: 'p1',
       choice: { kind: 'playFromHand', cardId: 41, row: 0, col: 0 },
     });
-    expect(s2.phase).toBe('gameOver');
-    expect(slotAt(getPlayer(s2, 'p1').ocean, { row: 0, col: 0 }).eggs).toBe(1);
+    // The egg-on-each benefit is optional: the player confirms it.
+    expect(s2.pending[0]).toMatchObject({ kind: 'confirmBenefit', benefit: 'eggsOnEach' });
+    const s3 = applyAction(s2, { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'confirm' } });
+    expect(s3.phase).toBe('gameOver');
+    expect(slotAt(getPlayer(s3, 'p1').ocean, { row: 0, col: 0 }).eggs).toBe(1);
   });
 });

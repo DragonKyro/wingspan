@@ -82,7 +82,7 @@ export function doPlayFish(state: GameState, a: PlayFishAction): GameState {
   s = { ...s, turnTookAction: true };
 
   if (card.abilityType === 'WhenPlayed' && card.ability) {
-    s = fireAbility(s, a.playerId, card.ability, ref, `${card.name} (when played)`);
+    s = fireAbility(s, a.playerId, card.ability, ref, `${card.name} (when played)`, { orderable: true });
   }
   return s;
 }
@@ -170,9 +170,17 @@ export function doDive(state: GameState, a: DiveAction): GameState {
     // Re-read the player each step: activated abilities can mutate the ocean.
     let p = getPlayer(s, a.playerId);
 
+    // The zone's printed bonus (with a fish in the zone). The S&R reef overlay
+    // covers the twilight zone but reprints its bonus (sharks_p03.png), so the
+    // twilight bonus still applies there — before the reef offer, so what it
+    // grants can pay the reef discard.
+    if (zoneHasFish(p.ocean, col, zone)) {
+      s = grantBenefit(s, a.playerId, bonuses.zones[zi]!);
+      p = getPlayer(s, a.playerId);
+    }
     if (isSR && isTwilight) {
-      // Reef overlay replaces the printed twilight bonus: optionally discard
-      // the indicated item to place 1 coral (no fish requirement).
+      // Reef overlay: optionally discard the indicated item to place 1 coral
+      // (no fish requirement), at most once per dive.
       if (p.ocean.corals[col]! < MAX_CORAL) {
         const item =
           s.settings.reefCosts?.[s.playerOrder.indexOf(a.playerId)]?.[col] ??
@@ -185,8 +193,6 @@ export function doDive(state: GameState, a: DiveAction): GameState {
           (item === 'card' && p.hand.length > 0);
         if (feasible) s = pushPending(s, { kind: 'chooseReefDiscard', playerId: a.playerId, col, item });
       }
-    } else if (zoneHasFish(p.ocean, col, zone)) {
-      s = grantBenefit(s, a.playerId, bonuses.zones[zi]!);
     }
 
     // IF ACTIVATED abilities, top to bottom within this zone (snapshot the

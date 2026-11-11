@@ -9,6 +9,16 @@ import type { Action, GameState, PendingStep, Resource } from '@/wyrmspan/types'
 import { WyrmResourceIcon } from '../svgArt';
 import { WyrmCaveCardView, WyrmDragonCardView } from './CardViews';
 
+/**
+ * Steps the engine lets the player decline (abilities are optional — rulebook:
+ * "These benefits are not mandatory"; opponents still collect their share).
+ * Steps with `upTo` / `optional` are declinable too.
+ */
+const DECLINABLE = new Set<PendingStep['kind']>([
+  'choosePay', 'opponentMay', 'chooseTrain', 'chooseTuck', 'chooseCache', 'chooseOption', 'chooseExcavate',
+  'choosePlayDragon', 'payDragonCost', 'chooseAbility', 'chooseSwap', 'chooseHandDragonSwap', 'chooseCaveCardSwap',
+]);
+
 export function WyrmspanPendingBar({
   state,
   step,
@@ -143,6 +153,17 @@ export function WyrmspanPendingBar({
               </button>
             ) : null,
           )}
+          {step.orDeck && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() =>
+                dispatch({ type: 'resolveChoice', playerId: step.playerId, answer: { kind: 'decline' } })
+              }
+            >
+              Draw from the deck
+            </button>
+          )}
         </div>
       )}
 
@@ -248,9 +269,7 @@ export function WyrmspanPendingBar({
 
       {('upTo' in step && step.upTo) ||
       ('optional' in step && step.optional) ||
-      step.kind === 'choosePay' ||
-      step.kind === 'opponentMay' ||
-      step.kind === 'chooseTrain' ? (
+      DECLINABLE.has(step.kind) ? (
         <button
           type="button"
           className="secondary"

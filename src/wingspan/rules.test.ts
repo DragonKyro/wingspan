@@ -34,8 +34,11 @@ describe('end-of-turn discard', () => {
     s = edit(s, pid, {
       board: { forest: [], grassland: [], wetland: [mkBird(COMMON_YELLOWTHROAT)] },
     });
-    // The brown power draws 2 cards and flags an end-of-turn discard.
+    // The brown power draws 2 cards (each from the tray or the deck) and flags
+    // an end-of-turn discard.
     s = runPower(s, pid, ref('wetland', 0));
+    expect(s.pending[0]).toMatchObject({ kind: 'chooseCardDraw', count: 2 });
+    s = autoResolve(s);
     expect(getPlayer(s, pid).endOfTurnDiscards).toBe(1);
     s = applyAction(s, { type: 'endTurn', playerId: pid });
     expect(s.pending[0]?.kind).toBe('chooseHandDiscard');
@@ -504,8 +507,9 @@ describe('activation order', () => {
     });
     s = internals.startActivation(s, pid, 'forest');
     expect(s.activation?.remaining).toEqual([2, 1, 0]);
-    // Stepping through activates the rightmost bird first.
-    s = applyAction(s, { type: 'activatePower', playerId: pid });
+    // Stepping through activates the rightmost bird first (resolving what each
+    // power queues: the Yellowthroat's tray-or-deck draws).
+    s = autoResolve(applyAction(s, { type: 'activatePower', playerId: pid }));
     expect(s.activation?.remaining).toEqual([1, 0]);
     s = applyAction(s, { type: 'activatePower', playerId: pid });
     expect(s.activation?.remaining).toEqual([0]);

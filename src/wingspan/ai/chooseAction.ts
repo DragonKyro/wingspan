@@ -223,8 +223,10 @@ function gainFoodAction(state: GameState, playerId: PlayerId, p: PlayerState): A
   // takes the leftmost `count` dice. `take` is only consulted for split
   // faces, so always pass one — a mid-action refill can put a split face in
   // front without the AI knowing.
-  const picks = Array.from({ length: count }, () => ({ die: 0, take: 'seed' as FoodType }));
-  return { type: 'gainFood', playerId, reroll: allSame || undefined, picks };
+  // Rerolling: pick after seeing the new dice (the engine queues the picks).
+  if (allSame) return { type: 'gainFood', playerId, reroll: true, picks: [] };
+  const picks = Array.from({ length: Math.min(count, state.feederIn.length) }, () => ({ die: 0, take: 'seed' as FoodType }));
+  return { type: 'gainFood', playerId, picks };
 }
 
 function layEggsAction(state: GameState, playerId: PlayerId, p: PlayerState): Action {

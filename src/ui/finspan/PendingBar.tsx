@@ -2,7 +2,8 @@
 
 import { fish } from '@/finspan/cards';
 import { MAX_CORAL } from '@/finspan/constants';
-import { getPlayer } from '@/finspan/helpers';
+import { getPlayer, slotAt, topFish } from '@/finspan/helpers';
+import { effectLabel } from '@/finspan/powers';
 import { chooseForPending } from '@/finspan/ai/choices';
 import type { Action, GameState, PendingStep } from '@/finspan/types';
 import { SITE_COLORS } from '@/finspan/types';
@@ -38,6 +39,37 @@ export function FinspanPendingBar({
       <span>
         <b>{step.kind}</b>
       </span>
+      {step.kind === 'confirmBenefit' && <span>Take {step.label}? (optional)</span>}
+      {step.kind === 'chooseEffectOrder' && (
+        <div className="row">
+          <span>Which benefit first?</span>
+          {step.effects.map((e, i) => (
+            <button
+              key={i}
+              type="button"
+              className="primary"
+              onClick={() => dispatch({ type: 'resolveChoice', playerId: step.playerId, choice: { kind: 'index', index: i } })}
+            >
+              {effectLabel(e)}
+            </button>
+          ))}
+        </div>
+      )}
+      {step.kind === 'chooseGameEndAbility' && (
+        <div className="row">
+          <span>Next GAME END ability:</span>
+          {step.slots.map((ref) => (
+            <button
+              key={`${ref.row}-${ref.col}`}
+              type="button"
+              className="primary"
+              onClick={() => dispatch({ type: 'resolveChoice', playerId: step.playerId, choice: { kind: 'slots', slots: [ref] } })}
+            >
+              {topFish(slotAt(p.ocean, ref))?.name ?? `r${ref.row}c${ref.col}`}
+            </button>
+          ))}
+        </div>
+      )}
       {step.kind === 'chooseCoralSite' && (
         <div className="row">
           {SITE_COLORS.map((site, col) => (

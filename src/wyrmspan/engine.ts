@@ -6,7 +6,7 @@ import { entice, excavate, exchange, explore, nextTurnPlayer, pass } from './act
 import { buildAutomaRoundDeck, executeAutomaTurn } from './automa';
 import { cardAbilityTypes, dragonCard, trainingTrackLength } from './cards';
 import { collectIncome, pushPending, resolveChoice, runAbility } from './effects';
-import { clone, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
+import { clone, hasAnyEggSpot, log, player, refreshDisplays, refillDisplayGaps } from './helpers';
 import { scoreObjective } from './objectives';
 import { scoreGame } from './scoring';
 import type { Action, GameState, PlayerId } from './types';
@@ -27,17 +27,17 @@ export function applyAction(state: GameState, action: Action): GameState {
       break;
     case 'excavate':
       if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
-      s = excavate(s, action.playerId, action.cave, action.cardId);
+      s = excavate(s, action.playerId, action.cave, action.cardId, action.payment);
       s = endAction(s);
       break;
     case 'entice':
       if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
-      s = entice(s, action.playerId, action.cave, action.cardId);
+      s = entice(s, action.playerId, action.cave, action.cardId, action.payment);
       s = endAction(s);
       break;
     case 'explore':
       if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
-      s = explore(s, action.playerId, action.cave);
+      s = explore(s, action.playerId, action.cave, action.payment);
       s = endAction(s);
       break;
     case 'pass':
@@ -45,11 +45,18 @@ export function applyAction(state: GameState, action: Action): GameState {
       s = pass(s, action.playerId);
       s = endAction(s);
       break;
-    case 'exchange':
-      // Free conversion, but only on your own turn.
-      if (s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
+    case 'exchange': {
+      // Rulebook: "At any point during the game, you may exchange 2 resources …
+      // for 1 resource of another type." Allowed whenever the player is the one
+      // deciding: on their turn, or while one of their own choices is pending
+      // (so a "pay X" can be afforded mid-ability).
+      const deciding = s.pending.length
+        ? s.pending[0]!.playerId === action.playerId
+        : s.phase === 'main' && s.turn === action.playerId;
+      if (!deciding) return s;
       s = exchange(s, action.playerId, action.give, action.get);
       break;
+    }
     case 'automaTurn':
       if (!s.automa || s.phase !== 'main' || s.turn !== action.playerId || s.pending.length) return s;
       s = executeAutomaTurn(s, action.playerId);
@@ -213,25 +220,13 @@ function finishRound(state: GameState): GameState {
     return s;
   }
 
-  // Base upkeep: +6 coins, +1 egg, adventurers retrieved (Automa never gains
-  // coins, eggs, or resources).
+  // Base upkeep (rulebook: "Each player gains 6 coins and 1 egg"), adventurers
+  // retrieved. Automa never gains coins, eggs, or resources. Gaining an egg is
+  // laying it, so each player places theirs (any dragon with room or a mat
+  // nest) — in turn order from the new start player, before the round begins.
   const players = s.players.map((p) => {
     const q = clone(p);
-    if (!(s.automa && q.id === 'p2')) {
-      q.coins += 6;
-      // gain an egg if there's room (mat nests or any dragon capacity)
-      if (q.nestEggs < 2) q.nestEggs += 1;
-      else {
-        outer: for (const row of q.caves) {
-          for (const sp of row.spaces) {
-            if (sp.dragon && sp.dragon.eggs < dragonCard(sp.dragon.cardId).capacity) {
-              sp.dragon.eggs += 1;
-              break outer;
-            }
-          }
-        }
-      }
-    }
+    if (!(s.automa && q.id === 'p2')) q.coins += 6;
     q.explores = { crimson: 0, golden: 0, amethyst: 0 };
     q.passed = false;
     return q;
@@ -245,6 +240,12 @@ function finishRound(state: GameState): GameState {
     turnIndex: startIdx,
     turnEnding: false,
   };
+  const order = [...s.playerOrder.slice(startIdx), ...s.playerOrder.slice(0, startIdx)];
+  for (const pid of order) {
+    if (s.automa && pid === 'p2') continue;
+    if (!hasAnyEggSpot(player(s, pid), { kind: 'any' })) continue;
+    s = pushPending(s, { kind: 'chooseEggSpot', playerId: pid, count: 1, target: { kind: 'any' }, optional: true });
+  }
   s = log(s, `round ${s.round} begins`);
   return s;
 }

@@ -85,14 +85,9 @@ export function ActionsPanel({
                 const shift = draft.picks.slice(0, k).filter((pIdx) => pIdx < origIdx).length;
                 return { die: origIdx - shift, take: draft.splitTake as FoodType };
               });
-              // If rerolling before picking, default to first diceCount dice of the fresh roll.
-              const finalPicks =
-                draft.reroll && livePicks.length === 0
-                  ? Array.from({ length: diceCount }, () => ({
-                      die: 0,
-                      take: draft.splitTake as FoodType,
-                    }))
-                  : livePicks;
+              // Rerolling before picking: the dice are picked after the reroll
+              // (the engine asks once the new dice are showing).
+              const finalPicks = livePicks;
               dispatch({
                 type: 'gainFood',
                 playerId: acting,
@@ -103,7 +98,7 @@ export function ActionsPanel({
             }}
           >
             {draft.reroll && draft.picks.length === 0
-              ? `Reroll & Take ${diceCount}`
+              ? `Reroll, then pick ${diceCount}`
               : `Take Food (${draft.picks.length}/${diceCount})`}
           </button>
           <button onClick={() => setDraft(null)}>Cancel</button>

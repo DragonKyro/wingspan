@@ -5,8 +5,8 @@ import { passAutoma } from './automa';
 import { dragonCard, isDragonCard, parseIcons } from './cards';
 import { excavateAt, runSteps, tryPlayDragonAt } from './effects';
 import { INCOME_SECTIONS, incomeSectionIndex } from './guild';
-import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payItems, player, removeEggs, setPlayer } from './helpers';
-import type { GameState, GainItem, PlayerId, PlayerState, Resource } from './types';
+import { allDragons, canPay, clone, dragonPrintedCost, eggsOnMatCount, log, otherPlayers, payCost, player, setPlayer } from './helpers';
+import type { GameState, GainItem, PayUnit, PlayerId, PlayerState, Resource } from './types';
 
 /** Egg cost of excavating column idx (0-based): col3 = +1 egg, col4 = +2 eggs. */
 export function excavateEggCost(spaceIdx: number): number {
@@ -24,7 +24,7 @@ export function nextEnticeSpace(p: PlayerState, cave: number): number {
 // ---------------------------------------------------------------------------
 // EXCAVATE — play a cave card from hand into the leftmost empty space.
 
-export function excavate(state: GameState, playerId: PlayerId, cave: number, cardId: number): GameState {
+export function excavate(state: GameState, playerId: PlayerId, cave: number, cardId: number, payment?: PayUnit[]): GameState {
   const p = player(state, playerId);
   const idx = nextEmptySpace(p, cave);
   if (idx < 0) return log(state, 'excavate: cave full');
@@ -35,9 +35,8 @@ export function excavate(state: GameState, playerId: PlayerId, cave: number, car
   if (eggs) cost.push({ kind: 'egg', count: eggs });
   if (!canPay(p, cost)) return log(state, 'excavate: cannot pay');
 
-  const q = payItems(clone(p), cost, undefined);
-  // pay eggs from anywhere on the mat
-  removeEggs(q, eggs);
+  // Eggs come from any dragon or nest (the player's `payment`, else the default).
+  const q = payCost(p, cost, payment).player;
   q.hand.splice(q.hand.indexOf(cardId), 1);
   let s = setPlayer(state, q);
   s = excavateAt(s, playerId, cave, cardId);
@@ -52,7 +51,7 @@ export function dragonCost(cardId: number): GainItem[] {
   return [{ kind: 'coin', count: 1 }, ...dragonPrintedCost(cardId)];
 }
 
-export function entice(state: GameState, playerId: PlayerId, cave: number, cardId: number): GameState {
+export function entice(state: GameState, playerId: PlayerId, cave: number, cardId: number, payment?: PayUnit[]): GameState {
   const p = player(state, playerId);
   if (!p.hand.includes(cardId) || !isDragonCard(cardId)) return log(state, 'entice: card not in hand');
   const card = dragonCard(cardId);
@@ -67,17 +66,15 @@ export function entice(state: GameState, playerId: PlayerId, cave: number, cardI
   if (ignoreCheck) cost = [{ kind: 'coin', count: 1 }];
 
   if (!canPay(p, cost)) return log(state, 'entice: cannot pay');
-  const q = payItems(clone(p), cost, undefined);
+  const q = payCost(p, cost, payment).player;
   q.coinsSpentEntice += cost.filter((it) => it.kind === 'coin').reduce((a, i) => a + i.count, 0);
-  // pay egg portion of the printed cost from the mat
-  const eggCost = cost.filter((it) => it.kind === 'egg').reduce((a, i) => a + i.count, 0);
-  removeEggs(q, eggCost);
   let s = setPlayer(state, q);
   const r = tryPlayDragonAt(s, playerId, cardId, {}, { cave, space: nextEnticeSpace(q, cave) });
   return r.state;
 }
 
-function evaluateIgnoreCost(_state: GameState, p: PlayerState, cardId: number, cave: number): boolean {
+/** Does the dragon's "Ignore this dragon's cost if …" clause hold for an entice into `cave`? */
+export function evaluateIgnoreCost(_state: GameState, p: PlayerState, cardId: number, cave: number): boolean {
   void _state;
   const card = dragonCard(cardId);
   if (!card.ignoreCost || !card.ability) return false;
@@ -137,7 +134,7 @@ export function exploreCost(p: PlayerState, cave: number): GainItem[] {
   return cost;
 }
 
-export function explore(state: GameState, playerId: PlayerId, cave: number): GameState {
+export function explore(state: GameState, playerId: PlayerId, cave: number, payment?: PayUnit[]): GameState {
   const p = player(state, playerId);
   const names = ['crimson', 'golden', 'amethyst'] as const;
   // Rulebook: the 3rd entry into a cave in a round is the maximum.
@@ -146,10 +143,7 @@ export function explore(state: GameState, playerId: PlayerId, cave: number): Gam
   }
   const cost = exploreCost(p, cave);
   if (!canPay(p, cost)) return log(state, 'explore: cannot pay');
-  const q = payItems(clone(p), cost, undefined);
-  // pay egg portion of explore cost
-  const eggN = cost.filter((it) => it.kind === 'egg').reduce((a, i) => a + i.count, 0);
-  removeEggs(q, eggN);
+  const q = payCost(p, cost, payment).player;
   q.explores[names[cave]!] += 1;
   let s = setPlayer(state, q);
   s = log(s, `${player(s, playerId).name} explored cave ${cave + 1}`);

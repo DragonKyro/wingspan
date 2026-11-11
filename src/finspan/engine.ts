@@ -42,6 +42,15 @@ export function settle(state: GameState): GameState {
 
   while (s.pending.length === 0 && (s.gameEndQueue?.length ?? 0) > 0) {
     const [head, ...rest] = s.gameEndQueue!;
+    // "Activate any GAME END abilities on fish in your ocean (in any order)":
+    // with 2+ still-live abilities left, the player picks the next one.
+    const mine = s.gameEndQueue!.filter(
+      (e) => e.playerId === head.playerId && hasGameEndEffect(topFish(slotAt(getPlayer(s, e.playerId).ocean, e.slot))),
+    );
+    if (mine.length >= 2) {
+      s = { ...s, pending: [{ kind: 'chooseGameEndAbility', playerId: head.playerId, slots: mine.map((e) => e.slot), optional: true }] };
+      break;
+    }
     s = { ...s, gameEndQueue: rest };
     const p = getPlayer(s, head.playerId);
     // Re-read the visible fish — an earlier game-end ability may have

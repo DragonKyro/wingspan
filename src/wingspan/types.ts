@@ -189,6 +189,10 @@ export interface BirdRef {
  *  `skipActivation`/`activatePower` which also belong to the named player. */
 export type PendingStep =
   /** Pick `count` dice in the feeder and take their food. `faces` restricts which die faces qualify. */
+  /** Take `count` dice from the feeder (`faces` restricts them). Answer `dice`
+   *  with 1..count picks (the rest stay queued, so a mid-pick refill is seen
+   *  first), `{ picks: [], reroll: true }` to reset an all-same-face feeder and
+   *  pick from the new dice, or `{ picks: [] }` to take nothing. */
   | { kind: 'pickDie'; playerId: PlayerId; count: number; faces?: DieFace[]; then?: PendingTag }
   /** From the supply: choose which food types to take (optionally cache on `cache`). */
   | { kind: 'chooseSupplyFood'; playerId: PlayerId; count: number; options: FoodType[] | 'any'; cache?: BirdRef | null; then?: PendingTag }
@@ -224,6 +228,23 @@ export type PendingStep =
   | { kind: 'chooseFoodSteal'; playerId: PlayerId; from: PlayerId; food: FoodType | 'any'; then?: PendingTag }
   /** Take a face-up tray card (`habitat` restricts to cards that can live there). */
   | { kind: 'chooseTrayCard'; playerId: PlayerId; habitat?: Habitat; peek?: boolean; then?: PendingTag }
+  /** A plain "draw N [card]" (not "from the deck"): as in the draw-cards action,
+   *  each card is a face-up tray card or the top of the deck, picked one at a
+   *  time (answer `trayPick` with `cardId` for a tray card, without it for the
+   *  deck). Rulebook: "You may choose to draw face-up cards or from the deck as
+   *  normal". `then` runs after the last card. */
+  | { kind: 'chooseCardDraw'; playerId: PlayerId; count: number; then?: PendingTag }
+  /** Round end (teal) / game end (yellow): which of your waiting birds' powers
+   *  runs next — "you may resolve your birds' powers in any order" / "you may
+   *  activate them in any order". Answer `repeatTarget` with the bird. */
+  | { kind: 'choosePowerOrder'; playerId: PlayerId; queue: 'roundEnd' | 'gameEnd'; birds: BirdRef[]; then?: PendingTag }
+  /** Not a player choice: runs `then` when it reaches the head of the queue
+   *  (e.g. a check after every other player has made their own choice). */
+  | { kind: 'deferredEffect'; playerId: PlayerId; then: PendingTag }
+  /** "Draw N [card] ... play one of those birds for free; discard the rest":
+   *  the player picks the bird and its habitat (answer `handCards` with one
+   *  card id + `habitat`), or plays none (`handCards` with no ids). */
+  | { kind: 'choosePoolPlay'; playerId: PlayerId; cardIds: number[]; then?: PendingTag }
   /** Remove `count` dice from the feeder without gaining their food. */
   | { kind: 'chooseDieRemove'; playerId: PlayerId; count: number; then?: PendingTag }
   /** Pick `min`..`max` own birds (optionally within one habitat).
@@ -252,7 +273,9 @@ export type PendingStep =
    *  (Wrybill). */
   | { kind: 'chooseBonusCards'; playerId: PlayerId; cardIds: number[]; keep: number; fromDiscard?: boolean; fromHand?: boolean; copyFrom?: PlayerId; then?: PendingTag }
   /** Discard `count` bonus cards from hand. `optional`: a 0-length answer declines. */
-  | { kind: 'discardBonusCards'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
+  /** `upTo`: discard 0..count ("discard up to / any number"); `then` runs with
+   *  however many were discarded, none included. */
+  | { kind: 'discardBonusCards'; playerId: PlayerId; count: number; optional?: boolean; upTo?: boolean; then?: PendingTag }
   /** Move `bird` to another habitat (rightmost-bird powers). */
   | { kind: 'moveBirdHabitat'; playerId: PlayerId; bird: BirdRef; then?: PendingTag }
   /** Pick which player goes first in an everyone-gains effect. */
@@ -294,7 +317,7 @@ export type PendingStep =
   /** Asia: move `bird` (the card only) to another player's mat; you pick its habitat. */
   | { kind: 'moveBirdToPlayer'; playerId: PlayerId; bird: BirdRef; target: PlayerId; then?: PendingTag }
   /** Generic yes/no gate for "you may" sub-effects. */
-  | { kind: 'confirm'; playerId: PlayerId; then?: PendingTag }
+  | { kind: 'confirm'; playerId: PlayerId; prompt?: string; then?: PendingTag }
   /** Pick hand cards without spending them (the continuation decides their use). */
   | { kind: 'chooseHandPick'; playerId: PlayerId; count: number; optional?: boolean; then?: PendingTag }
   /** Pick `min`..`count` cards of a drawn pool to tuck behind `bird`; the rest go to hand or the discard pile. */
@@ -563,6 +586,10 @@ export interface GameState {
   setupRemaining: PlayerId[];
   /** End-of-round teal powers remaining: resolved one at a time in 'roundEnd'. */
   roundEndQueue: { playerId: PlayerId; bird: BirdRef }[];
+  /** Pink powers triggered this turn whose text says "at the end of their
+   *  turn": they run when the active player's turn ends (before the tray
+   *  refills), not at the trigger. `trigger` is the PinkTrigger (JSON). */
+  endOfTurnPinks?: { owner: PlayerId; bird: BirdRef; actor: PlayerId; trigger: unknown }[];
   /** Game-end yellow powers remaining: resolved one at a time in 'gameEnd'. */
   gameEndQueue: { playerId: PlayerId; bird: BirdRef }[] | null;
   // === americas expansion ===
@@ -672,8 +699,19 @@ export type Choice =
   | { kind: 'dice'; picks: { die: number; take?: FoodType }[]; reroll?: boolean }
   | { kind: 'supplyFood'; foods: FoodType[] }
   | { kind: 'birds'; birds: BirdRef[] }
-  /** `habitat` disambiguates 'any'-habitat additional plays. */
-  | { kind: 'handCards'; cardIds: number[]; habitat?: Habitat }
+  /** `habitat` disambiguates 'any'-habitat additional plays. For an
+   *  additional play (chooseAdditionalPlay), the player may also say how they
+   *  pay — "discarding eggs from any birds", which food tokens (2-for-1 and
+   *  nectar included), and for "you may ignore 1 [food] or 1 [egg]" which one
+   *  (`ignore`). Omitted parts are paid automatically. */
+  | {
+      kind: 'handCards';
+      cardIds: number[];
+      habitat?: Habitat;
+      foodPayments?: FoodType[];
+      eggPayments?: BirdRef[];
+      ignore?: 'food' | 'egg';
+    }
   | { kind: 'bonusCards'; cardIds: number[] }
   | { kind: 'habitat'; habitat: Habitat }
   | { kind: 'player'; playerId: PlayerId }

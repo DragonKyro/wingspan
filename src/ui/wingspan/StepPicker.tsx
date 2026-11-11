@@ -49,6 +49,8 @@ export function StepPicker({
           count={step.count}
           faces={step.faces}
           onDone={(picks) => send({ kind: 'dice', picks })}
+          onReroll={() => send({ kind: 'dice', picks: [], reroll: true })}
+          onNone={() => send({ kind: 'dice', picks: [] })}
         />
       );
     }
@@ -289,6 +291,34 @@ export function StepPicker({
           ))}
         </div>
       );
+    case 'choosePoolPlay':
+      return (
+        <div className="row">
+          <span>play one for free (the rest are discarded):</span>
+          {step.cardIds.map((id) => (
+            <span key={id} className="row">
+              <BirdCardView cardId={id} />
+              {bird(id).habitats
+                .filter((h) => p.board[h].length < 5)
+                .map((h) => (
+                  <button key={h} onClick={() => send({ kind: 'handCards', cardIds: [id], habitat: h })}>
+                    {h}
+                  </button>
+                ))}
+            </span>
+          ))}
+          <button onClick={() => send({ kind: 'handCards', cardIds: [] })}>play none</button>
+        </div>
+      );
+    case 'choosePowerOrder':
+      return (
+        <BirdRefPicker
+          label={`which ${step.queue === 'roundEnd' ? 'round-end' : 'game-end'} power next?`}
+          targets={step.birds}
+          count={1}
+          onDone={(birds) => send({ kind: 'repeatTarget', bird: birds[0]! })}
+        />
+      );
     case 'chooseRepeatPower': {
       const source = step.then?.bird;
       const targets = p.board[step.habitat]
@@ -398,6 +428,21 @@ export function StepPicker({
         />
       );
     }
+    case 'chooseCardDraw':
+      return (
+        <div className="row">
+          <span>draw {step.count > 1 ? `${step.count} cards (one at a time)` : 'a card'}:</span>
+          {game.tray.map(
+            (id, i) =>
+              id != null && (
+                <BirdCardView key={i} cardId={id} selectable onClick={() => send({ kind: 'trayPick', cardId: id })} />
+              ),
+          )}
+          <button className="primary" onClick={() => send({ kind: 'trayPick' })}>
+            Draw from the deck
+          </button>
+        </div>
+      );
     case 'chooseTrayCard':
       return (
         <div className="row">
@@ -671,7 +716,7 @@ export function StepPicker({
     case 'confirm':
       return (
         <div className="row">
-          <span>continue?</span>
+          <span>{step.prompt ?? 'continue?'}</span>
           <button className="primary" onClick={() => send({ kind: 'boolean', yes: true })}>Yes</button>
           <button onClick={() => send({ kind: 'boolean', yes: false })}>No</button>
         </div>

@@ -1,3 +1,4 @@
+import type { Effect } from './abilities';
 // Core types for the Finspan engine. Everything is JSON-serializable: the
 // engine is a pure applyAction(state, action) => state reducer, so replays
 // work by logging actions.
@@ -191,7 +192,32 @@ export type PendingStep =
   | { kind: 'chooseRecover'; playerId: PlayerId; count: number; optional?: boolean }
   /** Discard a school and place 1 young in 4 different slots (or 1 young if
    *  no school to discard — handled by queuing chooseYoungSlots instead). */
-  | { kind: 'chooseUnSchool'; playerId: PlayerId; count: number; optional?: boolean };
+  | { kind: 'chooseUnSchool'; playerId: PlayerId; count: number; optional?: boolean }
+  /** An automatic benefit the player may take or decline ("These benefits are
+   *  optional for each affected player"): an egg on each matching fish, or 1
+   *  coral in a fixed dive site. Answer `confirm` (or `decline`). */
+  | {
+      kind: 'confirmBenefit';
+      playerId: PlayerId;
+      benefit: 'eggsOnEach' | 'coral';
+      filter?: SlotFilter;
+      col?: number;
+      label: string;
+      optional: true;
+    }
+  /** WHEN PLAYED with several benefits: which to gain next ("If there is more
+   *  than one benefit, you may choose the order"). Answer `index`; `decline`
+   *  skips the remaining benefits. */
+  | { kind: 'chooseEffectOrder'; playerId: PlayerId; source?: SlotRef; effects: Effect[]; label: string; optional: true }
+  /** GAME END: which of your remaining game-end abilities activates next
+   *  ("Activate any GAME END abilities ... (in any order)"). Answer `slots`
+   *  with one slot; `decline` skips the rest. */
+  | { kind: 'chooseGameEndAbility'; playerId: PlayerId; slots: SlotRef[]; optional: true }
+  /** Not a player choice: effects that run when this step reaches the head of
+   *  the queue — the rest of an ability after the benefit picked first, or a
+   *  two-part ability's coral-gated second benefit, checked only then ("you
+   *  only gain the second benefit after you gain or decline the first"). */
+  | { kind: 'deferredEffects'; playerId: PlayerId; source?: SlotRef; effects: Effect[]; gate?: { col: number; count: number } };
 
 /** Filter over ocean slots (visible fish). */
 export interface SlotFilter {
@@ -221,6 +247,10 @@ export interface CardFilter {
 // === choices (answers to pending steps) =====================================
 
 export type Choice =
+  /** Take an offered benefit (confirmBenefit). */
+  | { kind: 'confirm' }
+  /** Pick option `index` (chooseEffectOrder). */
+  | { kind: 'index'; index: number }
   | { kind: 'slots'; slots: SlotRef[] }
   | { kind: 'handCards'; cardIds: number[] }
   | { kind: 'move'; from: SlotRef; to: SlotRef; token: 'young' | 'school' }

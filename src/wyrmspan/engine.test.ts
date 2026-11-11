@@ -565,7 +565,13 @@ describe('audit regressions', () => {
     const cavesBefore = playerOf(s, 'p1').hand.filter((id) => !isDragonCard(id)).length;
     s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'resources', resources: ['milk'] } });
     expect(playerOf(s, 'p1').caves[0]!.spaces[0]!.dragon!.cached).toEqual(['milk']);
+    // "Gain [CaveCard]" is the player's pick: a face-up cave card or the top of the deck.
+    expect(s.pending[0]).toMatchObject({ kind: 'chooseDisplay', deck: 'cave', orDeck: true });
+    expect(s.guild.track.p1).toBe(0);
+    const faceUp = s.caveDisplay[0]!;
+    s = applyAction(s, { type: 'resolveChoice', playerId: 'p1', answer: { kind: 'index', index: 0 } });
     expect(playerOf(s, 'p1').hand.filter((id) => !isDragonCard(id)).length).toBe(cavesBefore + 1);
+    expect(playerOf(s, 'p1').hand).toContain(faceUp);
     expect(s.guild.track.p1).toBe(1);
     expect(s.pending[0]?.kind).toBe('chooseEggSpot');
     // Space 1's Hoarding Flyer STILL hasn't granted its gold yet!

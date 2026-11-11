@@ -12,6 +12,8 @@
     "test:run": "vitest run --passWithNoTests",
     "typecheck": "tsc",
     "cards": "node scripts/convert-cards.mjs",
+    "train:build": "vite build --config training/vite.config.ts",
+    "wyrm:bench": "vite-node training/wyrmspan/bench.ts --",
     "deploy:rules": "npx -y firebase-tools@latest deploy --only database"
   },
   "dependencies": {

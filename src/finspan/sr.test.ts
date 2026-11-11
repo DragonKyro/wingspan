@@ -123,12 +123,13 @@ describe('reef overlay dives', () => {
     expect(s.pending.some((x) => x.kind === 'chooseEggTargets')).toBe(true);
   });
 
-  it('S&R replaces the twilight bonus even where a twilight fish exists', () => {
-    // Purple column: Showy Bristlemouth is in twilight; reef step replaces the
-    // twilight egg bonus, and the bottom 'egg' bonus still applies.
+  it('S&R keeps the twilight bonus (reprinted on the reef overlay) and adds the reef offer', () => {
+    // Purple column: Showy Bristlemouth is in twilight, so its egg bonus applies
+    // (sharks_p03.png reprints it on the overlay), then the reef offer, then
+    // the bottom 'egg' bonus.
     const s = applyAction(srGame(3), { type: 'dive', playerId: 'p1', col: 1 });
     const kinds = s.pending.map((x) => x.kind);
-    expect(kinds).toEqual(['chooseReefDiscard', 'chooseEggTargets']);
+    expect(kinds).toEqual(['chooseEggTargets', 'chooseReefDiscard', 'chooseEggTargets']);
   });
 });
 
@@ -198,16 +199,20 @@ describe('S&R abilities', () => {
     s = setPlayer(s, p);
     const ref: SlotRef = { row: 3, col: 0 };
 
+    // The coral is counted when the second part is reached — after the first
+    // part resolves ("you only gain the second benefit after you gain or
+    // decline the first").
+    const decline = (t: GameState) => applyAction(t, { type: 'resolveChoice', playerId: 'p1', choice: { kind: 'decline' } });
     const noCoral = fireAbility(s, 'p1', card.ability, ref, 'test');
-    expect(noCoral.pending.map((x) => x.kind)).toEqual(['chooseRecover']);
+    expect(noCoral.pending.map((x) => x.kind)).toEqual(['chooseRecover', 'deferredEffects']);
+    expect(decline(noCoral).pending).toEqual([]);
 
     let p2 = getPlayer(s, 'p1');
     for (let i = 0; i < 3; i++) p2 = placeCoral(p2, 0);
     s = setPlayer(s, p2);
     const withCoral = fireAbility(s, 'p1', card.ability, ref, 'test');
-    const kinds = withCoral.pending.map((x) => x.kind);
-    expect(kinds[0]).toBe('chooseRecover');
-    expect(kinds).toContain('chooseMove');
+    expect(withCoral.pending[0]?.kind).toBe('chooseRecover');
+    expect(decline(withCoral).pending.map((x) => x.kind)).toContain('chooseMove');
   });
 
   it('allows forming a school in an earlier effect and scattering it with [UnSchoolFish]', () => {

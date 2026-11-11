@@ -535,11 +535,13 @@ const matchDraw: Matcher = (s) => {
     }
     return null;
   }
-  // Standalone "Draw (N) [cards] from the deck." — straight to hand.
+  // Standalone "Draw (N) [cards] from the deck." — straight to hand. A draw is
+  // deck-only (source 'deck'); a plain "gain" lets the player take a display card.
   m = new RegExp(`^Draw (\\d+ )?(${ICONS})from the deck\\.$`).exec(s);
   if (m) {
-    const items = iconsOf(m[2]!).map((it) =>
-      it.kind === 'card' && m[1] ? { ...it, count: it.count * Number(m[1]) } : it,
+    const n = m[1] ? Number(m[1]) : 1;
+    const items = iconsOf(m[2]!).map((it): GainItem =>
+      it.kind === 'card' ? { ...it, count: it.count * n, source: 'deck' } : it,
     );
     return [{ op: 'gain', items }];
   }
@@ -1010,7 +1012,7 @@ function attachTo(steps: Step[], sent: string): Step[] | 'consumed' | null {
     return [{ op: 'opponentsGain', items: [{ kind: 'egg', count: n }] }];
   }
   if ((m = new RegExp(`^(?:Each|All) opponents? draws? (${ICONS})from the deck\\.$`).exec(sent))) {
-    return [{ op: 'opponentsGain', items: iconsOf(m[1]!) }];
+    return [{ op: 'opponentsGain', items: iconsOf(m[1]!).map((it): GainItem => (it.kind === 'card' ? { ...it, source: 'deck' } : it)) }];
   }
   const anyResourceOptions: GainItem[][] = RESOURCES.map((res) => [{ kind: 'resource', res, count: 1 }]);
   if (/^(?:Each|All) opponents? gains? 1 (?:benefit|resource) of their choice\.$/.test(sent)) {

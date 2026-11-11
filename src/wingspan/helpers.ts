@@ -244,50 +244,67 @@ export function payFoodPlan(food: Record<FoodType, number>, cost: FoodCost): Foo
     return paid;
   }
 
-  // 'and': satisfy specific needs (own type or nectar), then 'any' units, then 2-for-1.
+  // 'and': first every specific need takes its own type, then nectar (wild);
+  // only then are the shortfalls paid 2-for-1, and the 'any' units, from what
+  // is left. (Matching own types first is never worse: a token covers its own
+  // food for 1 token, but only half a unit in a 2-for-1 — paying one item's
+  // shortfall early could spend a token a later item needed as its own type.)
   let anyNeed = 0;
+  const needs: { food: FoodType; need: number }[] = [];
   for (const item of cost.items) {
     if (item.food === 'any') {
       anyNeed += item.count;
       continue;
     }
-    let need = item.count;
-    const own = Math.min(have[item.food], need);
+    const own = Math.min(have[item.food], item.count);
     have[item.food] -= own;
-    need -= own;
     for (let i = 0; i < own; i++) paid.push(item.food);
-    if (need > 0) {
-      const n = Math.min(have.nectar, need);
-      have.nectar -= n;
-      need -= n;
-      for (let i = 0; i < n; i++) paid.push('nectar');
-    }
-    if (need > 0) {
-      // 2-for-1: spend 2 leftover tokens per missing unit.
-      const cost2 = need * 2;
-      const leftover = (Object.keys(have) as FoodType[]).reduce((n, f) => n + have[f], 0);
-      if (leftover < cost2) return null;
-      let took = 0;
-      for (const f of Object.keys(have) as FoodType[]) {
-        while (have[f] > 0 && took < cost2) {
-          have[f]--;
-          took++;
-          paid.push(f);
-        }
-      }
-    }
+    needs.push({ food: item.food, need: item.count - own });
   }
+  let shortfall = 0;
+  for (const n of needs) {
+    const w = Math.min(have.nectar, n.need);
+    have.nectar -= w;
+    for (let i = 0; i < w; i++) paid.push('nectar');
+    shortfall += n.need - w;
+  }
+  // 2-for-1: 2 leftover tokens per missing unit, plus 1 per 'any' unit.
+  const tokensNeeded = shortfall * 2 + anyNeed;
   const leftover = (Object.keys(have) as FoodType[]).reduce((n, f) => n + have[f], 0);
-  if (leftover < anyNeed) return null;
+  if (leftover < tokensNeeded) return null;
   let took = 0;
   for (const f of Object.keys(have) as FoodType[]) {
-    while (have[f] > 0 && took < anyNeed) {
+    while (have[f] > 0 && took < tokensNeeded) {
       have[f]--;
       took++;
       paid.push(f);
     }
   }
   return paid;
+}
+
+/**
+ * Cached food a player may spend when playing a bird. Rulebook: a cached
+ * token "You cannot spend that food token" — except on the birds whose power
+ * says so: "you may spend [seed] cached on this card / bird" (Coal Tit,
+ * Eurasian Nuthatch, Pine Grosbeak), "[invertebrate] cached on this bird
+ * whenever there is an egg on it" (Great Spotted Kiwi), and "When playing a
+ * bird, you may spend [wild] cached on this bird as any food type (except
+ * [nectar])" (Rock Ptarmigan). (Ivory Gull's is for activating powers.)
+ */
+export function spendableCached(p: PlayerState): { bird: BirdRef; food: FoodType }[] {
+  const out: { bird: BirdRef; food: FoodType }[] = [];
+  for (const { ref, bird: b } of playedBirds(p)) {
+    const text = bird(b.cardId).powerText ?? '';
+    for (const f of b.cached) {
+      const ok =
+        (f === 'seed' && /you may spend \[seed\] cached on this (card|bird)/.test(text)) ||
+        (f === 'invertebrate' && b.eggs > 0 && /spend \[invertebrate\] cached on this bird whenever there is an egg on it/.test(text)) ||
+        (f !== 'nectar' && /When playing a bird, you may spend \[wild\] cached on this bird/.test(text));
+      if (ok) out.push({ bird: ref, food: f });
+    }
+  }
+  return out;
 }
 
 /** Eggs needed to play into column `col` (0-indexed). */
@@ -477,14 +494,9 @@ export function autoPayBird(
   cardPayments?: number[];
 } | null {
   const card = bird(cardId);
-  const cached: { bird: BirdRef; food: FoodType }[] = [];
+  const cached = spendableCached(p);
   const pool = { ...p.food };
-  for (const { ref, bird: b } of playedBirds(p)) {
-    for (const f of b.cached) {
-      pool[f]++;
-      cached.push({ bird: ref, food: f });
-    }
-  }
+  for (const c of cached) pool[c.food]++;
   const planFor = (cost: FoodCost) => {
     const plan = payFoodPlan(pool, cost);
     if (!plan) return null;

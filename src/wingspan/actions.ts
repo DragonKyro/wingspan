@@ -44,6 +44,7 @@ import {
   isSideways,
   nextSlot,
   payFoodPlan,
+  spendableCached,
   playEggCost,
   rowFull,
   spendFood,
@@ -64,6 +65,8 @@ import {
   refillTray,
   resetTray,
   resetPinkFlags,
+  drawCardsChoice,
+  runEndOfTurnPinks,
   runPower,
   setPlayer,
   takeDieFromFeeder,
@@ -235,12 +238,16 @@ export function playBird(state: GameState, action: PlayBirdAction): GameState {
     };
     if (effCost.kind === 'and' && effCost.items.length === 0) effCost = { kind: 'none' };
   }
-  // Cached food on birds can be spent like supply food (european caching).
+  // Cached food can only be spent from birds whose power allows it.
   const cachedPayments = action.cachedFoodPayments ?? [];
+  const spendable = spendableCached(p);
   for (const cp of cachedPayments) {
     const b = birdAt(state, action.playerId, cp.bird);
     if (b.ghost) throw new Error('that space is covered');
     if (!b.cached.includes(cp.food)) throw new Error('that food is not cached there');
+    const at = spendable.findIndex((x) => x.food === cp.food && x.bird.habitat === cp.bird.habitat && x.bird.index === cp.bird.index);
+    if (at < 0) throw new Error("that bird's cached food can't be spent");
+    spendable.splice(at, 1);
   }
   // Validate the food payment covers the (possibly card-reduced) cost.
   const paid: Record<FoodType, number> = {
@@ -428,7 +435,10 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
     s = firePinkTriggers(s, action.playerId, { kind: 'actionUpgrade', food: action.rerollCost });
     s = feederReset(s, action.playerId);
   }
-  if (action.picks.length !== diceToTake) throw new Error(`take ${diceToTake} dice`);
+  // Dice picked now come from what the player saw; the rest — all of them
+  // after a reroll with no picks, or past the dice left in the feeder (it
+  // refills when emptied) — are picked once seen (pickDie).
+  if (action.picks.length > diceToTake) throw new Error(`take ${diceToTake} dice`);
   const gained: FoodType[] = [];
   for (const pick of action.picks) {
     const face = s.feederIn[pick.die];
@@ -446,6 +456,10 @@ export function gainFood(state: GameState, action: GainFoodAction): GameState {
   // Pink triggers: rodents taken (and any food-type watch).
   for (const f of new Set(gained)) {
     s = firePinkTriggers(s, action.playerId, { kind: 'gainFood', food: f });
+  }
+  const later = diceToTake - action.picks.length;
+  if (later > 0) {
+    s = pushPending(s, { kind: 'pickDie', playerId: action.playerId, count: later, then: { effect: 'actionFoodPinks' } });
   }
   return rowHumAction(startActivation(s, action.playerId, 'forest'), action.playerId, 'forest');
 }
@@ -558,7 +572,9 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
     }
     if (p.food[action.resetTrayCost] <= 0) throw new Error(`you don't have ${action.resetTrayCost}`);
   }
-  if (action.picks.length !== count) throw new Error(`draw ${count} cards`);
+  // Picks not made now (e.g. before a paid tray reset) are made once the new
+  // tray is seen: tray or deck, one at a time (chooseCardDraw).
+  if (action.picks.length > count) throw new Error(`draw ${count} cards`);
   for (const pick of action.picks) {
     if (pick !== 'deck' && (pick < 0 || pick > 2 || state.tray[pick] == null)) {
       throw new Error('that tray slot is empty');
@@ -599,6 +615,7 @@ export function drawCards(state: GameState, action: DrawCardsAction): GameState 
       s = { ...setPlayer(s, { ...pl, hand: [...pl.hand, id] }), tray };
     }
   }
+  if (action.picks.length < count) s = drawCardsChoice(s, action.playerId, count - action.picks.length);
   // Americas pink: "when another player takes the draw-cards action".
   s = firePinkTriggers(s, action.playerId, { kind: 'drawCards' });
   return rowHumAction(startActivation(s, action.playerId, 'wetland'), action.playerId, 'wetland');
@@ -659,6 +676,12 @@ export function endTurn(state: GameState, playerId: PlayerId): GameState {
  *  the Americas hummingbird garden), then hand the turn to the next player
  *  with action cubes left — or end the round when nobody has any. */
 function passTurn(state: GameState): GameState {
+  // Other players' "at the end of their turn" pinks first; the turn finishes
+  // once their choices are resolved (deferredEffect → finishTurnAfterPinks).
+  if (state.endOfTurnPinks?.length) {
+    const s = runEndOfTurnPinks(state);
+    return pushPending(s, { kind: 'deferredEffect', playerId: actingPlayerId(state), then: { effect: 'endTurnPinksDone' } });
+  }
   let s = refillTray(state);
   if (isAmericas(s)) s = refillHumGarden(s);
   let next = s.currentPlayerIndex;
@@ -670,6 +693,11 @@ function passTurn(state: GameState): GameState {
   if (!s.players.some((pl) => pl.actionCubes > 0)) return endRound(s);
   s = { ...s, currentPlayerIndex: next, turnTookAction: false };
   return resetPinkFlags(s, s.playerOrder[next]!);
+}
+
+/** Called by the pending resolver once the end-of-turn pinks are resolved. */
+export function finishTurnAfterPinks(state: GameState): GameState {
+  return passTurn(state);
 }
 
 /** Called by the pending resolver when the queued end-of-turn discard is
@@ -1090,10 +1118,22 @@ function beginGameEnd(state: GameState): GameState {
   return { ...state, phase: 'gameEnd', gameEndQueue: powerQueue(state, 'yellow') };
 }
 
+/** With 2+ powers of the head player waiting, they pick the order (turn order
+ *  between players stays fixed): queue a choosePowerOrder instead of running. */
+function pickPowerOrder(state: GameState, queue: 'roundEnd' | 'gameEnd'): GameState | null {
+  const q = (queue === 'roundEnd' ? state.roundEndQueue : state.gameEndQueue) ?? [];
+  const pid = q[0]!.playerId;
+  const mine = q.filter((e) => e.playerId === pid).map((e) => e.bird);
+  if (mine.length < 2 || isAutoma(state, pid)) return null;
+  return { ...state, pending: [{ kind: 'choosePowerOrder', playerId: pid, queue, birds: mine }] };
+}
+
 /** Advance the roundEnd queue: run the head bird's teal power. */
 export function runRoundEndStep(state: GameState): GameState {
   const q = state.roundEndQueue;
   if (q.length === 0 || state.pending.length > 0) return state;
+  const picked = pickPowerOrder(state, 'roundEnd');
+  if (picked) return picked;
   const { playerId, bird: ref } = q[0]!;
   let s: GameState = { ...state, roundEndQueue: q.slice(1) };
   s = runPower(s, playerId, ref);
@@ -1104,6 +1144,8 @@ export function runRoundEndStep(state: GameState): GameState {
 export function runGameEndStep(state: GameState): GameState {
   const q = state.gameEndQueue;
   if (!q || q.length === 0 || state.pending.length > 0) return state;
+  const picked = pickPowerOrder(state, 'gameEnd');
+  if (picked) return picked;
   const { playerId, bird: ref } = q[0]!;
   let s: GameState = { ...state, gameEndQueue: q.slice(1) };
   s = runPower(s, playerId, ref);

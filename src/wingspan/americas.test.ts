@@ -108,6 +108,9 @@ describe('americas expansion', () => {
       playerId: pid,
       choice: { kind: 'humPick', source: 0 },
     });
+    // The 'card' benefit is a draw: a face-up tray card or the deck.
+    expect(s.pending[0]).toMatchObject({ kind: 'chooseCardDraw', count: 1 });
+    s = applyAction(s, { type: 'resolveChoice', playerId: pid, choice: { kind: 'trayPick' } });
     const p = getPlayer(s, pid);
     expect(p.humBoard.forest).toBe(RUBY_TOPAZ);
     expect(s.humGarden[0]).toEqual([]); // slot is empty until end-of-turn refill

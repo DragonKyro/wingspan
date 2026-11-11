@@ -12,14 +12,27 @@ export function DicePicker({
   count,
   faces,
   onDone,
+  onReroll,
+  onNone,
 }: {
   game: GameState;
   count: number;
   faces?: import('@/wingspan/types').DieFace[];
   onDone: (picks: { die: number; take?: FoodType }[]) => void;
+  /** Reset an all-same-face feeder first, then pick from the new dice. */
+  onReroll?: () => void;
+  /** Take nothing (powers are optional). */
+  onNone?: () => void;
 }) {
   const [picks, setPicks] = useState<number[]>([]);
+  const [splitTake, setSplitTake] = useState<'seed' | 'invertebrate'>('seed');
   const allowed = (i: number) => !faces || faces.some((w) => faceCovers(game.feederIn[i]!, w));
+  const available = game.feederIn.filter((_, i) => allowed(i)).length;
+  // Fewer matching dice than the count: take what is showing; the engine asks
+  // for the rest after the feeder refills.
+  const need = Math.min(count, available);
+  const sameFace = game.feederIn.length > 0 && game.feederIn.every((f) => f === game.feederIn[0]);
+  const anySplit = picks.some((i) => game.feederIn[i] === 'split');
   return (
     <div className="row">
       <span>take {count} dice{faces ? ` (${faces.join('/')})` : ''}:</span>
@@ -35,15 +48,26 @@ export function DicePicker({
           {f === 'split' ? 'inv/seed' : f === 'invertebrate' ? 'inv' : f}
         </span>
       ))}
+      {anySplit && (
+        <button onClick={() => setSplitTake(splitTake === 'seed' ? 'invertebrate' : 'seed')}>split die gives: {splitTake}</button>
+      )}
       <button
         className="primary"
-        disabled={picks.length !== count}
+        disabled={need === 0 || picks.length !== need}
         onClick={() =>
-          onDone(picks.map((die, k) => ({ die: die - k, take: 'seed' as FoodType })))
+          // Indices are against the live feeder, which shrinks as dice are taken.
+          onDone(
+            picks.map((die, k) => ({
+              die: die - picks.slice(0, k).filter((x) => x < die).length,
+              take: game.feederIn[die] === 'split' ? splitTake : undefined,
+            })),
+          )
         }
       >
         Take
       </button>
+      {onReroll && sameFace && <button onClick={onReroll}>reset the feeder first</button>}
+      {onNone && <button onClick={onNone}>take nothing</button>}
     </div>
   );
 }

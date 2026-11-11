@@ -74,6 +74,9 @@ export function WyrmspanScreen() {
     state.pending.length === 0 &&
     !actingP.passed &&
     controls(actingId);
+  // Rulebook: resources may be exchanged "at any point" -- on your turn, and while
+  // one of your own choices is pending (e.g. to afford a "pay X" mid-ability).
+  const canExchange = (canActMain || (state.pending.length > 0 && state.phase !== 'gameEnd')) && controls(actingId);
 
   const selIsDragon =
     selectedCardId != null && actingP.hand.includes(selectedCardId) && isDragonCard(selectedCardId);
@@ -443,7 +446,7 @@ export function WyrmspanScreen() {
               )}
               <div className="spacer" />
               {/* 2-for-1 Resource Exchange */}
-              {canActMain && shownP.id === actingId && (
+              {canExchange && shownP.id === actingId && (
                 <div className="row exchange-bar">
                   <span className="muted">2→1 Trade:</span>
                   <span className="res-picker" role="group" aria-label="Give">

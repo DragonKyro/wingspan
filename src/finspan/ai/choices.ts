@@ -39,6 +39,14 @@ export function chooseForPending(state: GameState, step: PendingStep): Choice {
   const slots = [...allSlots(p.ocean)];
 
   switch (step.kind) {
+    case 'confirmBenefit':
+      return { kind: 'confirm' };
+    case 'chooseEffectOrder':
+      return { kind: 'index', index: 0 };
+    case 'chooseGameEndAbility':
+      return { kind: 'slots', slots: [step.slots[0]!] };
+    case 'deferredEffects':
+      return { kind: 'decline' }; // never at the head (expanded by dropInfeasible)
     case 'chooseEggTargets': {
       const ok = slots
         .filter(
