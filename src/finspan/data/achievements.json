@@ -1,0 +1,120 @@
+{
+  "sideA": [
+    {
+      "week": 1,
+      "name": "Eggs and/or Young",
+      "kind": "eggsAndYoung",
+      "per": 1
+    },
+    {
+      "week": 2,
+      "name": "Rows of Fish",
+      "kind": "fullRows",
+      "per": 2
+    },
+    {
+      "week": 3,
+      "name": "Schools",
+      "kind": "schools",
+      "per": 2
+    }
+  ],
+  "sideBTiles": [
+    {
+      "id": "b1",
+      "week": 1,
+      "name": "Eggs",
+      "kind": "eggs",
+      "per": 1
+    },
+    {
+      "id": "b2",
+      "week": 1,
+      "name": "Young",
+      "kind": "young",
+      "per": 3
+    },
+    {
+      "id": "b3",
+      "week": 1,
+      "name": "Eggs and/or Young",
+      "kind": "eggsAndYoung",
+      "per": 1
+    },
+    {
+      "id": "b4",
+      "week": 2,
+      "name": "Rows of Fish",
+      "kind": "fullRows",
+      "per": 2
+    },
+    {
+      "id": "b5",
+      "week": 2,
+      "name": "Fish",
+      "kind": "fish",
+      "per": 1
+    },
+    {
+      "id": "b6",
+      "week": 2,
+      "name": "Predator Tag",
+      "kind": "tagPredator",
+      "per": 2
+    },
+    {
+      "id": "b7",
+      "week": 3,
+      "name": "Schools",
+      "kind": "schools",
+      "per": 2
+    },
+    {
+      "id": "b8",
+      "week": 3,
+      "name": "Fish with Tokens",
+      "kind": "fishWithTokens",
+      "per": 1
+    },
+    {
+      "id": "b9",
+      "week": 3,
+      "name": "Consumed Fish",
+      "kind": "consumedFish",
+      "per": 1
+    },
+    {
+      "id": "s1",
+      "week": 3,
+      "name": "Fish Between 1-3 Points",
+      "kind": "fishPoints1to3",
+      "per": 1,
+      "set": "sr"
+    },
+    {
+      "id": "s2",
+      "week": 2,
+      "name": "Unique Tags Among Fish",
+      "kind": "uniqueTags",
+      "per": 2,
+      "set": "sr"
+    },
+    {
+      "id": "s3",
+      "week": 1,
+      "name": "Fish in the Sunlight Zone",
+      "kind": "fishSunlight",
+      "per": 1,
+      "set": "sr"
+    },
+    {
+      "id": "s4",
+      "week": 2,
+      "name": "Coral",
+      "kind": "coral",
+      "per": 2,
+      "set": "sr"
+    }
+  ],
+  "sideBLeaderBonus": 3
+}

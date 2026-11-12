@@ -1,0 +1,7522 @@
+[
+  {
+    "id": 1,
+    "group": "main",
+    "set": "base",
+    "name": "Abyssal Anglerfish",
+    "latin": "Melanocetus murrayi",
+    "points": 2,
+    "length": 12,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "3 [Wave] if no tokens on this fish",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 2,
+    "group": "main",
+    "set": "base",
+    "name": "Abyssal Halosaur",
+    "latin": "Halosauropsis macrochir",
+    "points": 3,
+    "length": 90,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 3,
+    "group": "main",
+    "set": "base",
+    "name": "Abyssal Spiderfish",
+    "latin": "Bathypterois longipes",
+    "points": 2,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][FishHatch][FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 4,
+    "group": "main",
+    "set": "base",
+    "name": "Angelshark",
+    "latin": "Squatina squatina",
+    "points": 2,
+    "length": 240,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "10 [Wave] if [ConsumeFish3] (there are 3+ fish under this one)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 5,
+    "group": "main",
+    "set": "base",
+    "name": "Angler",
+    "latin": "Lophius piscatorius",
+    "points": 4,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 6,
+    "group": "main",
+    "set": "base",
+    "name": "Arabian Carpetshark",
+    "latin": "Chiloscyllium arabicum",
+    "points": 4,
+    "length": 80,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][Predator] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 7,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Bluefin Tuna",
+    "latin": "Thunnus thynnus",
+    "points": 7,
+    "length": 450,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 8,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Bonito",
+    "latin": "Sarda sarda",
+    "points": 3,
+    "length": 90,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "6 [Wave] if [ConsumeFish2] (there are 2+ fish under this one)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 9,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Mackerel",
+    "latin": "Scomber scombrus",
+    "points": 4,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg][FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 10,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Sailfish",
+    "latin": "Istiophorus albicans",
+    "points": 8,
+    "length": 315,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 11,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Salmon",
+    "latin": "Salmo salar",
+    "points": 5,
+    "length": 150,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][Estuary]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 12,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Sturgeon",
+    "latin": "Acipenser oxyrinchus",
+    "points": 8,
+    "length": 400,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 13,
+    "group": "main",
+    "set": "base",
+    "name": "Atlantic Wolffish",
+    "latin": "Anarhichas lupus",
+    "points": 5,
+    "length": 150,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 14,
+    "group": "main",
+    "set": "base",
+    "name": "Banggai Cardinalfish",
+    "latin": "Pterapogon kauderni",
+    "points": 2,
+    "length": 9,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 15,
+    "group": "main",
+    "set": "base",
+    "name": "Barramundi",
+    "latin": "Lates calcarifer",
+    "points": 6,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 16,
+    "group": "main",
+    "set": "base",
+    "name": "Bearded Seadevil",
+    "latin": "Linophryne algibarbata",
+    "points": 5,
+    "length": 23,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FishLengthSmall] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 17,
+    "group": "main",
+    "set": "base",
+    "name": "Bigeye Tuna",
+    "latin": "Thunnus obesus",
+    "points": 8,
+    "length": 235,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 2,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 18,
+    "group": "main",
+    "set": "base",
+    "name": "Bigeye Smooth-Head",
+    "latin": "Bajacalifornia megalops",
+    "points": 4,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FlipperPurple] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 19,
+    "group": "main",
+    "set": "base",
+    "name": "Binocular Fish",
+    "latin": "Winteria telescopa",
+    "points": 1,
+    "length": 15,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 20,
+    "group": "main",
+    "set": "base",
+    "name": "Black Cardinalfish",
+    "latin": "Epigonus telescopus",
+    "points": 5,
+    "length": 75,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][FishHatch][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 21,
+    "group": "main",
+    "set": "base",
+    "name": "Black Hagfish",
+    "latin": "Eptatretus deani",
+    "points": 3,
+    "length": 64,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 22,
+    "group": "main",
+    "set": "base",
+    "name": "Black Swallower",
+    "latin": "Chiasmodon niger",
+    "points": 3,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][FlipperGreen]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 23,
+    "group": "main",
+    "set": "base",
+    "name": "Blob Sculpin",
+    "latin": "Psychrolutes phrictus",
+    "points": 2,
+    "length": 70,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][FlipperGreen]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 24,
+    "group": "main",
+    "set": "base",
+    "name": "Blue Tang",
+    "latin": "Paracanthurus hepatus",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[SchoolFeederMove][YoungFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 25,
+    "group": "main",
+    "set": "base",
+    "name": "Bluespine Unicornfish",
+    "latin": "Naso unicornis",
+    "points": 4,
+    "length": 70,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishHatch][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 26,
+    "group": "main",
+    "set": "base",
+    "name": "Bluestreak Cleaner Wrasse",
+    "latin": "Labroides dimidiatus",
+    "points": 3,
+    "length": 14,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 27,
+    "group": "main",
+    "set": "base",
+    "name": "Bluntnose Sixgill Shark",
+    "latin": "Hexanchus griseus",
+    "points": 8,
+    "length": 550,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FlipperPurple] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 28,
+    "group": "main",
+    "set": "base",
+    "name": "Chinese Trumpetfish",
+    "latin": "Aulostomus chinensis",
+    "points": 3,
+    "length": 80,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 29,
+    "group": "main",
+    "set": "base",
+    "name": "Chola Guitarfish",
+    "latin": "Pseudobatos percellens",
+    "points": 4,
+    "length": 100,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 30,
+    "group": "main",
+    "set": "base",
+    "name": "Clown Anemonefish",
+    "latin": "Amphiprion ocellaris",
+    "points": 2,
+    "length": 11,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "6 [Wave] if [YoungFish][YoungFish] (exactly 2 on this fish)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 31,
+    "group": "main",
+    "set": "base",
+    "name": "Common Fangtooth",
+    "latin": "Anoplogaster cornuta",
+    "points": 3,
+    "length": 16,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "3 [Wave] if [ConsumeFish1] (1+ fish under this one)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 32,
+    "group": "main",
+    "set": "base",
+    "name": "Cookiecutter Shark",
+    "latin": "Isistius brasiliensis",
+    "points": 3,
+    "length": 56,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "5 [Wave] if [PlayFishBottomRow] (this fish is in the bottom row)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 33,
+    "group": "main",
+    "set": "base",
+    "name": "Cownose Ray",
+    "latin": "Rhinoptera bonasus",
+    "points": 3,
+    "length": 120,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 34,
+    "group": "main",
+    "set": "base",
+    "name": "Creolefish",
+    "latin": "Paranthias furcifer",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 35,
+    "group": "main",
+    "set": "base",
+    "name": "Crocodilefish",
+    "latin": "Cymbacephalus beauforti",
+    "points": 5,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][FlipperBlue]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 36,
+    "group": "main",
+    "set": "base",
+    "name": "Deepsea Lizardfish",
+    "latin": "Bathysaurus ferox",
+    "points": 8,
+    "length": 65,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishHatch][SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 37,
+    "group": "main",
+    "set": "base",
+    "name": "Diamond Stingray",
+    "latin": "Hypanus dipterurus",
+    "points": 2,
+    "length": 180,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][Discard][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 38,
+    "group": "main",
+    "set": "base",
+    "name": "Elsman's Whipnose",
+    "latin": "Gigantactis elsmani",
+    "points": 7,
+    "length": 44,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][Discard][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 39,
+    "group": "main",
+    "set": "base",
+    "name": "Emperor Red Snapper",
+    "latin": "Lutjanus sebae",
+    "points": 3,
+    "length": 115,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 40,
+    "group": "main",
+    "set": "base",
+    "name": "Escolar",
+    "latin": "Lepidocybium flavobrunneum",
+    "points": 5,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 41,
+    "group": "main",
+    "set": "base",
+    "name": "European Anchovy",
+    "latin": "Engraulis encrasicolus",
+    "points": 3,
+    "length": 20,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][Estuary]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 42,
+    "group": "main",
+    "set": "base",
+    "name": "European Flounder",
+    "latin": "Platichtys flesus",
+    "points": 3,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][Estuary]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 43,
+    "group": "main",
+    "set": "base",
+    "name": "European Sturgeon",
+    "latin": "Acipenser sturio",
+    "points": 9,
+    "length": 600,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 44,
+    "group": "main",
+    "set": "base",
+    "name": "Faceless Cusk",
+    "latin": "Typhlonus nasus",
+    "points": 2,
+    "length": 46,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "bottom"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][PlayFishBottomRow]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 45,
+    "group": "main",
+    "set": "base",
+    "name": "False Catshark",
+    "latin": "Pseudotriakis microdon",
+    "points": 8,
+    "length": 300,
+    "size": "large",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [SchoolFeederMove][SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 46,
+    "group": "main",
+    "set": "base",
+    "name": "False Cleanerfish",
+    "latin": "Aspidontus taeniatus",
+    "points": 2,
+    "length": 11,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 47,
+    "group": "main",
+    "set": "base",
+    "name": "Flabby Whalefish",
+    "latin": "Gyrinomimus grahami",
+    "points": 3,
+    "length": 31,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][FishEgg][FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 48,
+    "group": "main",
+    "set": "base",
+    "name": "Footballfish",
+    "latin": "Himantolophus paucifilosus",
+    "points": 6,
+    "length": 17,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 49,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Devil Ray",
+    "latin": "Mobula mobular",
+    "points": 7,
+    "length": 520,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish][YoungFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 50,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Hatchetfish",
+    "latin": "Argyropelecus gigas",
+    "points": 4,
+    "length": 12,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [DrawCard][AllPlayers]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 51,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Hawkfish",
+    "latin": "Cirrhitus rivulatus",
+    "points": 4,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 52,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Manta Ray",
+    "latin": "Mobula birostris",
+    "points": 5,
+    "length": 900,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish][YoungFish][YoungFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 53,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Oarfish",
+    "latin": "Regalecus glesne",
+    "points": 9,
+    "length": 1100,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 2,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FlipperBlue] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 54,
+    "group": "main",
+    "set": "base",
+    "name": "Giant Trevally",
+    "latin": "Caranx ignobilis",
+    "points": 5,
+    "length": 170,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][FlipperPurple]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 55,
+    "group": "main",
+    "set": "base",
+    "name": "Gray Triggerfish",
+    "latin": "Balistes capriscus",
+    "points": 5,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 56,
+    "group": "main",
+    "set": "base",
+    "name": "Great Northern Tilefish",
+    "latin": "Lopholatilus chamaeleonticeps",
+    "points": 4,
+    "length": 125,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch][FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 57,
+    "group": "main",
+    "set": "base",
+    "name": "Great White Shark",
+    "latin": "Carcharodon carcharias",
+    "points": 10,
+    "length": 600,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 2,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][Predator] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 58,
+    "group": "main",
+    "set": "base",
+    "name": "Greenland Shark",
+    "latin": "Somniosus microcephalus",
+    "points": 8,
+    "length": 550,
+    "size": "large",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FishLengthLarge] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 59,
+    "group": "main",
+    "set": "base",
+    "name": "Grideye Fish",
+    "latin": "Ipnops agassizii",
+    "points": 3,
+    "length": 16,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 60,
+    "group": "main",
+    "set": "base",
+    "name": "Haddock",
+    "latin": "Melanogrammus aeglefinus",
+    "points": 7,
+    "length": 110,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [DrawCard][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 61,
+    "group": "main",
+    "set": "base",
+    "name": "Hogfish",
+    "latin": "Lachnolaimus maximus",
+    "points": 6,
+    "length": 90,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 62,
+    "group": "main",
+    "set": "base",
+    "name": "Honeycomb Scaly Dragonfish",
+    "latin": "Stomias affinis",
+    "points": 4,
+    "length": 22,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[YoungFish][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 63,
+    "group": "main",
+    "set": "base",
+    "name": "Humpback Anglerfish",
+    "latin": "Melanocetus johnsonii",
+    "points": 8,
+    "length": 18,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 2,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][PlayFishBottomRow] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 64,
+    "group": "main",
+    "set": "base",
+    "name": "Humphead Wrasse",
+    "latin": "Cheilinus undulatus",
+    "points": 4,
+    "length": 225,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FlipperGreen] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 65,
+    "group": "main",
+    "set": "base",
+    "name": "Indo-Pacific Sailfish",
+    "latin": "Istiophorus platypterus",
+    "points": 7,
+    "length": 350,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 66,
+    "group": "main",
+    "set": "base",
+    "name": "Japanese Anchovy",
+    "latin": "Engraulis japonicus",
+    "points": 3,
+    "length": 18,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 67,
+    "group": "main",
+    "set": "base",
+    "name": "Kaluga",
+    "latin": "Huso dauricus",
+    "points": 6,
+    "length": 560,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][Estuary]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 68,
+    "group": "main",
+    "set": "base",
+    "name": "Kawakawa",
+    "latin": "Euthynnus affinis",
+    "points": 6,
+    "length": 100,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FlipperBlue]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 69,
+    "group": "main",
+    "set": "base",
+    "name": "Largetooth Flounder",
+    "latin": "Pseudorhombus arsius",
+    "points": 5,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FlipperGreen]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 70,
+    "group": "main",
+    "set": "base",
+    "name": "Leafy Seadragon",
+    "latin": "Phycodurus eques",
+    "points": 2,
+    "length": 35,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "3 [Wave] if [SchoolFish] on this fish",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 71,
+    "group": "main",
+    "set": "base",
+    "name": "Little Skate",
+    "latin": "Leucoraja erinaceus",
+    "points": 6,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 1,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 72,
+    "group": "main",
+    "set": "base",
+    "name": "Live Sharksucker",
+    "latin": "Echeneis naucrates",
+    "points": 4,
+    "length": 110,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[ConsumeFish1][ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 73,
+    "group": "main",
+    "set": "base",
+    "name": "Long-Snouted Lancetfish",
+    "latin": "Alepisaurus ferox",
+    "points": 3,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 74,
+    "group": "main",
+    "set": "base",
+    "name": "Longspine Porcupinefish",
+    "latin": "Diodon holocanthus",
+    "points": 5,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FishLengthMedium] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 75,
+    "group": "main",
+    "set": "base",
+    "name": "Mahi-Mahi",
+    "latin": "Coryphaena hippurus",
+    "points": 7,
+    "length": 210,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 76,
+    "group": "main",
+    "set": "base",
+    "name": "Maltese Ray",
+    "latin": "Leucoraja melitensis",
+    "points": 3,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][ArrowDown][FishLengthSmall] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 77,
+    "group": "main",
+    "set": "base",
+    "name": "Mariana Snailfish",
+    "latin": "Pseudoliparis swirei",
+    "points": 1,
+    "length": 28,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "bottom"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][PlayFishBottomRow] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 78,
+    "group": "main",
+    "set": "base",
+    "name": "Mediterranean Damselfish",
+    "latin": "Chromis chromis",
+    "points": 4,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 79,
+    "group": "main",
+    "set": "base",
+    "name": "Mediterranean Parrotfish",
+    "latin": "Sparisoma cretense",
+    "points": 5,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 80,
+    "group": "main",
+    "set": "base",
+    "name": "Midwater Scorpionfish",
+    "latin": "Ectreposebastes imus",
+    "points": 3,
+    "length": 18,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 81,
+    "group": "main",
+    "set": "base",
+    "name": "Ocean Sunfish",
+    "latin": "Mola mola",
+    "points": 4,
+    "length": 330,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FishLengthLarge] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 82,
+    "group": "main",
+    "set": "base",
+    "name": "Oceanic Puffer",
+    "latin": "Lagocephalus lagocephalus",
+    "points": 5,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 83,
+    "group": "main",
+    "set": "base",
+    "name": "Pacific Sardine",
+    "latin": "Sardinops sagax",
+    "points": 4,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][FishEgg][FishHatch][FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 84,
+    "group": "main",
+    "set": "base",
+    "name": "Pacific White Skate",
+    "latin": "Bathyraja spinosissima",
+    "points": 3,
+    "length": 150,
+    "size": "large",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][YoungFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 85,
+    "group": "main",
+    "set": "base",
+    "name": "Pale Chimaera",
+    "latin": "Hydrolagus pallidus",
+    "points": 2,
+    "length": 137,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "10 [Wave] if [FishEgg] + [YoungFish] + [SchoolFish] on this fish",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 86,
+    "group": "main",
+    "set": "base",
+    "name": "Paintspotted Moray",
+    "latin": "Gymnothorax pictus",
+    "points": 4,
+    "length": 140,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 87,
+    "group": "main",
+    "set": "base",
+    "name": "Paraliparis",
+    "latin": "Paraliparis antarcticus",
+    "points": 7,
+    "length": 17,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [DrawCard][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 88,
+    "group": "main",
+    "set": "base",
+    "name": "Patagonian Toothfish",
+    "latin": "Dissostichus eleginoides",
+    "points": 5,
+    "length": 215,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 3,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][FishEgg][FishHatch][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 89,
+    "group": "main",
+    "set": "base",
+    "name": "Pelican Eel",
+    "latin": "Eurypharynx pelecanoides",
+    "points": 3,
+    "length": 100,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FishLengthMedium] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 90,
+    "group": "main",
+    "set": "base",
+    "name": "Pennant Coralfish",
+    "latin": "Heniochus acuminatus",
+    "points": 2,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 91,
+    "group": "main",
+    "set": "base",
+    "name": "Pilotfish",
+    "latin": "Naucrates ductor",
+    "points": 1,
+    "length": 70,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 92,
+    "group": "main",
+    "set": "base",
+    "name": "Plate Fish",
+    "latin": "Bothus lunatus",
+    "points": 4,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 93,
+    "group": "main",
+    "set": "base",
+    "name": "Pudgy Cusk-Eel",
+    "latin": "Spectrunculus grandis",
+    "points": 4,
+    "length": 125,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FlipperBlue] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 94,
+    "group": "main",
+    "set": "base",
+    "name": "Pygmy Seahorse",
+    "latin": "Hippocampus bargibanti",
+    "points": 1,
+    "length": 2,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 95,
+    "group": "main",
+    "set": "base",
+    "name": "Red Lionfish",
+    "latin": "Pterois volitans",
+    "points": 1,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][Sun]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 96,
+    "group": "main",
+    "set": "base",
+    "name": "Red Scorpionfish",
+    "latin": "Scorpaena scrofa",
+    "points": 7,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 97,
+    "group": "main",
+    "set": "base",
+    "name": "Rockmover Wrasse",
+    "latin": "Novaculichtys taeniourus",
+    "points": 3,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 98,
+    "group": "main",
+    "set": "base",
+    "name": "Sailfin Flying Fish",
+    "latin": "Parexocoetus brachypterus",
+    "points": 3,
+    "length": 20,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 99,
+    "group": "main",
+    "set": "base",
+    "name": "Sargassum Fish",
+    "latin": "Histrio histrio",
+    "points": 6,
+    "length": 20,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1][ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 100,
+    "group": "main",
+    "set": "base",
+    "name": "Scaleless Black Dragonfish",
+    "latin": "Melanostomias melanops",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 101,
+    "group": "main",
+    "set": "base",
+    "name": "Shortspine African Angler",
+    "latin": "Lophius vaillanti",
+    "points": 7,
+    "length": 80,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[SchoolFeederMove][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 102,
+    "group": "main",
+    "set": "base",
+    "name": "Shortspine Spurdog",
+    "latin": "Squalus mitsukurii",
+    "points": 4,
+    "length": 90,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 103,
+    "group": "main",
+    "set": "base",
+    "name": "Silver Lightfish",
+    "latin": "Phosichtys argenteus",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishHatch][AllPlayers]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 104,
+    "group": "main",
+    "set": "base",
+    "name": "Skipjack Tuna",
+    "latin": "Katsuwonus pelamis",
+    "points": 5,
+    "length": 110,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishHatch][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 105,
+    "group": "main",
+    "set": "base",
+    "name": "Sloan's Viperfish",
+    "latin": "Chauliodus sloani",
+    "points": 2,
+    "length": 35,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][Predator] on each",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 106,
+    "group": "main",
+    "set": "base",
+    "name": "Smooth Oreo Dory",
+    "latin": "Pseudocyttus maculatus",
+    "points": 4,
+    "length": 70,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 107,
+    "group": "main",
+    "set": "base",
+    "name": "Snaggletooth",
+    "latin": "Astronesthes niger",
+    "points": 6,
+    "length": 16,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 108,
+    "group": "main",
+    "set": "base",
+    "name": "Snipe Eel",
+    "latin": "Avocettina infans",
+    "points": 4,
+    "length": 80,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishEgg][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 109,
+    "group": "main",
+    "set": "base",
+    "name": "Speckled Butterflyfish",
+    "latin": "Chaetodon citrinellus",
+    "points": 1,
+    "length": 13,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishHatch][FishHatch][FishHatch][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 110,
+    "group": "main",
+    "set": "base",
+    "name": "Spiny Seadevil",
+    "latin": "Neoceratias spinifer",
+    "points": 3,
+    "length": 10,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 111,
+    "group": "main",
+    "set": "base",
+    "name": "Spookfish",
+    "latin": "Dolichopteryx rostrata",
+    "points": 5,
+    "length": 7,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishEgg][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 112,
+    "group": "main",
+    "set": "base",
+    "name": "Spotted Parrotfish",
+    "latin": "Cetoscarus ocellatus",
+    "points": 3,
+    "length": 80,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 113,
+    "group": "main",
+    "set": "base",
+    "name": "Stonefish",
+    "latin": "Synanceia horrida",
+    "points": 3,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 114,
+    "group": "main",
+    "set": "base",
+    "name": "Stoplight Loosejaw",
+    "latin": "Malacosteus niger",
+    "points": 4,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[SchoolFeederMove][SchoolFeederMove][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 115,
+    "group": "main",
+    "set": "base",
+    "name": "Striped Marlin",
+    "latin": "Kajikia audax",
+    "points": 2,
+    "length": 420,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][Sun]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 116,
+    "group": "main",
+    "set": "base",
+    "name": "Swordfish",
+    "latin": "Xiphias gladius",
+    "points": 6,
+    "length": 450,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][DrawCard][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 117,
+    "group": "main",
+    "set": "base",
+    "name": "Tripodfish",
+    "latin": "Bathypterois grallator",
+    "points": 4,
+    "length": 43,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[ConsumeFish1][ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 118,
+    "group": "main",
+    "set": "base",
+    "name": "Tropical Two-Wing Flying Fish",
+    "latin": "Exocoetus volitans",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 119,
+    "group": "main",
+    "set": "base",
+    "name": "Whale Shark",
+    "latin": "Rhincodon typus",
+    "points": 12,
+    "length": 2000,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 1,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishEgg][ArrowDown][FlipperGreen] on each [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 120,
+    "group": "main",
+    "set": "base",
+    "name": "White Suckerfish",
+    "latin": "Remora albescens",
+    "points": 3,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 121,
+    "group": "main",
+    "set": "base",
+    "name": "White-Spotted Puffer",
+    "latin": "Arothron hispidus",
+    "points": 5,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 122,
+    "group": "main",
+    "set": "base",
+    "name": "Whitemargin Stargazer",
+    "latin": "Uranoscopus sulphureus",
+    "points": 4,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 2,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 123,
+    "group": "main",
+    "set": "base",
+    "name": "Wolftrap Angler",
+    "latin": "Lasiognathus beebei",
+    "points": 3,
+    "length": 12,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 124,
+    "group": "main",
+    "set": "base",
+    "name": "Yellow Boxfish",
+    "latin": "Ostracion cubicum",
+    "points": 6,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [SchoolFeederMove][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 125,
+    "group": "main",
+    "set": "base",
+    "name": "Yellowtail Snapper",
+    "latin": "Ocyurus chrysurus",
+    "points": 1,
+    "length": 85,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishEgg][ArrowDown][FlipperPurple] on each",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 126,
+    "group": "starter",
+    "set": "base",
+    "name": "Barreleye",
+    "latin": "Macropinna microstoma",
+    "points": 3,
+    "length": 15,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 127,
+    "group": "starter",
+    "set": "base",
+    "name": "Blue Lanternfish",
+    "latin": "Diaphus coeruleus",
+    "points": 1,
+    "length": 13,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 128,
+    "group": "starter",
+    "set": "base",
+    "name": "Bonefish",
+    "latin": "Albula vulpes",
+    "points": 4,
+    "length": 100,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishEgg][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 129,
+    "group": "starter",
+    "set": "base",
+    "name": "Smoothcheek Lanternfish",
+    "latin": "Bolinichthys indicus",
+    "points": 1,
+    "length": 5,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishEgg][FishEgg][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 130,
+    "group": "starter",
+    "set": "base",
+    "name": "Longfin Batfish",
+    "latin": "Platax teira",
+    "points": 4,
+    "length": 70,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [DrawCard][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 131,
+    "group": "starter",
+    "set": "base",
+    "name": "Mandarinfish",
+    "latin": "Synchiropus splendidus",
+    "points": 1,
+    "length": 7,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard][FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 132,
+    "group": "starter",
+    "set": "base",
+    "name": "Orange Roughy",
+    "latin": "Hoplostethus atlanticus",
+    "points": 1,
+    "length": 75,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 133,
+    "group": "starter",
+    "set": "base",
+    "name": "Porkfish",
+    "latin": "Anisotremus virginicus",
+    "points": 2,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 134,
+    "group": "starter",
+    "set": "base",
+    "name": "Saddleback Butterflyfish",
+    "latin": "Chaetodon ephippium",
+    "points": 5,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [FishHatch][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 135,
+    "group": "starter",
+    "set": "base",
+    "name": "White-Banded Triggerfish",
+    "latin": "Rhinecanthus aculeatus",
+    "points": 1,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 136,
+    "group": "main",
+    "set": "sr",
+    "name": "American Pocket Shark",
+    "latin": "Mollisquama mississippiensis",
+    "points": 1,
+    "length": 14,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHandConsume][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 137,
+    "group": "main",
+    "set": "sr",
+    "name": "Angular Roughshark",
+    "latin": "Oxynotus centrina",
+    "points": 4,
+    "length": 145,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[SchoolFeederMove][SchoolFeederMove][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 138,
+    "group": "main",
+    "set": "sr",
+    "name": "Armored Searobin",
+    "latin": "Peristedion miniatum",
+    "points": 1,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 139,
+    "group": "main",
+    "set": "sr",
+    "name": "Atlantic Thornyhead",
+    "latin": "Trachyscorpia cristulata",
+    "points": 2,
+    "length": 55,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 140,
+    "group": "main",
+    "set": "sr",
+    "name": "Basking Shark",
+    "latin": "Cetorhinus maximus",
+    "points": 10,
+    "length": 1500,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 1,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 141,
+    "group": "main",
+    "set": "sr",
+    "name": "Blackmouth Angler",
+    "latin": "Lophiomus setigerus",
+    "points": 3,
+    "length": 42,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FreePlayFishFromHand] if no [AnyCoral] in this fish's dive site",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 142,
+    "group": "main",
+    "set": "sr",
+    "name": "Blacktip Shark",
+    "latin": "Carcharhinus limbatus",
+    "points": 6,
+    "length": 285,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[GreenCoral][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 143,
+    "group": "main",
+    "set": "sr",
+    "name": "Blue Shark",
+    "latin": "Prionace glauca",
+    "points": 5,
+    "length": 380,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishHatch][FishHatch][SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 144,
+    "group": "main",
+    "set": "sr",
+    "name": "Bluering Angelfish",
+    "latin": "Pomacanthus annularis",
+    "points": 2,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "purple",
+      "count": 1
+    },
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [ConsumeFish1]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 145,
+    "group": "main",
+    "set": "sr",
+    "name": "Bonnethead Shark",
+    "latin": "Sphyrna tiburo",
+    "points": 3,
+    "length": 145,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[PurpleCoral][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 1,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 146,
+    "group": "main",
+    "set": "sr",
+    "name": "Broadnose Sevengill Shark",
+    "latin": "Notorynchus cepedianus",
+    "points": 5,
+    "length": 300,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[UnSchoolFish][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 147,
+    "group": "main",
+    "set": "sr",
+    "name": "Common Bluestripe Snapper",
+    "latin": "Lutjanus kasmira",
+    "points": 4,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[BlueCoral][BlueCoral][BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 148,
+    "group": "main",
+    "set": "sr",
+    "name": "Daggertooth",
+    "latin": "Anotopterus pharao",
+    "points": 3,
+    "length": 96,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 149,
+    "group": "main",
+    "set": "sr",
+    "name": "Dusky Shark",
+    "latin": "Carcharhinus obscurus",
+    "points": 3,
+    "length": 420,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FreePlayFishFromHand][FishLengthMedium]only",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 150,
+    "group": "main",
+    "set": "sr",
+    "name": "Dwarf Lanternshark",
+    "latin": "Etmopterus perryi",
+    "points": 1,
+    "length": 20,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FreePlayFishFromHand][Bioluminescent] only",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 151,
+    "group": "main",
+    "set": "sr",
+    "name": "Epaulette Shark",
+    "latin": "Hemiscyllium ocellatum",
+    "points": 3,
+    "length": 105,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[BlueCoral][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 152,
+    "group": "main",
+    "set": "sr",
+    "name": "Filetail Catshark",
+    "latin": "Parmaturus xaniurus",
+    "points": 2,
+    "length": 61,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "[FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 153,
+    "group": "main",
+    "set": "sr",
+    "name": "Fire Dartfish",
+    "latin": "Nemateleotris magnifica",
+    "points": 1,
+    "length": 9,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[PurpleCoral][PurpleCoral][PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 154,
+    "group": "main",
+    "set": "sr",
+    "name": "Flame Angelfish",
+    "latin": "Centropyge loriculus",
+    "points": 2,
+    "length": 15,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 1
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 155,
+    "group": "main",
+    "set": "sr",
+    "name": "Foxface Rabbitfish",
+    "latin": "Siganus vulpinus",
+    "points": 3,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 156,
+    "group": "main",
+    "set": "sr",
+    "name": "Frilled Shark",
+    "latin": "Chlamydoselachus anguineus",
+    "points": 3,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FreePlayFishFromHand][FishLengthMedium] only",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 157,
+    "group": "main",
+    "set": "sr",
+    "name": "Furry Coffinfish",
+    "latin": "Chaunax endeavouri",
+    "points": 1,
+    "length": 22,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 158,
+    "group": "main",
+    "set": "sr",
+    "name": "Ghostly Seadevil",
+    "latin": "Haplophryne mollis",
+    "points": 1,
+    "length": 15,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 159,
+    "group": "main",
+    "set": "sr",
+    "name": "Giant Moray",
+    "latin": "Gymnothorax javanicus",
+    "points": 9,
+    "length": 300,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [PurpleCoral][PurpleCoral] [AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 160,
+    "group": "main",
+    "set": "sr",
+    "name": "Goblin Shark",
+    "latin": "Mitsukurina owstoni",
+    "points": 8,
+    "length": 615,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 2,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [SchoolFeederMove][FishFromHandConsume][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 1,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 161,
+    "group": "main",
+    "set": "sr",
+    "name": "Great Barracuda",
+    "latin": "Sphyraena barracuda",
+    "points": 8,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [BlueCoral][BlueCoral][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 162,
+    "group": "main",
+    "set": "sr",
+    "name": "Great Hammerhead",
+    "latin": "Sphyrna mokarran",
+    "points": 8,
+    "length": 610,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [UnSchoolFish][FishFromHandConsume][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 1,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 163,
+    "group": "main",
+    "set": "sr",
+    "name": "Gray Reef Shark",
+    "latin": "Carcharhinus amblyrhynchos",
+    "points": 5,
+    "length": 265,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[PurpleCoral][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 164,
+    "group": "main",
+    "set": "sr",
+    "name": "Gulper Shark",
+    "latin": "Centrophorus granulosus",
+    "points": 4,
+    "length": 170,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[UnSchoolFish][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 165,
+    "group": "main",
+    "set": "sr",
+    "name": "Indian Sail-fin Surgeonfish",
+    "latin": "Zebrasoma desjardinii",
+    "points": 3,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral][PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 166,
+    "group": "main",
+    "set": "sr",
+    "name": "Jensen's Skate",
+    "latin": "Amblyraja jenseni",
+    "points": 3,
+    "length": 85,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 167,
+    "group": "main",
+    "set": "sr",
+    "name": "Kitefin Shark",
+    "latin": "Dalatias licha",
+    "points": 3,
+    "length": 180,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[SchoolFeederMove][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 168,
+    "group": "main",
+    "set": "sr",
+    "name": "Lemon Shark",
+    "latin": "Negaprion brevirostris",
+    "points": 6,
+    "length": 340,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[BlueCoral][FishHatch][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 169,
+    "group": "main",
+    "set": "sr",
+    "name": "Leopard Shark",
+    "latin": "Triakis semifasciata",
+    "points": 4,
+    "length": 210,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[PurpleCoral][UnSchoolFish][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 170,
+    "group": "main",
+    "set": "sr",
+    "name": "Lollipop Catshark",
+    "latin": "Cephalurus cephalus",
+    "points": 1,
+    "length": 29,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FreePlayFishFromHand][FishLengthSmall] only",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 171,
+    "group": "main",
+    "set": "sr",
+    "name": "Longnose Hawkfish",
+    "latin": "Oxycirrhites typus",
+    "points": 2,
+    "length": 13,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 172,
+    "group": "main",
+    "set": "sr",
+    "name": "Malabar Grouper",
+    "latin": "Epinephelus malabaricus",
+    "points": 7,
+    "length": 230,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [BlueCoral][PurpleCoral][GreenCoral][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 173,
+    "group": "main",
+    "set": "sr",
+    "name": "Megamouth Shark",
+    "latin": "Megachasma pelagios",
+    "points": 9,
+    "length": 820,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 1,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[DrawCard][DrawCard][DrawCard][DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 174,
+    "group": "main",
+    "set": "sr",
+    "name": "Mimic Goatfish",
+    "latin": "Mulloidichthys mimicus",
+    "points": 3,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[AnyCoral][AnyCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 175,
+    "group": "main",
+    "set": "sr",
+    "name": "Moorish Idol",
+    "latin": "Zanclus cornutus",
+    "points": 3,
+    "length": 23,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 176,
+    "group": "main",
+    "set": "sr",
+    "name": "Ninja Lanternshark",
+    "latin": "Etmopterus benchleyi",
+    "points": 2,
+    "length": 51,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 177,
+    "group": "main",
+    "set": "sr",
+    "name": "Nurse Shark",
+    "latin": "Ginglymostoma cirratum",
+    "points": 5,
+    "length": 430,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[BlueCoral][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 178,
+    "group": "main",
+    "set": "sr",
+    "name": "Owlfish",
+    "latin": "Pseudobathylagus milleri",
+    "points": 2,
+    "length": 21,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishEgg]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 179,
+    "group": "main",
+    "set": "sr",
+    "name": "Portuguese Dogfish",
+    "latin": "Centroscymnus coelolepis",
+    "points": 3,
+    "length": 120,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[YoungFish][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 180,
+    "group": "main",
+    "set": "sr",
+    "name": "Prickly Anglerfish",
+    "latin": "Himantolophus appelii",
+    "points": 3,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [DrawCard]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 181,
+    "group": "main",
+    "set": "sr",
+    "name": "Red-lipped Batfish",
+    "latin": "Ogcocephalus darwini",
+    "points": 3,
+    "length": 21,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[BlueCoral][PurpleCoral][GreenCoral]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 182,
+    "group": "main",
+    "set": "sr",
+    "name": "Reef Triggerfish",
+    "latin": "Rhinecanthus rectangulus",
+    "points": 4,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 3)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 183,
+    "group": "main",
+    "set": "sr",
+    "name": "Ribbon Sawtail Fish",
+    "latin": "Idiacanthus fasciola",
+    "points": 4,
+    "length": 48,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 184,
+    "group": "main",
+    "set": "sr",
+    "name": "Ribboned Sweetlips",
+    "latin": "Plectorhinchus polytaenia",
+    "points": 4,
+    "length": 50,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 185,
+    "group": "main",
+    "set": "sr",
+    "name": "Rose-veiled Fairy Wrasse",
+    "latin": "Cirrhilabrus finifenmaa",
+    "points": 1,
+    "length": 7,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 1
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 186,
+    "group": "main",
+    "set": "sr",
+    "name": "Rough Abyssal Grenadier",
+    "latin": "Coryphaenoides yaquinae",
+    "points": 5,
+    "length": 63,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "bottom"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 187,
+    "group": "main",
+    "set": "sr",
+    "name": "Roving Coral Grouper",
+    "latin": "Plectropomus pessuliferus",
+    "points": 8,
+    "length": 120,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [GreenCoral][GreenCoral][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 188,
+    "group": "main",
+    "set": "sr",
+    "name": "Sablefish",
+    "latin": "Anoplopoma fimbria",
+    "points": 3,
+    "length": 170,
+    "size": "large",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [FishHatch]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 189,
+    "group": "main",
+    "set": "sr",
+    "name": "Sand Tiger Shark",
+    "latin": "Carcharias taurus",
+    "points": 4,
+    "length": 320,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[GreenCoral][UnSchoolFish][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 190,
+    "group": "main",
+    "set": "sr",
+    "name": "Sarcastic Fringehead",
+    "latin": "Neoclinus blanchardi",
+    "points": 1,
+    "length": 30,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[DrawCard][DrawCard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 191,
+    "group": "main",
+    "set": "sr",
+    "name": "Shortfin Mako",
+    "latin": "Isurus oxyrinchus",
+    "points": 6,
+    "length": 445,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishFromHandConsume][FishFromHandConsume][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 192,
+    "group": "main",
+    "set": "sr",
+    "name": "Shortnose Demon Catshark",
+    "latin": "Apristurus internatus",
+    "points": 3,
+    "length": 41,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FreePlayFishFromHand][FishLengthMedium]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 193,
+    "group": "main",
+    "set": "sr",
+    "name": "Sixgill Sawshark",
+    "latin": "Pliotrema warreni",
+    "points": 4,
+    "length": 170,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[YoungFish][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 1,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 194,
+    "group": "main",
+    "set": "sr",
+    "name": "Spotted Scat",
+    "latin": "Scatophagus argus",
+    "points": 3,
+    "length": 45,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[BlueCoral][PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 195,
+    "group": "main",
+    "set": "sr",
+    "name": "Spotted Wobbegong",
+    "latin": "Orectolobus maculatus",
+    "points": 5,
+    "length": 320,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": true
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[GreenCoral][FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 196,
+    "group": "main",
+    "set": "sr",
+    "name": "Starry Pipefish",
+    "latin": "Halicampus punctatus",
+    "points": 4,
+    "length": 17,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 1
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 197,
+    "group": "main",
+    "set": "sr",
+    "name": "Stellate Puffer",
+    "latin": "Arothron stellatus",
+    "points": 5,
+    "length": 120,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 2,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[PurpleCoral][GreenCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 198,
+    "group": "main",
+    "set": "sr",
+    "name": "Striated Frogfish",
+    "latin": "Antennarius striatus",
+    "points": 4,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "purple",
+      "count": 1
+    },
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 199,
+    "group": "main",
+    "set": "sr",
+    "name": "Striped Eel Catfish",
+    "latin": "Plotosus lineatus",
+    "points": 4,
+    "length": 35,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 2
+    },
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[BlueCoral][GreenCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 200,
+    "group": "main",
+    "set": "sr",
+    "name": "Swell Shark",
+    "latin": "Cephaloscyllium ventriosum",
+    "points": 2,
+    "length": 110,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[FreePlayFishFromHand][Camouflage] only",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 201,
+    "group": "main",
+    "set": "sr",
+    "name": "Sydney's Pygmy Pipehorse",
+    "latin": "Idiotropiscis lumnitzeri",
+    "points": 2,
+    "length": 5,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 2
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 202,
+    "group": "main",
+    "set": "sr",
+    "name": "Tasseled Scorpionfish",
+    "latin": "Scorpaenopsis oxycephalus",
+    "points": 4,
+    "length": 36,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "5 [Wave] if [AnyCoral][AnyCoral][AnyCoral] in ALL your dive sites",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 203,
+    "group": "main",
+    "set": "sr",
+    "name": "Tiger Shark",
+    "latin": "Galeocerdo cuvier",
+    "points": 8,
+    "length": 550,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "(all players) [FishHatch][FishFromHandConsume][AllPlayers]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 2,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 204,
+    "group": "main",
+    "set": "sr",
+    "name": "Tomato Clownfish",
+    "latin": "Amphiprion frenatus",
+    "points": 1,
+    "length": 14,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "purple",
+      "count": 2
+    },
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[BlueCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 205,
+    "group": "main",
+    "set": "sr",
+    "name": "Toothy Goby",
+    "latin": "Pleurosicya mossambica",
+    "points": 2,
+    "length": 3,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "blue",
+      "count": 2
+    },
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[PurpleCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 206,
+    "group": "main",
+    "set": "sr",
+    "name": "Variegated Lizardfish",
+    "latin": "Synodus variegatus",
+    "points": 6,
+    "length": 40,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "3 [Wave] if [AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 207,
+    "group": "main",
+    "set": "sr",
+    "name": "Velvet Belly Lanternshark",
+    "latin": "Etmopterus spinax",
+    "points": 1,
+    "length": 60,
+    "size": "medium",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[UnSchoolFish][UnSchoolFish]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 208,
+    "group": "main",
+    "set": "sr",
+    "name": "Yellow Clown Goby",
+    "latin": "Gobiodon okinawae",
+    "points": 2,
+    "length": 3,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "any",
+      "count": 1
+    },
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[GreenCoral][GreenCoral][GreenCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 1
+    },
+    "forage": false
+  },
+  {
+    "id": 209,
+    "group": "main",
+    "set": "sr",
+    "name": "Yokozuna Slickhead",
+    "latin": "Narcetes shonanmaruae",
+    "points": 5,
+    "length": 130,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": "bottom"
+    },
+    "cost": {
+      "cards": 3,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "GameEnd",
+    "ability": "[FishFromHand][ArrowDown][AnyCoral][AnyCoral][AnyCoral][AnyCoral][AnyCoral] (in a dive site with at least 5)",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 210,
+    "group": "main",
+    "set": "sr",
+    "name": "Zebra Seahorse",
+    "latin": "Hippocampus zebra",
+    "points": 3,
+    "length": 8,
+    "size": "small",
+    "zones": {
+      "sunlight": true,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": {
+      "site": "green",
+      "count": 1
+    },
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[AnyCoral]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 211,
+    "group": "starter",
+    "set": "sr",
+    "name": "African Coelacanth",
+    "latin": "Latimeria chalumnae",
+    "points": 4,
+    "length": 200,
+    "size": "large",
+    "zones": {
+      "sunlight": true,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 1,
+      "young": 1,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "WhenPlayed",
+    "ability": "[Discard][Discard][Discard][Discard][Discard]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 212,
+    "group": "starter",
+    "set": "sr",
+    "name": "Atlantic Barracudina",
+    "latin": "Lestidium atlanticum",
+    "points": 1,
+    "length": 25,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "green",
+    "abilityType": "IfActivated",
+    "ability": "[FishHatch] also, if [GreenCoral][GreenCoral][GreenCoral] in this dive site: [SchoolFeederMove]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 1,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 213,
+    "group": "starter",
+    "set": "sr",
+    "name": "Blue Antimora",
+    "latin": "Antimora rostrata",
+    "points": 2,
+    "length": 75,
+    "size": "medium",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 2,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "blue",
+    "abilityType": "IfActivated",
+    "ability": "[Discard] also, if [BlueCoral][BlueCoral][BlueCoral] in this dive site: [FishFromHandConsume]",
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 214,
+    "group": "starter",
+    "set": "sr",
+    "name": "Fanfin Anglerfish",
+    "latin": "Caulophryne jordani",
+    "points": 2,
+    "length": 20,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": "any"
+    },
+    "cost": {
+      "cards": 1,
+      "eggs": 1,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": "purple",
+    "abilityType": "IfActivated",
+    "ability": "[FishEgg] also, if [PurpleCoral][PurpleCoral][PurpleCoral] in this dive site: [GreenCoral]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 215,
+    "group": "starter",
+    "set": "sr",
+    "name": "Illuminated Netdevil",
+    "latin": "Linophryne arborifera",
+    "points": 2,
+    "length": 7,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": true,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": "IfActivated",
+    "ability": "(all players) [AnyCoral][AllPlayers]",
+    "tags": {
+      "bioluminescent": 1,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 1,
+      "venomous": 0
+    },
+    "forage": false
+  },
+  {
+    "id": 900,
+    "group": "forage",
+    "set": "base",
+    "name": "Catalina Goby",
+    "latin": "",
+    "points": 0,
+    "length": 1,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": null,
+    "ability": null,
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": true
+  },
+  {
+    "id": 901,
+    "group": "forage",
+    "set": "base",
+    "name": "Showy Bristlemouth",
+    "latin": "",
+    "points": 0,
+    "length": 3,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": null,
+    "ability": null,
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": true
+  },
+  {
+    "id": 902,
+    "group": "forage",
+    "set": "base",
+    "name": "Glasshead Grenadier",
+    "latin": "",
+    "points": 0,
+    "length": 9,
+    "size": "small",
+    "zones": {
+      "sunlight": false,
+      "twilight": false,
+      "midnight": false
+    },
+    "cost": {
+      "cards": 0,
+      "eggs": 0,
+      "young": 0,
+      "schools": 0,
+      "consume": false
+    },
+    "coralCost": null,
+    "band": null,
+    "abilityType": null,
+    "ability": null,
+    "tags": {
+      "bioluminescent": 0,
+      "camouflage": 0,
+      "electric": 0,
+      "predator": 0,
+      "venomous": 0
+    },
+    "forage": true
+  }
+]

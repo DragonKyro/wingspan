@@ -1,0 +1,6533 @@
+{
+ "dragons": [
+  {
+   "id": 0,
+   "number": 1,
+   "name": "White-Bellied Grazer",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [CaveCard]. When the 3rd [Milk] is cached, also lay [Egg][Egg].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 1,
+   "number": 2,
+   "name": "Genial Mothdragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, lay [Egg]. When the 3rd [DragonCard] is tucked, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 2,
+   "number": 3,
+   "name": "Algal Lindworm",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [AnyResource]. When the 3rd [Milk] is cached, also gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 3,
+   "number": 4,
+   "name": "Frugivorous Grazer",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Crystal]. When the 3rd [Milk] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 4,
+   "number": 5,
+   "name": "Fanged Feydragon",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [DragonGuild]. When the 3rd [Meat] is cached, also gain [Gold][Crystal][Meat].",
+   "abilityType": "Adventurer",
+   "vp": 0,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 5,
+   "number": 6,
+   "name": "Flocking Dragonette",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [DragonGuild]. When the 3rd [DragonCard] is tucked, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 0,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 6,
+   "number": 7,
+   "name": "Temperate Bamboo Dragon",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Gold]. When the 3rd [Milk] is cached, also gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 7,
+   "number": 8,
+   "name": "Loyal Feydragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [AnyResource]. When the 3rd [DragonCard] is tucked, also gain [DragonCard][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 8,
+   "number": 9,
+   "name": "Leafeating Cricketcatcher",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [DragonCard]. When the 3rd [Milk] is cached, also gain [Crystal][Crystal].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 9,
+   "number": 10,
+   "name": "Melodious Firedragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [CaveCard]. When the 3rd [DragonCard] is tucked, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 10,
+   "number": 11,
+   "name": "Seedeating Drake",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, lay [Egg]. When the 3rd [Milk] is cached, also gain [Meat][Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 11,
+   "number": 12,
+   "name": "Savanna Dragonette",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Crystal]. When the 3rd [Milk] is cached, also gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 12,
+   "number": 13,
+   "name": "Mellifera Feydragon",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [Milk]. When the 3rd [Meat] is cached, also gain [CaveCard][CaveCard].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 13,
+   "number": 14,
+   "name": "Scavenging Cricketcatcher",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [Meat]. When the 3rd [Meat] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 14,
+   "number": 15,
+   "name": "Redwood Lung Dragon",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Milk]. When the 3rd [Milk] is cached, also lay [Egg][Egg].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 15,
+   "number": 16,
+   "name": "Peregrine Firedragon",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [CaveCard]. When the 3rd [Meat] is cached, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 16,
+   "number": 17,
+   "name": "Common Grass Lindworm",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Each [Milk] on this dragon is worth [VP-1] at game end. When the 3rd [Milk] is cached, also gain [DragonCard][DragonCard].",
+   "abilityType": "Adventurer, EndGame",
+   "vp": 1,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 17,
+   "number": 18,
+   "name": "Keening Amphiptere",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Each [DragonCard] tucked under this dragon is worth [VP-1] at game end. When the 3rd [DragonCard] is tucked, also gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer, EndGame",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 18,
+   "number": 19,
+   "name": "Chittering Dragonette",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [DragonCard]. When the 3rd [DragonCard] is tucked, also gain [AnyResource][AnyResource].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 19,
+   "number": 20,
+   "name": "Miniature Rex",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [Gold]. When the 3rd [Meat] is cached, also gain [DragonCard][DragonCard].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 20,
+   "number": 21,
+   "name": "Fae Tamarin",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, lay [Egg]. When the 3rd [Milk] is cached, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 21,
+   "number": 22,
+   "name": "Cheshire Dragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your supply here. Any time you tuck [DragonCard] here, gain [Meat]. When the 3rd [DragonCard] is tucked, also gain [DragonCard][DragonCard].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 22,
+   "number": 23,
+   "name": "Ravenous Granite Dragon",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, lay [Egg]. When the 3rd [Meat] is cached, also gain [Gold][Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 23,
+   "number": 24,
+   "name": "Vampiric Horned Dragon",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Meat]. When the 3rd [Milk] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 24,
+   "number": 25,
+   "name": "Spotted Licheneater",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [DragonGuild]. When the 3rd [Milk] is cached, also gain [Gold][Gold].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 25,
+   "number": 26,
+   "name": "Bargaining Grazer",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [DragonCard]. When the 3rd [Milk] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 26,
+   "number": 27,
+   "name": "Frilled Cobrette",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [Crystal]. When the 3rd [Meat] is cached, also gain [DragonCard][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 27,
+   "number": 28,
+   "name": "Silent Cobrette",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [AnyResource]. When the 3rd [Meat] is cached, also gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 28,
+   "number": 29,
+   "name": "Singeing Remora",
+   "expansion": "base",
+   "ability": "Cache [Meat] from your supply here. Each [Meat] on this dragon is worth [VP-1] at game end. When the 3rd [Meat] is cached, also gain [Coin].",
+   "abilityType": "Adventurer, EndGame",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 29,
+   "number": 30,
+   "name": "Cackling Dragonette",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [DragonGuild]. When the 3rd [DragonCard] is tucked, also lay [Egg][Egg].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 30,
+   "number": 31,
+   "name": "Guiding Feydragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [Crystal]. When the 3rd [DragonCard] is tucked, also gain [CaveCard][CaveCard].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 31,
+   "number": 32,
+   "name": "Chameleon Dragonette",
+   "expansion": "base",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, gain [Meat]. When the 3rd [Milk] is cached, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Shy",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 32,
+   "number": 33,
+   "name": "\"Friendly\" Ruffed Red Dragon",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, lay [Egg]. When the 3rd [DragonCard] is tucked, also gain [Crystal][Meat].",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 33,
+   "number": 34,
+   "name": "Kindly Sea Serpent",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [Milk]. When the 3rd [DragonCard] is tucked, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 34,
+   "number": 35,
+   "name": "Lawndrake",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [Gold]. When the 3rd [DragonCard] is tucked, also excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Hatchling",
+   "capacity": 0,
+   "personality": "Playful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 35,
+   "number": 36,
+   "name": "Sentinel Flyer",
+   "expansion": "base",
+   "ability": "Pay [DragonCard] to gain [AnyResource].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 36,
+   "number": 37,
+   "name": "Subterranean Basilisk",
+   "expansion": "base",
+   "ability": "Lay [Egg][Egg]. Each opponent lays [Egg].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 37,
+   "number": 38,
+   "name": "Swift Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [Coin][Coin].",
+   "abilityType": "WhenPlayed",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 3
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 38,
+   "number": 39,
+   "name": "Weary Gryphdragon",
+   "expansion": "base",
+   "ability": "Gain [VP-2] if this dragon is between two other dragons in this cave.",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 39,
+   "number": 40,
+   "name": "Aged Sea Serpent",
+   "expansion": "base",
+   "ability": "Gain [DragonGuild]",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 40,
+   "number": 41,
+   "name": "Striped Dragonette",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each objective where your marker is placed the lowest (include ties).",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 41,
+   "number": 42,
+   "name": "Great Golden Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [VP-3] for each other dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 42,
+   "number": 43,
+   "name": "Blue Forest Spirit",
+   "expansion": "base",
+   "ability": "Lay [Egg] here.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 5,
+   "personality": "Helpful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 43,
+   "number": 44,
+   "name": "Tawny Northern Drake",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each marker you have placed on the Dragon Guild.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 44,
+   "number": 45,
+   "name": "Tranquil Wyrm",
+   "expansion": "base",
+   "ability": "Pay [Coin] to lay [Egg][Egg][Egg].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 5,
+   "personality": "Helpful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 45,
+   "number": 46,
+   "name": "Rainbow Guardian",
+   "expansion": "base",
+   "ability": "Gain [VP-3] if this dragon’s column is full.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 46,
+   "number": 47,
+   "name": "Owlatic Amphiptere",
+   "expansion": "base",
+   "ability": "If you have at least as many dragons in your Golden Grotto as your left neighbor, gain [DragonCard].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 47,
+   "number": 48,
+   "name": "Spry Horned Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 48,
+   "number": 49,
+   "name": "Standard Horned Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [VP-4] for each *set* of dragon traits on your player mat (1 *set* = 1 of each: AGGRESSIVE, PLAYFUL , HELPFUL, SHY ).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 49,
+   "number": 50,
+   "name": "Wise Anteldragon",
+   "expansion": "base",
+   "ability": "Gain [DragonCard].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 50,
+   "number": 51,
+   "name": "Aloof Gryphdragon",
+   "expansion": "base",
+   "ability": "Gain [VP-1] for each SHY dragon in an orthogonally adjacent space.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 51,
+   "number": 52,
+   "name": "Chromatic Blue Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each [OncePerRound] dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 52,
+   "number": 53,
+   "name": "Tawny Steppe Wyvern",
+   "expansion": "base",
+   "ability": "Cache [AnyResource] from your supply here.",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 53,
+   "number": 54,
+   "name": "Colorful Gryphdragon",
+   "expansion": "base",
+   "ability": "Gain [VP-4] if there are no AGGRESSIVE dragons in this cave.",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 54,
+   "number": 55,
+   "name": "Calm Loch Serpent",
+   "expansion": "base",
+   "ability": "Lay [Egg] anywhere in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 4,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 55,
+   "number": 56,
+   "name": "Hoarding Flyer",
+   "expansion": "base",
+   "ability": "Gain [Gold].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 56,
+   "number": 57,
+   "name": "Eternal Feydragon",
+   "expansion": "base",
+   "ability": "Gain [DragonGuild][DragonGuild]. Each opponent gains [DragonGuild].",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 57,
+   "number": 58,
+   "name": "Caustic Wyrm",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is a *hatchling*, tuck it here. Otherwise, add it to your hand.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 58,
+   "number": 59,
+   "name": "Haughty Wyvern",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each other SHY dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "meat": 2,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 59,
+   "number": 60,
+   "name": "Stealthy Rufftail",
+   "expansion": "base",
+   "ability": "Gain [Milk][Milk].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 60,
+   "number": 61,
+   "name": "Primeval Wyrm",
+   "expansion": "base",
+   "ability": "Pay [Egg][Egg] from any orthogonally adjacent dragon(s) to gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 61,
+   "number": 62,
+   "name": "Descending Firevern",
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "crystal": 3
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 62,
+   "number": 63,
+   "name": "Guarding Horned Drake",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here. If you do, lay [Egg] here.",
+   "abilityType": "OncePerRound",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 63,
+   "number": 64,
+   "name": "Scaly Rock Dragon",
+   "expansion": "base",
+   "ability": "Excavate 1 space for free with [CaveCard] from the display.",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 3
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 64,
+   "number": 65,
+   "name": "Perceptive Anteldragon",
+   "expansion": "base",
+   "ability": "Pay [CaveCard][CaveCard] to play another dragon from your hand for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 65,
+   "number": 66,
+   "name": "Green Ghost",
+   "expansion": "base",
+   "ability": "Pay [DragonCard] to lay [Egg] anywhere in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 66,
+   "number": 67,
+   "name": "Ancient One",
+   "expansion": "base",
+   "ability": "Pay [Egg] from anywhere in this cave to gain 2 different benefits: [DragonCard]/[DragonGuild]/[CaveCard]/[AnyResource].",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 67,
+   "number": 68,
+   "name": "Hostile Northern Fire Dragon",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is *large*, tuck it here. Otherwise, discard it and gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 68,
+   "number": 69,
+   "name": "Prescient Gryphdragon",
+   "expansion": "base",
+   "ability": "Draw [DragonCard] from the deck for each SHY dragon in this cave. You may tuck up to 2 of them here.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 69,
+   "number": 70,
+   "name": "Patient Redwyrm",
+   "expansion": "base",
+   "ability": "Up to 2x, pay [AnyResource] to lay [Egg]. Each opponent may do this 1x.",
+   "abilityType": "OncePerRound",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 5,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 70,
+   "number": 71,
+   "name": "Multicolor Flyer",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each [WhenPlayed] dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 71,
+   "number": 72,
+   "name": "Primordiasaur",
+   "expansion": "base",
+   "ability": "Pay [Egg] from anywhere in this cave to gain [DragonGuild][DragonGuild].",
+   "abilityType": "OncePerRound",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2,
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 72,
+   "number": 73,
+   "name": "Marshy Webbed Dragon",
+   "expansion": "base",
+   "ability": "Pay [CaveCard] to activate 1 [Adventurer] ability that is printed on your player mat.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 2,
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 73,
+   "number": 74,
+   "name": "Solitary Brown Drake",
+   "expansion": "base",
+   "ability": "Gain [VP-3] if all spaces in this cave have been excavated.",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 74,
+   "number": 75,
+   "name": "Carboniferous Rockbreaker",
+   "expansion": "base",
+   "ability": "Gain [DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 2,
+    "coin": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 75,
+   "number": 76,
+   "name": "Keen Cricketcatcher",
+   "expansion": "base",
+   "ability": "Pay [AnyResource] to activate the [WhenPlayed] ability on any dragon on your player mat.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 76,
+   "number": 77,
+   "name": "Intractable Firevern",
+   "expansion": "base",
+   "ability": "Gain [Meat]. You may cache it here.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 77,
+   "number": 78,
+   "name": "Particularly Haughty Wyvern",
+   "expansion": "base",
+   "ability": "Gain [Milk]. You may cache it here.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 78,
+   "number": 79,
+   "name": "Common Blue Gryphdragon",
+   "expansion": "base",
+   "ability": "If you have at least 3 dragons in this cave, lay [Egg] on each dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 79,
+   "number": 80,
+   "name": "Hawkish Firevern",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here to gain [AnyResource] of the cost printed on the tucked dragon.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 2,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 80,
+   "number": 81,
+   "name": "Stoic Gryphdragon",
+   "expansion": "base",
+   "ability": "Gain [VP-3] if this is the last (farthest right) dragon in its cave.",
+   "abilityType": "EndGame",
+   "vp": 7,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 81,
+   "number": 82,
+   "name": "Hushed Oak-Wing Feydragon",
+   "expansion": "base",
+   "ability": "Lay [Egg] on any dragon in this column.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 82,
+   "number": 83,
+   "name": "Spirited Firevern",
+   "expansion": "base",
+   "ability": "Gain [Coin][DragonGuild].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "crystal": 3
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 83,
+   "number": 84,
+   "name": "Malcontent Venomous Wyrm",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here.",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 84,
+   "number": 85,
+   "name": "Wealthy Koiwyrm",
+   "expansion": "base",
+   "ability": "Gain [Crystal][Crystal]. Each opponent gains [Crystal].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 85,
+   "number": 86,
+   "name": "Northern Cavalier Wyvern",
+   "expansion": "base",
+   "ability": "Pay [DragonCard] to gain [VP-1] or pay [DragonCard][DragonCard] to gain [VP-3].",
+   "abilityType": "EndGame",
+   "vp": 8,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 86,
+   "number": 87,
+   "name": "Equatorial Cavalier Wyvern",
+   "expansion": "base",
+   "ability": "Pay [CaveCard] to gain [VP-1] or pay [CaveCard][CaveCard] to gain [VP-3].",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 87,
+   "number": 88,
+   "name": "Speedy Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 3
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 88,
+   "number": 89,
+   "name": "Erudite Lung Dragon",
+   "expansion": "base",
+   "ability": "Pay [AnyResource] to play a dragon from the display for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 89,
+   "number": 90,
+   "name": "Protective Amphiptere",
+   "expansion": "base",
+   "ability": "Pay [Coin] to gain [Gold][Crystal][Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 90,
+   "number": 91,
+   "name": "Ordinary Resplendent Coatl",
+   "expansion": "base",
+   "ability": "Gain [VP-8] if you have a *hatchling*, a *small* dragon, and a *large* dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 91,
+   "number": 92,
+   "name": "Territorial Spitter",
+   "expansion": "base",
+   "ability": "Gain [Crystal].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 92,
+   "number": 93,
+   "name": "Miniature Crested Coatl",
+   "expansion": "base",
+   "ability": "Gain [VP-5] if you have 4 dragons in your Golden Grotto.",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 93,
+   "number": 94,
+   "name": "Northern Gryphdragon",
+   "expansion": "base",
+   "ability": "Pay [DragonCard] or [CaveCard] to gain [DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 94,
+   "number": 95,
+   "name": "Pacifistic Web-Toed Serpent",
+   "expansion": "base",
+   "ability": "Lay [Egg] on each dragon in this column.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 95,
+   "number": 96,
+   "name": "Fastidious Horned Dragon",
+   "expansion": "base",
+   "ability": "Gain [Milk]. You may cache it here.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 96,
+   "number": 97,
+   "name": "Dappled Glade Spirit",
+   "expansion": "base",
+   "ability": "Gain [VP-1] for each [Adventurer] dragon on your player mat (including *hatchlings*).",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 97,
+   "number": 98,
+   "name": "Little Amphiptere",
+   "expansion": "base",
+   "ability": "Gain [VP-3] if this dragon’s cave is full.",
+   "abilityType": "EndGame",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {},
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 98,
+   "number": 99,
+   "name": "Nimble Trilling Amphiptere",
+   "expansion": "base",
+   "ability": "Gain [Coin][AnyResource][AnyResource].",
+   "abilityType": "WhenPlayed",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 2,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 99,
+   "number": 100,
+   "name": "Horned Venomous Wyrm",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is *small*, tuck it here. Otherwise discard it and gain [Milk].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 100,
+   "number": 101,
+   "name": "Magnificent Amphiptere",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each [EndGame] dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 101,
+   "number": 102,
+   "name": "Pocket Amphiptere",
+   "expansion": "base",
+   "ability": "Gain [VP-3] if there is at least 1 other PLAYFUL dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 102,
+   "number": 103,
+   "name": "Miserly Amphiptere",
+   "expansion": "base",
+   "ability": "If you have at least as many dragons in your Golden Grotto as your left neighbor, gain [Gold].",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 103,
+   "number": 104,
+   "name": "Gliding Taiga Drake",
+   "expansion": "base",
+   "ability": "Up to 2x, tuck [DragonCard] from your hand here. Each time you do, gain [AnyResource].",
+   "abilityType": "OncePerRound",
+   "vp": 0,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 104,
+   "number": 105,
+   "name": "Australopithecus Drakus",
+   "expansion": "base",
+   "ability": "Up to 3x, pay [CaveCard] from your hand to lay [Egg] here.",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 105,
+   "number": 106,
+   "name": "Minor Sharpclaw",
+   "expansion": "base",
+   "ability": "Lose [VP-2] for each other AGGRESSIVE dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 7,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 106,
+   "number": 107,
+   "name": "Puck's Horned Drake",
+   "expansion": "base",
+   "ability": "If you have at least 3 dragons in this cave, lay [Egg] on each dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 107,
+   "number": 108,
+   "name": "Good Drake",
+   "expansion": "base",
+   "ability": "Pay [Coin] to gain [DragonGuild][AnyResource][CaveCard][DragonCard].",
+   "abilityType": "WhenPlayed",
+   "vp": 7,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 108,
+   "number": 109,
+   "name": "Bellicose Firevern",
+   "expansion": "base",
+   "ability": "Pay [AnyResource] to draw [DragonCard][DragonCard][DragonCard] from the deck. Keep 1, discard 1, and tuck 1 here.",
+   "abilityType": "OncePerRound",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 109,
+   "number": 110,
+   "name": "Stalking Drake",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is *medium* or *large*, tuck it here. Otherwise, add it to your hand.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 110,
+   "number": 111,
+   "name": "Penurious Red Wyrm",
+   "expansion": "base",
+   "ability": "Gain [AnyResource] for each AGGRESSIVE dragon in this cave. You may cache up to 2 of them here.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 111,
+   "number": 112,
+   "name": "Variegated Amphiptere",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each dragon in an orthogonally adjacent space.",
+   "abilityType": "EndGame",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 112,
+   "number": 113,
+   "name": "Shaly Rockbreaker",
+   "expansion": "base",
+   "ability": "Excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed",
+   "vp": 8,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 2,
+    "coin": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 113,
+   "number": 114,
+   "name": "Avaricious Amphiptere",
+   "expansion": "base",
+   "ability": "If you have at least as many dragons in your Amethyst Abyss as your left neighbor, gain [Crystal].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 114,
+   "number": 115,
+   "name": "Custodial Koiwyrm",
+   "expansion": "base",
+   "ability": "Gain [AnyResource][AnyResource]. Keep 1 and cache 1 onto any dragon.",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 115,
+   "number": 116,
+   "name": "Splitting Golden Hydra",
+   "expansion": "base",
+   "ability": "Draw [DragonCard][DragonCard] from the deck. Keep 1 and tuck 1 under any dragon.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 116,
+   "number": 117,
+   "name": "Antediluvian Basilisk",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from the deck here for each marker you have placed on the Dragon Guild.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 117,
+   "number": 118,
+   "name": "Spirited Hydraptere",
+   "expansion": "base",
+   "ability": "Gain [Coin][Coin].",
+   "abilityType": "WhenPlayed",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 118,
+   "number": 119,
+   "name": "Chameleon Coatl",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each *medium* dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 119,
+   "number": 120,
+   "name": "Knowing Guardian",
+   "expansion": "base",
+   "ability": "Cache [AnyResource] from your supply here. If you do, draw [DragonCard] from the deck.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 120,
+   "number": 121,
+   "name": "Archaic Whiskered Lung Dragon",
+   "expansion": "base",
+   "ability": "Pay [Coin] to gain [DragonGuild][DragonGuild][DragonGuild].",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 121,
+   "number": 122,
+   "name": "Yellow-Bellied Lung Dragon",
+   "expansion": "base",
+   "ability": "Lose [VP-1] for each other AGGRESSIVE dragon in this cave.",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {},
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 122,
+   "number": 123,
+   "name": "Selfish Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [Crystal].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 123,
+   "number": 124,
+   "name": "Mosaic Guardian",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each *large* dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 124,
+   "number": 125,
+   "name": "Red Guardian",
+   "expansion": "base",
+   "ability": "Cache [AnyResource] from your supply onto any dragon in this column.",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 125,
+   "number": 126,
+   "name": "Quartzy Rockbreaker",
+   "expansion": "base",
+   "ability": "Gain [CaveCard].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 126,
+   "number": 127,
+   "name": "Capricious Venomous Wyrm",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is *small* or a *hatchling*, tuck it here. Otherwise, add it to your hand.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 127,
+   "number": 128,
+   "name": "Sharp-Tongued Spitter",
+   "expansion": "base",
+   "ability": "Gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 128,
+   "number": 129,
+   "name": "Red-Crested Gryphdragon",
+   "expansion": "base",
+   "ability": "Gain +[VP-3] for each PLAYFUL dragon in an orthogonally adjacent space.",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 129,
+   "number": 130,
+   "name": "Smirking Ridgeback",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from the deck under each PLAYFUL dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 130,
+   "number": 131,
+   "name": "Titanic Coatl",
+   "expansion": "base",
+   "ability": "Gain [VP-6] for each *set* of dragon sizes on your player mat (1 *set*=1 of each: *hatchling*, *small*, *medium*, *large*).",
+   "abilityType": "EndGame",
+   "vp": 7,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 131,
+   "number": 132,
+   "name": "Lilliputian Fae",
+   "expansion": "base",
+   "ability": "Gain [VP-2] for each small dragon on your player mat (max [VP-8]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 132,
+   "number": 133,
+   "name": "Sossusvlei Wyvern",
+   "expansion": "base",
+   "ability": "Gain [DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 133,
+   "number": 134,
+   "name": "Customary Grazer",
+   "expansion": "base",
+   "ability": "Gain [VP-3] for each *hatchling* on your player mat (max [VP-9]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 134,
+   "number": 135,
+   "name": "Churlish Firevern",
+   "expansion": "base",
+   "ability": "If this dragon’s column is full, draw [DragonCard][DragonCard] from the deck. You may tuck 1 or both here.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 135,
+   "number": 136,
+   "name": "Impenetrable Redwyrm",
+   "expansion": "base",
+   "ability": "Gain [Crystal]. You may cache it here.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 136,
+   "number": 137,
+   "name": "Starlit Shepherd",
+   "expansion": "base",
+   "ability": "Pay [CaveCard] to lay [Egg][Egg] anywhere in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 137,
+   "number": 138,
+   "name": "Kind Mistvern",
+   "expansion": "base",
+   "ability": "Lay [Egg] on each dragon in this cave that is not AGGRESSIVE.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Large",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 138,
+   "number": 139,
+   "name": "Oracular Dragon",
+   "expansion": "base",
+   "ability": "Lay [Egg] here.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 139,
+   "number": 140,
+   "name": "Rocky Rockbreaker",
+   "expansion": "base",
+   "ability": "Excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 140,
+   "number": 141,
+   "name": "Sea Viper",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from the deck under any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 141,
+   "number": 142,
+   "name": "Royal Wyvern",
+   "expansion": "base",
+   "ability": "Pay [CaveCard] to draw [DragonCard][DragonCard][DragonCard] from the deck. Keep 1, discard 1, and tuck 1 here.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 142,
+   "number": 143,
+   "name": "Lavender Feydragon",
+   "expansion": "base",
+   "ability": "Gain [DragonCard].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 143,
+   "number": 144,
+   "name": "Playful Hornwyrn",
+   "expansion": "base",
+   "ability": "Pay [AnyResource] to gain [VP-1] or pay [AnyResource][AnyResource] to gain [VP-3].",
+   "abilityType": "EndGame",
+   "vp": 9,
+   "size": "Medium",
+   "capacity": 4,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 144,
+   "number": 145,
+   "name": "Southern Mammoth Ridgedragon",
+   "expansion": "base",
+   "ability": "Gain [VP-5] if you have 4 dragons in your Amethyst Abyss.",
+   "abilityType": "EndGame",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 145,
+   "number": 146,
+   "name": "Crafty Moray",
+   "expansion": "base",
+   "ability": "Pay [AnyResource] to play another dragon from your hand for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 146,
+   "number": 147,
+   "name": "Steely Fae",
+   "expansion": "base",
+   "ability": "Pay [DragonCard] to play a dragon from the display for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 147,
+   "number": 148,
+   "name": "Great Horned Wyvern",
+   "expansion": "base",
+   "ability": "Draw [DragonCard] from the deck. You may tuck it here.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 148,
+   "number": 149,
+   "name": "Ophidian Recluse",
+   "expansion": "base",
+   "ability": "Pay [AnyResource][CaveCard][DragonCard] to gain [VP-5].",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 149,
+   "number": 150,
+   "name": "Aerial Recluse",
+   "expansion": "base",
+   "ability": "Gain [VP-4] if there is another HELPFUL dragon in this column.",
+   "abilityType": "EndGame",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 150,
+   "number": 151,
+   "name": "Fanged Broadwyrm",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here to gain [AnyResource] of the cost printed on the tucked dragon.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 151,
+   "number": 152,
+   "name": "Shrieking Amphiptere",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand here to gain [AnyResource] of the cost printed on the tucked dragon.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 152,
+   "number": 153,
+   "name": "Blue Keeper",
+   "expansion": "base",
+   "ability": "Cache [AnyResource] from your supply here. If you do, lay [Egg] here.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 153,
+   "number": 154,
+   "name": "Contrary Lung Dragon",
+   "expansion": "base",
+   "ability": "Gain [Meat]. You may cache it onto any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 154,
+   "number": 155,
+   "name": "Mercenary Wyvern",
+   "expansion": "base",
+   "ability": "Gain [Gold].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 155,
+   "number": 156,
+   "name": "Brindled Frogmouth",
+   "expansion": "base",
+   "ability": "Choose [AnyResource] and gain 2 of that resource. Each opponent gains 1 of the same resource.",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 156,
+   "number": 157,
+   "name": "Wily Lindworm",
+   "expansion": "base",
+   "ability": "Swap the location of any 2 dragons on your player mat (ignore normal cave preferences).",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 157,
+   "number": 158,
+   "name": "Brushwood Dragonette",
+   "expansion": "base",
+   "ability": "Lay [Egg] anywhere in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 158,
+   "number": 159,
+   "name": "Jaunty Dragonette",
+   "expansion": "base",
+   "ability": "Pay [Egg] from anywhere in this cave to gain [AnyResource][AnyResource].",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 159,
+   "number": 160,
+   "name": "Brushtail Fae",
+   "expansion": "base",
+   "ability": "Draw [DragonCard] from the deck. You may tuck it here.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 160,
+   "number": 161,
+   "name": "Greater Scorpio",
+   "expansion": "base",
+   "ability": "Gain [Milk]. You may cache it onto any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 161,
+   "number": 162,
+   "name": "Cosmic Amphiptere",
+   "expansion": "base",
+   "ability": "Excavate 1 space for free with [CaveCard] from the display",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 162,
+   "number": 163,
+   "name": "Reticent Manta",
+   "expansion": "base",
+   "ability": "Gain [Gold]. You may cache it here.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 163,
+   "number": 164,
+   "name": "Metamorphic Feydragon",
+   "expansion": "base",
+   "ability": "If you have at least 3 dragons in this cave, lay [Egg] on each dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2,
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 164,
+   "number": 165,
+   "name": "Clairvoyant Feydragon",
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonCard]. Each opponent draws [DragonCard] from the deck.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 165,
+   "number": 166,
+   "name": "Hyenic Serpent",
+   "expansion": "base",
+   "ability": "Gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 166,
+   "number": 167,
+   "name": "Homely Fae",
+   "expansion": "base",
+   "ability": "Gain [VP-5] if you have 4 dragons in your Crimson Cavern.",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 167,
+   "number": 168,
+   "name": "Ringtail Serpent",
+   "expansion": "base",
+   "ability": "If you have at least as many dragons in your Crimson Cavern as your left neighbor, gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 168,
+   "number": 169,
+   "name": "Diving Moray",
+   "expansion": "base",
+   "ability": "Gain [Gold].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 169,
+   "number": 170,
+   "name": "Vanishing Creeper",
+   "expansion": "base",
+   "ability": "If you have at least as many dragons in your Crimson Cavern as your left neighbor, gain [Milk].",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 170,
+   "number": 171,
+   "name": "Macabre Lindworm",
+   "expansion": "base",
+   "ability": "Tuck [DragonCard] from your hand under any dragon in this column.",
+   "abilityType": "Adventurer",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 171,
+   "number": 172,
+   "name": "Augural Fae",
+   "expansion": "base",
+   "ability": "Activate 1 [Adventurer] or [OncePerRound] ability on any dragon on your player mat.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 172,
+   "number": 173,
+   "name": "Solitary Remora",
+   "expansion": "base",
+   "ability": "Lay [Egg] on any orthogonally adjacent dragon.",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 173,
+   "number": 174,
+   "name": "Steadfast Southern Drake",
+   "expansion": "base",
+   "ability": "Pay [Egg] to gain [AnyResource][CaveCard][DragonCard]. Each opponent may pay [Egg] to gain  [AnyResource]/[CaveCard]/[DragonCard].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 174,
+   "number": 175,
+   "name": "Tendering Mothdragon",
+   "expansion": "base",
+   "ability": "If you have at least 1 marker on the Dragon Guild, lay up to [Egg][Egg] here.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 175,
+   "number": 176,
+   "name": "Gnawing Seraph",
+   "expansion": "base",
+   "ability": "Reveal [DragonCard] from the deck. If it is *medium*, tuck it here. Otherwise, discard it and gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 176,
+   "number": 177,
+   "name": "Dowsing Fae",
+   "expansion": "base",
+   "ability": "Gain [Crystal].",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 177,
+   "number": 178,
+   "name": "Watchful Wyvern",
+   "expansion": "base",
+   "ability": "Gain [Gold][Gold]. Each opponent gains [Gold].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 178,
+   "number": 179,
+   "name": "Nurturing Feydragon",
+   "expansion": "base",
+   "ability": "Gain an additional [VP-1] for every 2 [Egg] you have (round down).",
+   "abilityType": "EndGame",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 179,
+   "number": 180,
+   "name": "Beckoning Cricketcatcher",
+   "expansion": "base",
+   "ability": "Gain [DragonCard]. You may tuck it under any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 180,
+   "number": 181,
+   "name": "Gamboling Landragon",
+   "expansion": "base",
+   "ability": "Gain [Meat][Meat]. Each opponent gains [Meat].",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 181,
+   "number": 182,
+   "name": "Waddy's Rufftail",
+   "expansion": "base",
+   "ability": "Gain [Meat].",
+   "abilityType": "Adventurer",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 182,
+   "number": 183,
+   "name": "Warming Firevern",
+   "expansion": "base",
+   "ability": "Gain [VP-1] for each HELPFUL dragon on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 2,
+    "gold": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 258,
+   "number": 184,
+   "name": "Curious Feline Dragonette",
+   "expansion": "academy",
+   "ability": "Cache [AnyResource][AnyResource] from the general supply onto any dragon.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Milk][Meat]",
+   "ignoreCost": false
+  },
+  {
+   "id": 259,
+   "number": 185,
+   "name": "Angelic Ridgedragon",
+   "expansion": "academy",
+   "ability": "Gain [Crystal][Milk].",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Meat][DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 260,
+   "number": 186,
+   "name": "Pugnacious Amphiptere",
+   "expansion": "academy",
+   "ability": "Gain [DragonCard]. You may tuck it here or under an orthogonally adjacent dragon.",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 261,
+   "number": 187,
+   "name": "Sagacious Spitter",
+   "expansion": "academy",
+   "ability": "Gain [DragonGuild].",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 262,
+   "number": 188,
+   "name": "Speckled Manta",
+   "expansion": "academy",
+   "ability": "Gain [Meat][Gold].",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Egg][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 263,
+   "number": 189,
+   "name": "Ambidextrous Falsekoi",
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg] here.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 4,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Milk][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 264,
+   "number": 190,
+   "name": "Jocular Wyvern",
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg] anywhere in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[CaveCard][DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 265,
+   "number": 191,
+   "name": "Agile Gryphdragon",
+   "expansion": "academy",
+   "ability": "Train any *fledgling* on your player mat up to 2x for free.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 1,
+    "milk": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Milk][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 266,
+   "number": 192,
+   "name": "Northern Pane Dragon",
+   "expansion": "academy",
+   "ability": "Draw [DragonCard][CaveCard] from the deck.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[CaveCard][DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 267,
+   "number": 193,
+   "name": "Gaudy Serpent",
+   "expansion": "academy",
+   "ability": "Tuck [DragonCard] from the deck under any dragon. If you tuck it here, gain [Gold].",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[DragonCard][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 268,
+   "number": 194,
+   "name": "Verdant Wisp",
+   "expansion": "academy",
+   "ability": "Discard [DragonCard] from your hand to gain [DragonGuild][DragonGuild].",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "gold": 2,
+    "milk": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Gold][DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 269,
+   "number": 195,
+   "name": "Bullish Gryphdragon",
+   "expansion": "academy",
+   "ability": "Draw [DragonCard][DragonCard] from the deck. You may tuck 1 or both here.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 270,
+   "number": 196,
+   "name": "Northwestern Auric Dragon",
+   "expansion": "academy",
+   "ability": "Gain [Coin].",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Gold][Meat]",
+   "ignoreCost": false
+  },
+  {
+   "id": 271,
+   "number": 197,
+   "name": "Acrobatic Horndragon",
+   "expansion": "academy",
+   "ability": "Either lay [Egg][Egg][Egg] or excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[CaveCard][DragonCard][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 272,
+   "number": 198,
+   "name": "Galvanic Wyrm",
+   "expansion": "academy",
+   "ability": "Play [DragonCard] from your hand. Pay its printed costs.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Crystal][Meat]",
+   "ignoreCost": false
+  },
+  {
+   "id": 273,
+   "number": 199,
+   "name": "Bitter Darkscale Wyrm",
+   "expansion": "academy",
+   "ability": "Gain [DragonCard][DragonCard][DragonCard]. Tuck up to 2 of them under any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[DragonCard][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 274,
+   "number": 200,
+   "name": "Directing Violet Lung Dragon",
+   "expansion": "academy",
+   "ability": "Gain [AnyResource][AnyResource]. Cache up to 2 of them onto any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Meat]",
+   "ignoreCost": false
+  },
+  {
+   "id": 275,
+   "number": 201,
+   "name": "Ingenuous Spotted Dragonette",
+   "expansion": "academy",
+   "ability": "Gain [AnyResource] then cache up to 3 [AnyResource] from your supply onto any dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Meat][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 276,
+   "number": 202,
+   "name": "Fawlcora",
+   "expansion": "academy",
+   "ability": "Gain [DragonGuild][DragonGuild].",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Gold][DragonCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 277,
+   "number": 203,
+   "name": "Enlightened Feydragon",
+   "expansion": "academy",
+   "ability": "Pay [AnyResource] to gain [DragonGuild][DragonGuild][DragonGuild].",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Crystal][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 278,
+   "number": 204,
+   "name": "Radiant Boreal Dragonette",
+   "expansion": "academy",
+   "ability": "Gain [Meat][Milk][DragonCard]. You may cache/tuck any or all of them here.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Crystal][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 279,
+   "number": 205,
+   "name": "Capable Dragonette",
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg][Egg] here.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Coin]",
+   "ignoreCost": false
+  },
+  {
+   "id": 280,
+   "number": 206,
+   "name": "Adroit Salientian Dragon",
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg].",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 4,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Meat][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 281,
+   "number": 207,
+   "name": "Naryoon Marsh Dragon",
+   "expansion": "academy",
+   "ability": "Lay [Egg] on each dragon in this column or each dragon in this row.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Egg][Crystal]",
+   "ignoreCost": false
+  },
+  {
+   "id": 282,
+   "number": 208,
+   "name": "Zestful Feydragon",
+   "expansion": "academy",
+   "ability": "Play [DragonCard] from your hand for free.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Crystal][Gold][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 283,
+   "number": 209,
+   "name": "Petite Crimson Gryphdragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each resource cached here (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Meat][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 284,
+   "number": 210,
+   "name": "Iridescent Lindworm",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each tucked card here (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[DragonCard][CaveCard][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 285,
+   "number": 211,
+   "name": "Amaranth Feathered Fae",
+   "expansion": "academy",
+   "ability": "Gain +[VP-1] for each [Egg] in this dragon's column.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Crystal][Crystal]",
+   "ignoreCost": false
+  },
+  {
+   "id": 286,
+   "number": 212,
+   "name": "Kaleidoscopic Dragonette",
+   "expansion": "academy",
+   "ability": "Gain +[VP-1] for each [Egg] in this dragon's row.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Milk][CaveCard][Milk]",
+   "ignoreCost": false
+  },
+  {
+   "id": 287,
+   "number": 213,
+   "name": "Hovering Polychromatic Stripling",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each dragon on your player mat that costs at least 1 [Meat] (max [VP-15]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {},
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Meat][Crystal][DragonCard][Coin]",
+   "ignoreCost": false
+  },
+  {
+   "id": 288,
+   "number": 214,
+   "name": "Barb-Scaled Beetlesmasher",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each AGGRESSIVE dragon on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Meat][DragonCard][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 289,
+   "number": 215,
+   "name": "Guileless Dragonette",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each HELPFUL dragon on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 3,
+   "personality": "Helpful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[CaveCard][DragonCard][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 290,
+   "number": 216,
+   "name": "Jejune Firedragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each PLAYFUL dragon on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "milk": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[DragonCard][Gold]",
+   "ignoreCost": false
+  },
+  {
+   "id": 291,
+   "number": 217,
+   "name": "Pygmy Feydragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-2] for each SHY dragon on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {},
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Crystal][CaveCard][Crystal][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 292,
+   "number": 218,
+   "name": "Precocious Amphiptere",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each dragon on your player mat that costs an [Egg] (max [VP-15]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {},
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[CaveCard][Crystal][Milk][Egg]",
+   "ignoreCost": false
+  },
+  {
+   "id": 293,
+   "number": 219,
+   "name": "Blooming Sharpclaw",
+   "expansion": "academy",
+   "ability": "Gain +[VP-4] for each dragon on your player mat that costs at least 1 [Milk] (max [VP-16]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {},
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": "[Milk][Egg][DragonCard][Coin]",
+   "ignoreCost": false
+  },
+  {
+   "id": 294,
+   "number": 220,
+   "name": "Prime Flighty Ridgedragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each *fledgling* on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[DragonCard][Milk][CaveCard]",
+   "ignoreCost": false
+  },
+  {
+   "id": 295,
+   "number": 221,
+   "name": "Effervescent Gryphdragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each adult dragon (small, medium, or large) in an orthogonally adjacent space.",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {},
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[DragonCard][CaveCard][Gold][Crystal]",
+   "ignoreCost": false
+  },
+  {
+   "id": 296,
+   "number": 222,
+   "name": "Punk Dragonette",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each dragon on your player mat that costs at least 1 [Crystal] (max [VP-15]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {},
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": "[Crystal][CaveCard][DragonCard][Coin]",
+   "ignoreCost": false
+  },
+  {
+   "id": 297,
+   "number": 223,
+   "name": "Leopard Cobrette",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each dragon on your player mat that costs at least 1 [Gold] (max [VP-15]).",
+   "abilityType": "EndGame",
+   "vp": 1,
+   "size": "Fledgling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {},
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": "[Gold][DragonCard][DragonCard][Coin]",
+   "ignoreCost": false
+  },
+  {
+   "id": 298,
+   "number": 224,
+   "name": "Voracious Omnigobbler",
+   "expansion": "academy",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, gain [DragonCard]. When the 3rd [Meat] is cached, cache 2 [AnyResource] from the general supply onto any dragon.",
+   "abilityType": "Adventurer",
+   "vp": 7,
+   "size": "Hatchling",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 299,
+   "number": 225,
+   "name": "Famished Fae Dragonette",
+   "expansion": "academy",
+   "ability": "Cache [Meat] from your supply here. Any time you cache [Meat] here, train any *fledgling* 1x for free. When the 3rd [Meat] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 300,
+   "number": 226,
+   "name": "Euphonious Fae",
+   "expansion": "academy",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, gain [Milk] or [Meat]. When the 3rd [DragonCard] is tucked, also tuck 2 [Coin] from the deck under any dragon.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Hatchling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 1,
+    "egg": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 301,
+   "number": 227,
+   "name": "Glassy-Eyed Shrubmuncher",
+   "expansion": "academy",
+   "ability": "Cache [Milk] from your supply here. Any time you cache [Milk] here, train any *fledgling* 1x for free. When the 3rd [Milk] is cached, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "milk": 2,
+    "egg": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 302,
+   "number": 228,
+   "name": "Clangorous Feydragon",
+   "expansion": "academy",
+   "ability": "Tuck [DragonCard] from your hand here. Any time you tuck [DragonCard] here, train any *fledgling* 1x for free. When the 3rd [DragonCard] is tucked, also gain [Coin].",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Hatchling",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "milk": 3,
+    "egg": 1
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 303,
+   "number": 229,
+   "name": "Charitable False Licheneater",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if it will be the 3rd or 4th dragon in its cave. Gain [Meat][Gold][Crystal]. All opponents gain 1 of their choice.",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 304,
+   "number": 230,
+   "name": "Imperious Wyvern",
+   "expansion": "academy",
+   "ability": "Discard [CaveCard] from your hand to gain its [WhenPlayed]benefit.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 305,
+   "number": 231,
+   "name": "Crimson Tufted Lung Dragon",
+   "expansion": "academy",
+   "ability": "Fully train any *fledgling*. Do not pay any costs.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 2,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 306,
+   "number": 232,
+   "name": "Wandering Protean Dragon",
+   "expansion": "academy",
+   "ability": "Train all orthogonally adjacent *fledgling*s 1x for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 307,
+   "number": 233,
+   "name": "Gilded Whiskered Serpent",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if it is played orthogonally adjacent to a *fledgling*. Train any *fledgling* up to 2x for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 308,
+   "number": 234,
+   "name": "Relentless Spine Drake",
+   "expansion": "academy",
+   "ability": "Pay [CaveCard][CaveCard] to play a dragon from your hand or the display for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 2,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "gold": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 309,
+   "number": 235,
+   "name": "Diminutive Pegasus Dragon",
+   "expansion": "academy",
+   "ability": "Gain +[VP-8] if there are at least 2 *hatchlings*D312 on your player mat.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 310,
+   "number": 236,
+   "name": "Obstinate Plumed Coatl",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if you have played at least 2 hatchlings. Gain [Milk][Milk]. All opponents gain [Milk].",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 311,
+   "number": 237,
+   "name": "Merciful Sea Serpent",
+   "expansion": "academy",
+   "ability": "Either train any *fledgling* 1x for free, or lay 1 [Egg] for each fully trained *fledgling*.",
+   "abilityType": "OncePerRound",
+   "vp": 5,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 3
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 312,
+   "number": 238,
+   "name": "Andean Coatl",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if it will be the 3rd or 4th dragon in its cave. Activate the [Adventurer] abilities on all orthogonally adjacent dragons.",
+   "abilityType": "WhenPlayed",
+   "vp": 1,
+   "size": "Small",
+   "capacity": 3,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 313,
+   "number": 239,
+   "name": "Southern Cavalier Wyvern",
+   "expansion": "academy",
+   "ability": "Cache up to 2 [AnyResource] from the general supply onto any orthogonally adjacent dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 0,
+   "size": "Small",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 314,
+   "number": 240,
+   "name": "Phlegmatic Firedragon",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if you have played at least 2 *fledglings*. Train any *fledgling* 1x for free.",
+   "abilityType": "Adventurer",
+   "vp": 1,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 315,
+   "number": 241,
+   "name": "Ancient Kasei Wyvern",
+   "expansion": "academy",
+   "ability": "Gain [DragonGuild] for each fully trained *fledgling* on your player mat.",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 316,
+   "number": 242,
+   "name": "Pliant Floral Rex",
+   "expansion": "academy",
+   "ability": "Pay [AnyResource] to train any *fledgling* 1x for free, then gain the item covered by the training token.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 317,
+   "number": 243,
+   "name": "Eastern Lupine Serpent",
+   "expansion": "academy",
+   "ability": "Activate any 2 [OncePerRound] abilities on dragons on your player mat.",
+   "abilityType": "WhenPlayed",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 2,
+    "crystal": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 318,
+   "number": 244,
+   "name": "Rancorous Lindworm",
+   "expansion": "academy",
+   "ability": "Draw 3 [DragonCard] from the deck. You may tuck any or all of them here.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 319,
+   "number": 245,
+   "name": "Merciful Anteldragon",
+   "expansion": "academy",
+   "ability": "Reveal [DragonCard] from the deck. If it is a *fledgling*, tuck it here. Otherwise, discard it and lay [Egg] here.",
+   "abilityType": "Adventurer",
+   "vp": 3,
+   "size": "Medium",
+   "capacity": 4,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 320,
+   "number": 246,
+   "name": "Decimating Drakeeater",
+   "expansion": "academy",
+   "ability": "Pay [AnyResource][AnyResource] to draw 5 [DragonCard] from the deck. Keep 1 and tuck the other 4 here.",
+   "abilityType": "OncePerRound",
+   "vp": 0,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 321,
+   "number": 247,
+   "name": "Lively Tusked Lung Dragon",
+   "expansion": "academy",
+   "ability": "Draw 3 [DragonCard] from the deck. Play 1 for free and discard the other 2.",
+   "abilityType": "WhenPlayed",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 1,
+    "crystal": 2,
+    "coin": 1
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 322,
+   "number": 248,
+   "name": "Vivacious Amphiptere",
+   "expansion": "academy",
+   "ability": "Pay [Coin] to draw 3 [CaveCard] from the deck. Play 1 for free and keep the other 2.",
+   "abilityType": "WhenPlayed",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 3
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 323,
+   "number": 249,
+   "name": "Quarrelsome Firevern",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if you have played at least 2 other AGGRESSIVE dragons. Draw [DragonCard] from the deck for each AGGRESSIVE dragon in this cave. You may tuck up to 2 of them here.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 324,
+   "number": 250,
+   "name": "Archaic Striated Serpent",
+   "expansion": "academy",
+   "ability": "Gain +[VP-1] for each [FledglingArrow] on all of your *fledgling*s.",
+   "abilityType": "EndGame",
+   "vp": 5,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 325,
+   "number": 251,
+   "name": "Possessive Pseudodrake",
+   "expansion": "academy",
+   "ability": "Tuck 1 [DragonCard] from the deck here for each *fledgling* on your player mat.",
+   "abilityType": "OncePerRound",
+   "vp": 4,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 326,
+   "number": 252,
+   "name": "Solicitous Coatl",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if you have played at least 2 other HELPFUL dragons. Cache [AnyResource] from the general supply onto each HELPFUL dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Medium",
+   "capacity": 2,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 327,
+   "number": 253,
+   "name": "Seraphic Celestialwing Coatl",
+   "expansion": "academy",
+   "ability": "Pay [AnyResource] to train any *fledgling* up to 2x for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 4,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 328,
+   "number": 254,
+   "name": "Trixie Wyvern",
+   "expansion": "academy",
+   "ability": "Fully train any *fledgling* for free. If you do, also lay [Egg][Egg].",
+   "abilityType": "OncePerRound",
+   "vp": 0,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 3,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 329,
+   "number": 255,
+   "name": "Serene Anteldragon",
+   "expansion": "academy",
+   "ability": "Lay [Egg] on each *fledgling* on your player mat.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1
+   },
+   "caves": [
+    "Crimson Cavern"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 330,
+   "number": 256,
+   "name": "Cyclopean Basilisk",
+   "expansion": "academy",
+   "ability": "Tuck up to 2 [DragonCard] from the deck under any orthogonally adjacent dragon.",
+   "abilityType": "OncePerRound",
+   "vp": 1,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 331,
+   "number": 257,
+   "name": "Nettlesome Greatwyrm",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if it will be the 3rd or 4th dragon in its cave. Reveal [DragonCard] from the deck. If it is a *fledgling*, keep it and lay 1 [Egg] here. Otherwise, tuck it here.",
+   "abilityType": "Adventurer",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 3,
+   "personality": "Aggressive",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 332,
+   "number": 258,
+   "name": "Mild Arboreal Wyvern",
+   "expansion": "academy",
+   "ability": "Train any *fledgling* 1x for free, then either gain the item covered by the training token or lay [Egg].",
+   "abilityType": "OncePerRound",
+   "vp": 2,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "gold": 2
+   },
+   "caves": [
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 333,
+   "number": 259,
+   "name": "Cacophonic Lung Dragon",
+   "expansion": "academy",
+   "ability": "Pay [CaveCard] to train any *fledgling* up to 2x for free.",
+   "abilityType": "WhenPlayed",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 334,
+   "number": 260,
+   "name": "Regal Ice Dragon",
+   "expansion": "academy",
+   "ability": "Ignore this dragon's cost if it will complete a column or row of dragons. Gain [DragonGuild] if this dragon's column is full, and gain [DragonGuild] if this dragon's row is full.",
+   "abilityType": "OncePerRound",
+   "vp": 0,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "crystal": 2
+   },
+   "caves": [
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": true
+  },
+  {
+   "id": 335,
+   "number": 261,
+   "name": "Affable Glowtail",
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg] on each PLAYFUL dragon in this cave.",
+   "abilityType": "OncePerRound",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 336,
+   "number": 262,
+   "name": "Machiavelli's Dragon",
+   "expansion": "academy",
+   "ability": "Tuck up to 2 [DragonCard] from your hand under each SHY dragon in this cave.",
+   "abilityType": "Adventurer",
+   "vp": 5,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "gold": 1,
+    "crystal": 2
+   },
+   "caves": [
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 337,
+   "number": 263,
+   "name": "Hirsute Horned Colossus",
+   "expansion": "academy",
+   "ability": "Gain +[VP-3] for each dragon on your player mat with [Coin] in its cost (max [VP-15]).",
+   "abilityType": "EndGame",
+   "vp": 3,
+   "size": "Large",
+   "capacity": 2,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 363,
+   "number": 119,
+   "name": "Chameleon Coatyl",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each *medium* dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Medium",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 364,
+   "number": 124,
+   "name": "Mosaic Guardian",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each *large* dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Helpful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 365,
+   "number": 131,
+   "name": "Titanic Coatyl",
+   "expansion": "academy",
+   "ability": "Gain + [VP-6] for each *set* of dragons on your player mat (1 *set* = 1 of each: *hatchling*, *fledgling*, *small*, *medium*, *large*).",
+   "abilityType": "EndGame",
+   "vp": 7,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Shy",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 366,
+   "number": 132,
+   "name": "Lilliputian Fae",
+   "expansion": "academy",
+   "ability": "Gain + [VP-3] for each small dragon on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Small",
+   "capacity": 1,
+   "personality": "Aggressive",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  },
+  {
+   "id": 367,
+   "number": 134,
+   "name": "Customary Grazer",
+   "expansion": "academy",
+   "ability": "Gain + [VP-4] for each *hatchling* on your player mat (max [VP-12]).",
+   "abilityType": "EndGame",
+   "vp": 6,
+   "size": "Large",
+   "capacity": 1,
+   "personality": "Playful",
+   "cost": {
+    "meat": 1,
+    "gold": 1,
+    "crystal": 1,
+    "coin": 1
+   },
+   "caves": [
+    "Crimson Cavern",
+    "Golden Grotto",
+    "Amethyst Abyss"
+   ],
+   "trainingTrack": null,
+   "ignoreCost": false
+  }
+ ],
+ "caves": [
+  {
+   "id": 183,
+   "number": 1,
+   "name": null,
+   "expansion": "base",
+   "ability": "Activate the [OncePerRound-v2] ability on any dragon on your player mat.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 184,
+   "number": 2,
+   "name": null,
+   "expansion": "base",
+   "ability": "Activate the [WhenPlayed] ability on any dragon on your player mat.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 185,
+   "number": 3,
+   "name": null,
+   "expansion": "base",
+   "ability": "Cache [AnyResource][AnyResource] from the general supply onto any dragon(s).",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 186,
+   "number": 4,
+   "name": null,
+   "expansion": "base",
+   "ability": "Cache [AnyResource][AnyResource] from the general supply onto any dragon(s).",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 187,
+   "number": 5,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [AnyResource]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 188,
+   "number": 6,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [AnyResource]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 189,
+   "number": 7,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [CaveCard][AnyResource].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 190,
+   "number": 8,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [CaveCard][DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 191,
+   "number": 9,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [CaveCard][AnyResource].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 192,
+   "number": 10,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [CaveCard]. Lay [Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 193,
+   "number": 11,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [CaveCard]. Lay [Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 194,
+   "number": 12,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 195,
+   "number": 13,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 196,
+   "number": 14,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Coin].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 197,
+   "number": 15,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Crystal][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 198,
+   "number": 16,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Crystal][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 199,
+   "number": 17,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Crystal][Milk].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 200,
+   "number": 18,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Crystal]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 201,
+   "number": 19,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Crystal]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 202,
+   "number": 20,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 203,
+   "number": 21,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 204,
+   "number": 22,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 205,
+   "number": 23,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 206,
+   "number": 24,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard][DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 207,
+   "number": 25,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 208,
+   "number": 26,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonCard]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 209,
+   "number": 27,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonGuild][DragonGuild]. Each opponent gains [DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 210,
+   "number": 28,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonGuild][DragonGuild]. Each opponent gains [DragonGuild].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 211,
+   "number": 29,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonGuild]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 212,
+   "number": 30,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonGuild]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 213,
+   "number": 31,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [DragonGuild]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 214,
+   "number": 32,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 215,
+   "number": 33,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 216,
+   "number": 34,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold][Gold].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 217,
+   "number": 35,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold][Milk].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 218,
+   "number": 36,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 219,
+   "number": 37,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Gold]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 220,
+   "number": 38,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 221,
+   "number": 39,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][DragonCard].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 222,
+   "number": 40,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 223,
+   "number": 41,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 224,
+   "number": 42,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Gold].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 225,
+   "number": 43,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Gold].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 226,
+   "number": 44,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Meat].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 227,
+   "number": 45,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Meat].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 228,
+   "number": 46,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat][Milk].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 229,
+   "number": 47,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 230,
+   "number": 48,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Meat]. Lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 231,
+   "number": 49,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain [Milk][Milk].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 232,
+   "number": 50,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. Each opponent gains 1 benefit of their choice.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 233,
+   "number": 51,
+   "name": null,
+   "expansion": "base",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. Each opponent gains 1 benefit of their choice.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 234,
+   "number": 52,
+   "name": null,
+   "expansion": "base",
+   "ability": "Immediately play [DragonCard] with a discount of 1 [Egg] or [AnyResource].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 235,
+   "number": 53,
+   "name": null,
+   "expansion": "base",
+   "ability": "Immediately play [DragonCard] with a discount of 1 [Egg] or [AnyResource].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 236,
+   "number": 54,
+   "name": null,
+   "expansion": "base",
+   "ability": "Immediately play [DragonCard] with a discount of 1 [Egg] or [AnyResource].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 237,
+   "number": 55,
+   "name": null,
+   "expansion": "base",
+   "ability": "Lay [Egg][Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 238,
+   "number": 56,
+   "name": null,
+   "expansion": "base",
+   "ability": "Lay [Egg][Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 239,
+   "number": 57,
+   "name": null,
+   "expansion": "base",
+   "ability": "Lay [Egg][Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 240,
+   "number": 58,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [AnyResource][AnyResource], then draw [CaveCard] from the deck and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 241,
+   "number": 59,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [AnyResource][AnyResource], then gain [CaveCard] from the display and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 242,
+   "number": 60,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [CaveCard][CaveCard], then draw [CaveCard] from the deck and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 243,
+   "number": 61,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [CaveCard][CaveCard], then gain [CaveCard] from the display and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 244,
+   "number": 62,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [DragonCard][DragonCard], then draw [CaveCard] from the deck and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 245,
+   "number": 63,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [DragonCard][DragonCard], then gain [CaveCard] from the display and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 246,
+   "number": 64,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [Egg][Egg], then draw [CaveCard] from the deck and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 247,
+   "number": 65,
+   "name": null,
+   "expansion": "base",
+   "ability": "Pay [Egg][Egg], then gain [CaveCard] from the display and immediately play it for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 248,
+   "number": 66,
+   "name": null,
+   "expansion": "base",
+   "ability": "Swap the location of any 2 dragons on your player mat. Ignore normal cave preferences.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 249,
+   "number": 67,
+   "name": null,
+   "expansion": "base",
+   "ability": "Tuck [DragonCard][DragonCard] from the deck behind any dragon(s).",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 250,
+   "number": 68,
+   "name": null,
+   "expansion": "base",
+   "ability": "Tuck [DragonCard][DragonCard] from the deck behind any dragon(s).",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 251,
+   "number": 69,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [AnyResource] to gain [DragonGuild]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 252,
+   "number": 70,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [AnyResource] to lay [Egg][Egg]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 253,
+   "number": 71,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [CaveCard] to gain [DragonGuild]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 254,
+   "number": 72,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [DragonCard] to gain [DragonGuild]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 255,
+   "number": 73,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [DragonCard] to lay [Egg][Egg]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 256,
+   "number": 74,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [Egg] to gain [AnyResource][AnyResource]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 257,
+   "number": 75,
+   "name": null,
+   "expansion": "base",
+   "ability": "Up to 3x, pay [Egg] to gain [DragonGuild]. Each opponent may do this 1x.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 338,
+   "number": 76,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Up to 2x, train any *fledgling* 1x for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 339,
+   "number": 77,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Up to 2x, train any *fledgling* 1x for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 340,
+   "number": 78,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Train any *fledgling* 1x for free, then gain the item covered by the training token.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 341,
+   "number": 79,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Train any *fledgling* 1x for free, then gain the item covered by the training token.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 342,
+   "number": 80,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Fully train any *fledgling* for free. All others may train any *fledgling* 1x for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 343,
+   "number": 81,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Draw 3 [DragonCard] from the deck. Keep 1, discard 1, and tuck 1 under any dragon.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 344,
+   "number": 82,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [AnyResource][AnyResource]. Keep 1 and cache 1 onto any dragon.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 345,
+   "number": 83,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Activate the [Adventurer] ability on up to 2 dragons on your player mat.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 346,
+   "number": 84,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Activate 2 different [Adventurer] abilities printed on your player mat.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 347,
+   "number": 85,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Lay [Egg][Egg][Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 348,
+   "number": 86,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Meat][Milk].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 349,
+   "number": 87,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Meat][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 350,
+   "number": 88,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Meat][Gold].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 351,
+   "number": 89,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Gold][Crystal].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 352,
+   "number": 90,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Gold][Crystal]. Lay [Egg]. All opponents lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 353,
+   "number": 91,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [Meat][Milk][DragonCard]. All opponents gain 1 of their choice.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 354,
+   "number": 92,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [DragonGuild][DragonGuild]. All opponents lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 355,
+   "number": 93,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain [DragonGuild][DragonGuild]. All opponents lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 356,
+   "number": 94,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [Coin] to gain [DragonCard][AnyResource][CaveCard] and lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 357,
+   "number": 95,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [Coin] to gain [DragonCard][AnyResource][CaveCard] and lay [Egg].",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 358,
+   "number": 96,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [DragonCard][DragonCard], then excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 359,
+   "number": 97,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [AnyResource][AnyResource], then excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 360,
+   "number": 98,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [Egg][Egg], then excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 361,
+   "number": 99,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [AnyResource][Egg], then excavate 1 space for free with [CaveCard] from your hand.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 362,
+   "number": 100,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Pay [Coin][AnyResource], then play [DragonCard] from your hand for free.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 368,
+   "number": 50,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. All opponents gain 1 benefit of their choice.",
+   "abilityType": "WhenPlayed"
+  },
+  {
+   "id": 369,
+   "number": 51,
+   "name": null,
+   "expansion": "academy",
+   "ability": "Gain 2 different benefits: [DragonCard]/[CaveCard]/[AnyResource]. All opponents gain 1 benefit of their choice.",
+   "abilityType": "WhenPlayed"
+  }
+ ]
+}

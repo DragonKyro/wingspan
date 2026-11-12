@@ -1,0 +1,420 @@
+# AGENTS.md
+
+Context for agents working in this repo.
+
+## What this is
+
+A playable Wingspan web app — the foundation for heuristic AI now and RL
+experiments later. Modeled on the sibling `catan` project (same stack, same
+architecture, net layer ported nearly verbatim).
+
+## Tech stack
+
+TypeScript, Vite, React, Zustand, Vitest, Firebase Realtime Database +
+anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
+`/wingspan`), GitHub Pages deploy (`base: '/wingspan/'`). No server code.
+
+## Commands
+
+- `npm run dev` — dev server
+- `npm run build` — `tsc` + `vite build` + `scripts/check-bundle.mjs` (fails if a
+  game chunk or card data leaks into the first page load)
+- `npm run test:run` / `npx vitest run` — tests
+- `npx tsc --noEmit` — typecheck
+- `npm run cards` — regenerate `src/wingspan/data/*.json` from the card DB
+  (reads `../wingsearch/src/assets/data/{master,bonus,goals}.json` — see
+  `scripts/convert-cards.mjs`)
+- `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
+- `npm run train:build` — bundle the Wyrmspan training env (`training/dist/wyrmspan-env.mjs`)
+- `npm run wyrm:bench` — baseline Wyrmspan agents' scores (heuristic / greedy / random)
+- `python -m pytest training/wyrmspan -q` — training-side tests (conda env `train`; see training/README.md)
+
+## Architecture
+
+Three engines share one layout — `createGame(options)`, `applyAction(state,
+action) => state` (in `engine.ts`), `chooseAction(state, playerId)` for the
+AI — and only Wingspan has a UI so far.
+
+- `src/shared/` — code every engine uses: `rng.ts` (seeded mulberry32,
+  threaded through `state.rngState`) and `state.ts` (getPlayer / setPlayer /
+  pushPending). Engines re-export these bound to their own types; don't add
+  per-engine copies.
+- `src/finspan/`, `src/wyrmspan/` — the Finspan (+ Sharks & Reefs) and
+  Wyrmspan (+ Dragon Academy) engines + AIs. Engine-only: no UI/net yet.
+- `src/selfplay.test.ts` — AI self-play over every set/player count/mode of
+  all three engines (`SELFPLAY_SEEDS=250` for a wide local sweep). Each
+  engine's `regressions.test.ts` pins the bugs it found. Shared test
+  helpers (game factories, AI drivers, `autoResolve`/`edit`/`mkBird`…) live
+  in each engine's `testUtils.ts` — reuse them instead of redefining.
+- `src/wingspan/` — pure engine. No React/DOM/net imports. Every state mutation
+  goes through `applyAction(state, action) => state` in `engine.ts`.
+  Deterministic from `createGame(options)` + the action log; `state.rngState`
+  threads the seeded RNG.
+  - `types.ts` — GameState, Action, PendingStep (sub-choices powers queue),
+    Choice (answers), BirdCard/BonusCard/GoalTile data types.
+  - `createGame.ts` — setup from seed (shuffles decks, deals, picks goal tiles).
+  - `actions.ts` — the four turn actions + setup + activation + endTurn +
+    round/game-end.
+  - `powers.ts` — every distinct power text → implementation
+    (`POWER_IMPLS`, `PINK_IMPLS`), plus state writers (drawFromDeck,
+    tuckCardOnBird, refillFeeder/Tray, firePinkTriggers).
+  - `resolve.ts` — resolves pending steps, runs `then` continuations, drops
+    impossible steps.
+  - `scoring.ts` — goal-tile unit counts + end-game ScoreBreakdown.
+  - `cards.ts` — typed accessors over `src/wingspan/data/*.json` (generated).
+  - `ai/` — pure heuristic. `chooseAction(state, playerId) => Action | null`;
+    `choices.ts` gives greedy legal answers to pending steps.
+- `src/net/` — room transport (ported from catan). `transport.ts` interface,
+  `firebaseRoom.ts` (lazy-loaded, `DB_ROOT='wingspan'`, `PROTOCOL_VERSION=1`
+  must match `database.rules.json`), `fakeTransport.ts` for tests,
+  `identity.ts`, `roomLink.ts`.
+- `src/store/` — `gameStore` (game + dispatch/applyLocal/broadcast hooks),
+  `networkStore` (rooms, lobby, ActionSync), `actionSync` (log replay /
+  rollback), `lobbyGame` (lobby→createGame settings).
+- `src/games/` — the lazy engine registry. `engines.ts`: `loadEngine(id)` /
+  `getEngine(id)`; `{wingspan,wyrmspan,finspan}Engine.ts` are the per-game
+  entry points (createGame / applyAction / chooseAction / aiToAct).
+  `catalog.ts` holds menu-facing metadata (set list, card-browser links).
+  **Code-split rule:** first-load code (src/ui/*.tsx, src/store, src/net,
+  src/shared, src/games/engines|catalog) may only reach game code via
+  `import()` or `import type`; `src/bundle.test.ts` and check-bundle enforce it.
+- `src/ui/` — React. Shared: App, MenuScreen, LobbyScreen, AIDriver (generic,
+  via the registry), fx, MatchCharts, RulesBook (lazy), svgArt, CreatureCard.
+  `screens.tsx` lazy-loads one screen per game; `preloadGame(id)` warms the
+  chunks when a game is picked. Per-game UI lives in `src/ui/wingspan/`
+  (GameScreen runs a draft model for multi-click actions; PendingBar +
+  StepPicker render each pending-step kind), `src/ui/wyrmspan/`, `src/ui/finspan/`.
+  `src/ui/icons.test.tsx` (every card-text token has an icon) and
+  `src/ui/smoke.test.tsx` (each screen renders through a full AI game) guard them.
+- `src/ui/art/` — procedural SVG card art (no image files). `core.tsx` holds
+  `<ArtDefs/>` (every shared gradient, mounted ONCE in App — reference as
+  `url(#ws-…)`, never add per-card <defs>), a seeded RNG over shared/rng and
+  colour helpers. `birdArt`/`dragonArt`/`fishArt` map the card NAME to a body
+  plan via ordered regex rules (first match wins; use word boundaries — "peafowl" contains
+  "owl") plus name colour/part words, and habitat/cave/zone to a seeded scene.
+  `svgArt.tsx` re-exports them alongside the small token icons.
+- `src/ui/CreatureCard.tsx` — the ONE fixed-size frame (--cc-w × --cc-h) for
+  birds, dragons and fish: cost top-left, VP top-right, placement strip on the
+  left (habitats / caves / depth zones), traits under the art, tokens overlaid
+  on the art. Board slots are sized to it. Icon rule: every game item renders
+  through the same component as its card-text token (`FoodIcon`/`TokenIcon`,
+  `WyrmResourceIcon`/`WyrmVp`, `FinIcon` in art/tokens.tsx), each with a
+  hover <title>; never use emoji for resources, cards or points.
+
+## Engine invariants
+
+- One action per turn: `state.turnTookAction` is set by the four main actions;
+  `endTurn` (or round end) clears it. Pending steps must be resolved before
+  anything else; only the head of `pending` is answerable.
+- Powers queue `PendingStep`s rather than blocking; compound powers chain via
+  `PendingTag` continuations (`then`) resolved in `resolve.ts`.
+- Die picks index the *live* feeder — it shrinks as dice are taken, so the
+  k-th pick's index is against the k-th-smaller feeder.
+- `pinkUsed` flags reset at the start of the bird owner's turn.
+- Power colors: brown = when activated, pink = once between turns,
+  white = when played, teal = end of round, yellow = game end.
+  Teal powers drain via `roundEndQueue` during the 'roundEnd' phase
+  (BEFORE goal scoring — they can change it); yellow powers drain
+  via `gameEndQueue` during 'gameEnd'.
+- `settle()` in engine.ts drains the roundEnd queue, calls `finishRound`
+  (goal scoring → tray restock → cube reset → first-player rotation), then
+  drains the gameEnd queue and computes finalScores/winner.
+- Goal board: 'green' side = ranked majority scoring, points escalate per
+  round (4/1, 5/2/1, 6/3/2, 7/4/3 — see GOAL_POINTS); players with 0 units
+  score 0. 'blue' side (1 pt/item, max 5) is unimplemented.
+- Round end (EE order): teal powers → goal scored → tray discarded +
+  restocked (americas: hummingbird garden too) → cubes reset → first
+  player rotates.
+
+## European expansion (`set: 'european'`, 81 birds)
+
+- Sideways birds (`Place this bird sideways…`) push a `ghost` PlayedBird into
+  the covered slot: it occupies board space/row length and the filled-columns
+  goal but is skipped by `playedBirds`, egg/cube targets, and power scans.
+- Alternative-cost predators: `coverBird` plays on top of a bird (its eggs +
+  caches are discarded, the bird + its tucks go underneath); `cardPayments`
+  pays 1 hand card per [rodent] item (the cards tuck behind the bird);
+  `cachedFoodPayments` spends food cached on birds. `autoPayBird` in
+  helpers.ts builds all three for UI/AI.
+- `roundCubes` tracks cubes per action column each round (teal "action cubes
+  on their [habitat]" powers); `gainedThisTurn` tracks food types gained per
+  turn (European Robin) — reset by `resetPinkFlags`.
+- Teal powers resolve in turn order before goal scoring; a teal-power bird
+  played mid-roundEnd (Yellowhammer's extra play) fires immediately.
+- "Counts double" teal birds contribute weight 2 in `goalScore` via
+  `goalWeight`; "white & no powers" goal counts no-power AND white birds.
+- New bonus-card scorers (Citizen Scientist, Diet Specialist, Ethologist,
+  Behaviorist) live in `scoring.ts` `bonusUnits`; `[automa] …` bonus cards
+  are filtered out of `bonusCardsInSets`.
+- New PendingStep kinds: choosePlayer/chooseHabitat/chooseFoodDiscard/
+  chooseFoodSteal/chooseTrayCard/chooseDieRemove/chooseBirds/assignHandTucks/
+  chooseCacheOnBirds/chooseFoodType/chooseOption — all answered by
+  `greedyChoice` in ai/choices.ts and rendered in PendingBar.
+- Setup: players keep up to 5 birds and discard 1 food PER BIRD KEPT
+  (official: "for each bird card you keep, discard 1 food").
+- The deck DOES reshuffle discards when emptied (official rule) — see
+  drawFromDeck/refillTray/lookTuck in powers.ts.
+- Feeder: empty tray auto-refills all 5; all-same-face (even 1 die) allows
+  a reroll before ANY food gain — `reroll` on GainFoodAction and on the
+  'dice' Choice (pickDie pending steps).
+- Powers are officially "always optional": when-played/pink powers
+  auto-fire (mostly beneficial); optional sub-choices honor `optional`
+  (chooseHandTuck decline skips `then`, chooseAdditionalPlay can pass).
+  See "Wingspan player decisions" below for the choices the engine leaves
+  to the player.
+
+## Oceania expansion (`set: 'oceania'`, 95 birds)
+
+- Nectar is a sixth food type and a die face (replaces the split face —
+  `OCEANIA_DIE_FACES`). It's wild for food costs (`payFoodPlan`), tracked in
+  `p.nectarSpent[habitat]` when spent, and discarded from the supply at
+  round end after teal powers, before goal scoring (`finishRound`).
+- End-game nectar majorities: `nectarPoints` in scoring.ts — per habitat,
+  most spent nectar = 5 pts, second = 2 (`NECTAR_POINTS`); ties share the
+  rank and skip the next.
+- Every supply gain routes through `grantSupplyFood` (records the gain and
+  fires the `gainNectar` pink watch — Spangled Drongo). Feeder nectar gains
+  fire it in `takeDieFromFeeder`.
+- The Oceania mat has 6 benefit boxes (the 6th only when a row is full —
+  `actionSlot(p, h, oceania)`); constants `OCEANIA_*` in constants.ts give
+  per-slot dice/eggs/cards plus reset/trade slots. Action fields:
+  `GainFoodAction.rerollCost`, `LayEggsAction.extraTrades`,
+  `DrawCardsAction.tradeNectar`/`resetTrayCost`, all validated in actions.ts.
+- Players start with 1 nectar (can't be discarded during setup keeps).
+- New PendingStep kinds: chooseCopyPower (Tūī/Lyrebird copy),
+  chooseTrayCardEx (nest/wingspan filters + tray reset + hand-or-tuck
+  destination), chooseTuckOrHand, chooseCacheFromSupply. Plus
+  chooseBirdForEgg gains `onlyBird`/`adjacentTo`/`wingspanLt`,
+  chooseBirdForEggDiscard gains `habitat`, chooseBirds gains
+  `exclude`/`nest`/`eggsMin`, chooseBonusCards gains `fromDiscard`
+  (Wrybill, using `state.bonusDiscard`), choosePlayer/chooseFoodDiscard/
+  discardBonusCards gain `optional` declines (a declined optional drops its
+  `then`), chooseWildTrade/chooseFoodDiscard track `spentHabitat` nectar,
+  chooseAdditionalPlay gains `eggDiscount`.
+- New PowerOptions: gainFruit/fruitToNectar (Mistletoebird),
+  selfEggs2/gain2Dice (Red-Winged Parrot).
+- "Copy a brown power" runs the target's POWER_IMPLS with the copier's
+  playerId/ref; "play another bird" powers can fire the played bird's
+  yellow (game-end) power immediately per the card text.
+
+## Asia expansion (`set: 'asia'`, 90 birds)
+
+- All 88 distinct asia power texts are implemented (86 in POWER_IMPLS,
+  2 pinks: Asian Koel + Violet Cuckoo over-limit egg lays).
+- New PendingStep kinds: chooseDuetSpace, chooseResources (mixed
+  food+eggs+cards payment), chooseTrayDiscard, moveBirdToPlayer, confirm
+  (yes/no gate for "you may"), chooseHandPick (inspect-only pick),
+  choosePoolTuck (tuck some of a drawn pool), chooseCopyPlayed (white-power
+  copy on a neighbour), chooseReroll (feeder dice), drawUpTo (draw-or-stop).
+- New Choice kinds: resources, duetSpace, playedTarget. New PowerOptions:
+  trayCard/gainSeed/tuckDeckCard/asiaCacheWild/asiaTuckHand.
+- chooseBirdForEgg gained `columnOf`; chooseBonusCards gained `fromHand`
+  (score-now powers) and `copyFrom` (Adjutants → `p.copiedBonus`, scored at
+  game end against the copier's own birds).
+- Tracked state: `p.feederGainedThisTurn` (dice-only gains, reset per turn),
+  `b.eggsGainedThisTurn`/`b.cachedGainedThisTurn` (per-bird, reset per turn),
+  `p.copiedBonus`.
+- "feasible()" returns deliverable capacity (not a boolean) — count-bearing
+  steps get clamped to it, so return `min(count, realCapacity)`.
+
+### Duet mode (`settings.mode: 'duet'`, exactly 2 players)
+
+- `state.duet` = 36-space fixed map (`duetMap.ts` DUET_MAP: 3 habitat regions
+  × 12 spaces, each with a nest/food/wingspan/beak criterion, 9 bonus spaces)
+  + an unbounded reset space. Every played bird queues a chooseDuetSpace
+  (2 steps for "counts double" birds); bonus spaces grant a die/egg/card.
+- Reset-space tokens fund `duetReset` actions (reset feeder or tray, any time
+  on your turn). Goal scoring: winner takes DUET_GOAL_POINTS[r] (ties share),
+  loser gets next round's first-player token. End game: +1 pt per token in
+  the largest contiguous group (duetLargestGroup, hex-grid neighbours).
+- Duet goal tiles are ids 2034–2045 (6 double-sided tiles, random 4 sides).
+
+### Flock mode (`settings.mode: 'flock'`, 6–7 players)
+
+- Standard tiles, FLOCK_GOAL_POINTS table (friendly ties share a rank).
+
+## Americas expansion (`set: 'americas'`, 111 birds + 40 hummingbirds)
+
+- Hummingbirds are a mini-deck (`data/hummingbirds.json`, ids 2000–2039)
+  with a `group` (bee/brilliant/emerald/mango/topaz), a `benefit`
+  (card/nectar/egg/advance/row), and `bonusFlags` so their names count for
+  name-based bonus cards. Shared state: `state.humDeck`/`humDiscard`/
+  `humGarden` (5 stack slots — returned hummingbirds cover the top card).
+  Per player: `p.humBoard` (one space per habitat), `p.humTrack` (token
+  position per group), `p.humReturned` (no-takeback list, reset each turn),
+  `p.horneroEggs` (Rufous Hornero placeholder-egg habitats).
+- Every forest/grassland/wetland row action ends on the row's hummingbird
+  space: `actions.ts` marks `state.humAction` and queues it once the brown
+  activation drains (`queueRowHumAction`). Empty space → chooseHumSource
+  (attract a garden top card or a deck draw, then `grantHumBenefit`);
+  occupied → chooseHumCover (return it, covering any garden slot; move up
+  1 space in the returned OR covered bird's column). Moving up off the end
+  offers a different token; landing on a hummingbird-icon space
+  (HUM_BONUS_SPACES) grants another action in any habitat.
+- **The printed per-player track layouts are randomized; the engine uses
+  one canonical ladder for everyone** — `HUM_LADDER` [-3,0,1,2,3,4,6,8,10]
+  with START worth -3 (game-end scores can go negative) and
+  `HUM_BONUS_SPACES` [3,6]/[4,7] per column. Track points are added to
+  finalScores as `hummingbirds`.
+- Hummingbirds ARE birds for powers/scoring that count birds (0 pts,
+  white/no power, egg limit/cost 0, live anywhere, smallest wingspan) —
+  `goalScore` adds them per habitat and to eggless/even/parity counts;
+  an EMPTY hum space counts as an empty space (`emptySlots`). They can't
+  be played on, tucked, cached, or egged (not PlayedBirds).
+- Garden mirrors the tray: empty slots refill at end of turn; the whole
+  garden is discarded+refilled at round end; deck reshuffles discards.
+- New PendingStep kinds: chooseHumSource, chooseHumCover, chooseHumColumn
+  (`down` for Crested Oropendola), chooseHumHabitat (mode
+  attract/return/either + `groups` for group-named powers — deck draws
+  aren't offered when restricted). New Choices: humPick/humCover/humColumn.
+- New pink watches: `feederReset` (ANY reroll counts — powers, the
+  all-same-face reroll, empty-feeder auto-refills) and `drawCards`
+  (Magnificent Frigatebird), plus `playBird`/`layEggs`/`tuck` variants.
+- Reset-then-cache powers reroll the feeder and cache ≤1 food per type
+  from the supply (dice are never removed) — `resetCachePresent` /
+  `resetCacheChoice`.
+- Rufous Hornero placeholders discount the first-empty-column egg cost by
+  1 and are consumed on the next play in that habitat (even at cost 0).
+  "Move with the action cube" birds relocate to a legal habitat and the
+  activation + owed hum action follow it (`amCubeMove`).
+- Goal tiles 2046–2055: birdsParity, distinctPoints (a hummingbird may
+  count as a 0), humPoints (sum of token values — negative totals still
+  rank), eggLimitTotal, humColumn (token progress per group). Bonus cards
+  1052–1059 score the track (Specialists = a group's value, Ecolodge =
+  best−worst spread, Hummingbird Counter = icon spaces reached,
+  Gardener = tokens worth ≥4).
+- Americas birds can cost nectar even without the oceania set — supply
+  nectar is still obtainable via the nectar hummingbird benefit.
+
+## Wyrmspan learned agent (`src/wyrmspan/nn/`, `training/wyrmspan/`)
+
+Objective is the agent's **own final score** (not wins). Engine-side pieces
+(pure, no Node APIs) in `src/wyrmspan/nn/`; the offline env server, Python
+PPO trainer, evaluator and benchmark in `training/` (see training/README.md).
+
+- **Information boundary**: everything an agent reads goes through
+  `redact(state, me)` (view.ts) — deck order, opponents' hands, others' setup
+  offers / drawn cards, tucked-card identities, Automa's deck and the RNG are
+  replaced by a canonical (sorted) arrangement of the public pool. Lookahead
+  uses `determinize(view, me, seed)`. `nn.test.ts` checks that scrambling
+  hidden info changes no encoding, candidate or heuristic pick — keep it so.
+- **Encoder** (encode.ts): global vector + 41 card tokens; opponents are not
+  encoded beyond table size, who has passed and the objective race.
+- **Action space** (candidates.ts): pointer-style — each decision is a pick
+  among ≤ MAX_CANDS candidates (engine action sequences + features + the tokens
+  they use/target), one generator per PendingStep kind mirroring its
+  `resolveChoice` answer format. A new PendingStep kind needs a generator.
+- `ENCODER_VERSION` / `ACTION_SPACE_VERSION` + all dims are pinned in
+  nn.test.ts; bump the version when a layout changes (checkpoints refuse to load
+  across versions).
+- **Benchmark heuristic** (heuristic.ts): one-ply lookahead over the same
+  candidates on a determinized view, value-greedy follow-ups, `positionValue`
+  = points now + exchange-rate-priced potential (`WEIGHTS`). Its pick is the
+  imitation label.
+- The action space offers every rules choice below (ACTION_SPACE_VERSION 2):
+  payment mixes, display-or-deck, placements, tucks, declines, exchanges.
+
+## Wyrmspan player decisions (rules audit)
+
+The engine leaves to the player every choice the rulebook does. Answers carry
+optional fields; leaving them out falls back to the engine's old default, so
+older callers, the greedy AI and the UI keep working.
+
+- **Gaining a card**: plain "gain" = a face-up display card or the top of the
+  deck (`chooseDisplay` with `orDeck`; answer `index` or `decline` = deck);
+  "from the display" = face-up only; "draw" = deck only (parser sets
+  `source: 'deck'`). A gain of N cards is N picks (no refill until turn end).
+- **Paying**: `PayUnit[]` payments on `choosePay` / `payDragonCost` (`option`),
+  `chooseTrain` (`dragon`), `choosePlayDragon` (`index`/`play`) and the
+  excavate / entice / explore actions. They cover "any resource" / card /
+  egg ("any dragon or nest") / 4th-column item / tithe costs. `payCost`
+  (helpers.ts) applies them; default = most plentiful resource, last matching
+  card, dragon eggs first.
+- **Exchange** (2 resources → 1) "at any point": on your turn, or while your
+  own choice is pending. A "pay X" step is offered when an exchange makes it
+  affordable (`canPayWithExchanges`).
+- **Free plays** pick their cave (`play` answer, validated by
+  `legalPlaySpaces`); "keep/discard/tuck" draws pick the tucked card and its
+  dragon (`indexes` + `tucks`).
+- **Abilities are optional**: every cost-bearing step is declinable (pay,
+  cache, tuck, trade, train, play, excavate, swap, either/or); pure gains apply
+  (declining them never helps, and opponents collect theirs regardless, per the
+  rules). PendingBar's `DECLINABLE` shows Decline for these.
+- **Eggs**: "each opponent lays an egg" and the base game's round-upkeep egg
+  are placed by their owner (`chooseEggSpot`); "cache up to N" may cache fewer.
+- `chooseCache` accepts `{ kind: 'dragons', positions, resources }` so a
+  supply cache can name the resources spent.
+
+## Wingspan player decisions (rules audit)
+
+- **Card draws**: a plain "draw N [card]" (no "from the deck") is a
+  `chooseCardDraw` — each card a face-up tray card or the deck, one at a
+  time (`drawCardsChoice`; continuation tag `drawCardsChoice`). "From the
+  deck" draws and other players' draws stay `drawFromDeck`. Keep-1-of-N pools
+  stay deck draws (rule not confirmed).
+- **Birdfeeder**: `pickDie` accepts 1..count picks (the rest stay queued, so
+  a refill is seen first), `{picks: [], reroll: true}` (reset an all-same-face
+  feeder, then pick again) and `{picks: []}` (take nothing). It stays
+  answerable when a reset could turn up the wanted food; unrestricted picks
+  aren't capped by the dice showing. The gain-food / draw-cards actions accept
+  fewer picks: the rest are queued (after a reroll / tray reset, or past the
+  dice showing). "Gain all [X] in the birdfeeder" offers the reset (`confirm`).
+- **Payments**: `payFoodPlan` matches own types and nectar before any 2-for-1.
+  Additional plays take `foodPayments` / `eggPayments` / `ignore` on the
+  `handCards` answer. Cached food is spendable only per `spendableCached`
+  (Coal Tit, Eurasian Nuthatch, Pine Grosbeak, Great Spotted Kiwi, Rock Ptarmigan).
+- **Order**: 2+ waiting teal / yellow powers of one player → `choosePowerOrder`.
+- **Other players' choices**: Eurasian Siskin (each may give — a
+  `chooseFoodDiscard` each, then a `deferredEffect` check) and Black Robin
+  (each picks the bonus card passed left). `deferredEffect` is a
+  non-interactive step run by `dropImpossiblePending` when it reaches the head.
+- **Pinks "at the end of their turn"** queue in `state.endOfTurnPinks` and run
+  in `passTurn`, before the tray refills.
+- **Card fixes**: Magenta Petrel / Fernbird / Spotless Starling ask first
+  (`confirm` with a `prompt`); NZ Fairy Tern / Rusty Blackbird discard
+  "up to" (`discardBonusCards.upTo`); Yellow-Eyed Penguin / Dovekie pick the
+  bird and habitat (`choosePoolPlay`); a yellow power runs on an additional
+  play only during game end (no double fire).
+
+## Finspan player decisions (rules audit)
+
+- "These benefits are optional for each affected player": an egg on each
+  fish and a fixed-site coral are a `confirmBenefit` (`confirm` / `decline`),
+  per player for all-players abilities.
+- WHEN PLAYED with 2+ different benefits → `chooseEffectOrder` (answer `index`);
+  the rest continue via `deferredEffects`. Two-part abilities keep their order.
+- A two-part ability's coral gate is a `deferredEffects` step with `gate`,
+  checked when it reaches the head (after the first part and any reef coral).
+- GAME END abilities: 2+ of one player's → `chooseGameEndAbility`.
+- S&R: the reef overlay reprints the twilight bonus — the bonus applies, then
+  the reef offer.
+
+## Known gaps (future work)
+
+- All 707 Wingspan birds (Core, European, Oceania, Asia, Americas, and all 6
+  Promo packs), all 300 Wyrmspan/Academy abilities + 9 Dragon Guild tiles,
+  all 215 Finspan/S&R abilities, and the official Automa / Nautoma solo card
+  modes for all three games (+ Ravel Mode & expansion Automa rules) are
+  implemented and verified against the 12 official rulebook PDFs in `docs/`.
+- RL policy training is future work: the Wyrmspan framework (encoder, action
+  space, heuristic benchmark, PPO trainer, evaluator) is built but no run has
+  been trained; Wingspan and Finspan have none yet. No TS runtime for a network.
+- Wyrmspan UI: payments, free-play placement and draw-and-tuck choices are made
+  by "Auto-Resolve" (the engine default) — the engine accepts them, but
+  PendingBar has no pickers for them yet.
+- Wingspan decisions still made by the engine (rules audit, not yet fixed):
+  a declined or impossible pink still uses its once-between-turns; card picks
+  for Marsh Warbler, Phainopepla, Greater Racket-Tailed Drongo, Brown
+  Thrasher, Mandarin Duck, NZ Dabchick, Gyrfalcon, Greater Spotted Eagle,
+  Common Tailorbird (largest group), Whooper Swan, Mountain Quail (most common
+  face); forced "you may" for Brown Creeper, South Island Saddleback, North
+  Island Kokako / Scarlet Tanager resets, Prairie Falcon's branch, Indian
+  Paradise Flycatcher, Rose-Ringed Parakeet, Oriental Bay-Owl / Yellow-Billed
+  Magpie (all predators), Australian Magpie; Northern Pintail's redraws; no
+  decline gate for when-played / pink powers with a downside (e.g. Magnificent
+  Frigatebird's pink). The UI auto-pays bird plays and additional plays (no
+  payment pickers) and doesn't expose the mat trades. Duet: free pool plays
+  place no duet token.
+- Finspan: all-players doubled coral is merged to 1 per player (unverified
+  against the cards); benefit order is chosen only for WHEN PLAYED (the rule
+  text names only that).

@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Write(**)",
+
+      "Exec(ls)",
+      "Exec(dir)",
+      "Exec(cat)",
+      "Exec(pwd)",
+      "Exec(find)",
+      "Exec(echo)",
+
+      "Exec(git status)",
+      "Exec(git diff)",
+      "Exec(git log)",
+      "Exec(git show)",
+      "Exec(git add)",
+      "Exec(git commit)",
+      "Exec(git branch)",
+      "Exec(git switch)",
+      "Exec(git checkout)",
+
+      "Exec(npm run)",
+      "Exec(npm test)",
+      "Exec(npm ci)",
+      "Exec(npx)",
+      "Exec(node)",
+
+      "Exec(python)",
+      "Exec(py)",
+
+      "mcp__firebase__*"
+    ],
+    "deny": [
+      "Exec(rm -rf)",
+      "Exec(sudo)",
+      "Exec(git push --force)",
+      "Exec(git push -f)"
+    ],
+    "ask": [
+      "Write(.env*)"
+    ]
+  }
+}
