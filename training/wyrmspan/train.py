@@ -609,4 +609,9 @@ def main(argv: list[str] | None = None) -> str:
 
 
 if __name__ == "__main__":
+    # Windows consoles (cp1252) can't encode some characters in the help and
+    # log text: replace them rather than crash.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     main(sys.argv[1:])

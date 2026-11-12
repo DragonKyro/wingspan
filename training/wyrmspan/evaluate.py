@@ -220,11 +220,16 @@ def main(argv: list[str] | None = None) -> dict:
         if a.vs:
             print(fmt(a.vs, result["b"]))
             pr = result["paired"]
-            print(f"paired {a.agent} − {a.vs}: {pr['diff']:+.1f} ± {pr['ci95']:.1f} points over {pr['pairs']} deals "
+            print(f"paired {a.agent} - {a.vs}: {pr['diff']:+.1f} ± {pr['ci95']:.1f} points over {pr['pairs']} deals "
                   f"({100 * pr['aBetter']:.0f}% of deals better)")
         print(f"({result['seconds']:.0f}s)")
     return result
 
 
 if __name__ == "__main__":
+    # Windows consoles (cp1252) can't encode some characters in the help and
+    # log text: replace them rather than crash.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     sys.exit(0 if main() else 1)

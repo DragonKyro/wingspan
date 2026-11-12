@@ -24,7 +24,8 @@
 //
 // With `teacher` on, every learner row carries the heuristic's pick for that
 // decision (−1 where none) — the imitation target, and the "heuristic plays
-// this seat" baseline when the learner process plays the label.
+// this seat" baseline when the learner process plays the label — and its value
+// of every candidate (`teacherValue`, for measuring what a disagreement costs).
 //
 // Finished matches auto-reset (`done[i]`; the row returned is already the next
 // match's first decision). With `quota` set, an env stops after that many
@@ -37,7 +38,7 @@
 import { chooseAction } from '@/wyrmspan/ai';
 import { type Candidate, CAND_DIM, MAX_CANDS, legalCandidates } from '@/wyrmspan/nn/candidates';
 import { GLOBAL_DIM, NUM_TOKENS, TOKEN_DIM, encodeView } from '@/wyrmspan/nn/encode';
-import { heuristicIndex } from '@/wyrmspan/nn/heuristic';
+import { bestIndex, heuristicValues } from '@/wyrmspan/nn/heuristic';
 import { type BaselineAgent, actingPlayer, applyAll, baselineActions, isAutomaSeat, newMatch } from '@/wyrmspan/nn/play';
 import { redact } from '@/wyrmspan/nn/view';
 import { scorePlayer } from '@/wyrmspan/scoring';
@@ -116,6 +117,10 @@ export interface VecBatch {
   candMask: Uint8Array;
   /** The heuristic's candidate for learner row i, or −1. */
   teacher: Int16Array;
+  /** numEnvs × MAX_CANDS: the heuristic's value of each candidate (points; NaN = none / teacher off). */
+  teacherValue: Float32Array;
+  /** The decision row i is: the head pending step's kind, or 'turn' (a main-action choice); '' when idle. */
+  kind: string[];
   /** numEnvs × MAX_SEATS. */
   reward: Float32Array;
   done: Uint8Array;
@@ -170,6 +175,8 @@ export class WyrmspanVecEnv {
       candTarget: new Int8Array(n * MAX_CANDS),
       candMask: new Uint8Array(n * MAX_CANDS),
       teacher: new Int16Array(n),
+      teacherValue: new Float32Array(n * MAX_CANDS).fill(NaN),
+      kind: Array.from({ length: n }, () => ''),
       reward: new Float32Array(n * MAX_SEATS),
       done: new Uint8Array(n),
       episodes: [],
@@ -365,6 +372,8 @@ export class WyrmspanVecEnv {
     const K = MAX_CANDS;
     const T = NUM_TOKENS;
     b.candMask.fill(0, i * K, (i + 1) * K);
+    b.teacherValue.fill(NaN, i * K, (i + 1) * K);
+    b.kind[i] = '';
     if (env.idle || !env.shown) {
       b.role[i] = -1;
       return;
@@ -397,7 +406,12 @@ export class WyrmspanVecEnv {
       b.candMask[i * K + k] = 1;
     });
     b.role[i] = 0;
-    if (this.opts.teacher) b.teacher[i] = heuristicIndex(view, id, cands);
+    b.kind[i] = s.pending[0]?.kind ?? 'turn';
+    if (this.opts.teacher) {
+      const values = heuristicValues(view, id, cands);
+      b.teacher[i] = bestIndex(values);
+      b.teacherValue.set(values, i * K);
+    }
   }
 }
 

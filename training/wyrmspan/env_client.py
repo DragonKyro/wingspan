@@ -58,6 +58,8 @@ class Batch:
     reward: np.ndarray  # (n, seats) float32 -- per-seat reward since the previous batch
     done: np.ndarray  # (n,) bool -- a match ended; row i is already the next match's first decision
     episodes: list  # summaries of the matches that ended
+    teacher_value: np.ndarray | None = None  # (n, K) float32 -- the heuristic's value of each candidate (points), NaN = none
+    kind: list | None = None  # (n,) str -- each row's decision: the pending step kind, or 'turn'
 
     OBS = ("glob", "tok_id", "tok_feat", "tok_mask", "cand_feat", "cand_sel", "cand_pay", "cand_target", "cand_mask")
 
@@ -144,6 +146,8 @@ class WyrmspanEnv:
             reward=np.asarray(r["reward"], dtype=np.float32).reshape(n, sh["seats"]),
             done=np.asarray(r["done"], dtype=bool),
             episodes=r["episodes"],
+            teacher_value=arr("teacherValue", "<f4", K) if "teacherValue" in raw else None,
+            kind=r.get("kind"),
         )
 
     def reset(
@@ -262,6 +266,13 @@ def _smoke(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
+    import sys
+
+    # Windows consoles (cp1252) can't encode some characters in the help and
+    # log text: replace them rather than crash.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     p = argparse.ArgumentParser(description="Random-agent smoke test for the Wyrmspan env bridge.")
     p.add_argument("--envs", type=int, default=32)
     p.add_argument("--episodes", type=int, default=64)

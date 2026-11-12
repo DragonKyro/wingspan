@@ -161,6 +161,20 @@ directory (its latest checkpoint), or `RUN@N`. Agent A takes one seat
 `--vs B`, B plays the same deals in the same seats and the paired score
 difference is reported.
 
+How close a checkpoint is to the heuristic it imitates, per decision kind:
+
+```sh
+python training/wyrmspan/diagnose.py training/runs/wyrmspan/main@150 --games 96
+```
+
+Every learner decision carries the heuristic's value of every candidate
+(`teacherValue`). Reported: agreement, top-3, and *regret* — the heuristic's
+value of its own pick minus its value of the network's pick. Regret is in the
+heuristic's points; summed per game it overstates the real score gap, so read
+it relatively. Also reported: how many labels are near-ties, and how many have
+an input-identical twin. Both run with the network playing (its own states) and
+with the heuristic playing (the imitation data's states).
+
 ## Versioning
 
 `ENCODER_VERSION` (`encode.ts`) and `ACTION_SPACE_VERSION` (`candidates.ts`)

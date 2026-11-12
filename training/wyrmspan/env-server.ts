@@ -8,11 +8,13 @@
 //   → {"cmd":"reset","options":{numEnvs, seed, players, opponents, maxSteps, scoreNorm, shaping,
 //      quota, teacher, expansions?, automaDifficulty?}}
 //   → {"cmd":"step","actions":[candidateIndex, …]}          (one per env)
-//   ← {"ok":true,"n":…,"seat":[…],"role":[…],"reward":[…],"done":[…],"episodes":[…],
+//   ← {"ok":true,"n":…,"seat":[…],"role":[…],"reward":[…],"done":[…],"kind":[…],"episodes":[…],
 //      "binary":[["global",bytes],["tokenIds",bytes],["tokenFeat",bytes],["tokenMask",bytes],
-//      ["candFeat",bytes],["candSel",bytes],["candPay",bytes],["candTarget",bytes],["candMask",bytes],["teacher",bytes]]}
+//      ["candFeat",bytes],["candSel",bytes],["candPay",bytes],["candTarget",bytes],["candMask",bytes],["teacher",bytes],
+//      ["teacherValue",bytes]]}
 //     followed by those raw bytes, in that order: f32 little-endian features, i16 token ids,
-//     u8 masks / selection counts, i8 targets, i16 teacher index per row (−1 = none)
+//     u8 masks / selection counts, i8 targets, i16 teacher index per row (−1 = none), f32 teacher
+//     value per candidate (NaN = none). `kind` = each row's decision: pending step kind or 'turn'.
 //   → {"cmd":"configure","options":{opponents?, players?, teacher?}}  ← {"ok":true}
 //   → {"cmd":"close"}
 //   ← {"ok":false,"error":"…"}                       (on any failure)
@@ -43,7 +45,7 @@ class BatchReply {
     const arrays: Array<[string, ArrayBufferView]> = [
       ['global', b.global], ['tokenIds', b.tokenIds], ['tokenFeat', b.tokenFeat], ['tokenMask', b.tokenMask],
       ['candFeat', b.candFeat], ['candSel', b.candSel], ['candPay', b.candPay], ['candTarget', b.candTarget], ['candMask', b.candMask],
-      ['teacher', b.teacher],
+      ['teacher', b.teacher], ['teacherValue', b.teacherValue],
     ];
     const header = {
       ok: true,
@@ -52,6 +54,7 @@ class BatchReply {
       role: Array.from(b.role),
       reward: Array.from(b.reward),
       done: Array.from(b.done),
+      kind: b.kind,
       episodes: b.episodes,
       binary: arrays.map(([name, a]) => [name, a.byteLength]),
     };

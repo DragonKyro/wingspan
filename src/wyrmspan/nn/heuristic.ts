@@ -384,9 +384,14 @@ function nextTurnValue(t: GameState, me: PlayerId): number {
   return best;
 }
 
-/** Index of the heuristic's pick among `cands` (built from `view`, `me`'s redacted view). */
-export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Candidate[]): number {
-  if (cands.length <= 1) return 0;
+/**
+ * The heuristic's value of every candidate (built from `view`, `me`'s redacted
+ * view): the position it leads to, in points. −Infinity for a candidate that
+ * can't run in the sampled world.
+ */
+export function heuristicValues(view: GameState, me: PlayerId, cands: readonly Candidate[]): number[] {
+  const values = cands.map(() => -Infinity);
+  if (cands.length <= 1) return values.fill(0);
   const world = determinize(view, me, visibleSeed(view, me));
   const scored: { i: number; v: number; t: GameState }[] = [];
   cands.forEach((c, i) => {
@@ -395,7 +400,6 @@ export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Ca
     const t = finishOwnChoices(t0, me);
     scored.push({ i, v: positionValue(t, me), t });
   });
-  if (!scored.length) return 0;
   // Turn decisions: the best few are also judged by the best turn they set up next.
   const beam = !view.pending.length ? WEIGHTS.planBeam : 0;
   if (beam > 0) {
@@ -405,9 +409,23 @@ export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Ca
       if (next > x.v) x.v = x.v + (next - x.v) * WEIGHTS.planWeight;
     }
   }
-  let best = scored[0]!;
-  for (const x of scored) if (x.v > best.v + 1e-9) best = x;
-  return best.i;
+  for (const x of scored) values[x.i] = x.v;
+  return values;
+}
+
+/** Index of the best of `values` (the first of equals); 0 if none is finite. */
+export function bestIndex(values: readonly number[]): number {
+  let best = -1;
+  values.forEach((v, i) => {
+    if (v > -Infinity && (best < 0 || v > values[best]! + 1e-9)) best = i;
+  });
+  return Math.max(0, best);
+}
+
+/** Index of the heuristic's pick among `cands` (built from `view`, `me`'s redacted view). */
+export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Candidate[]): number {
+  if (cands.length <= 1) return 0;
+  return bestIndex(heuristicValues(view, me, cands));
 }
 
 /** The heuristic's move for `me` in the real `state` (redacted first — it never peeks). */
