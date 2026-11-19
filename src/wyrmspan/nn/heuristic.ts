@@ -1,6 +1,8 @@
 // Benchmark heuristic for Wyrmspan: a one-ply lookahead over the learned
 // agent's own candidate list (candidates.ts), so its pick is directly usable
-// as an imitation label.
+// as an imitation label. On a turn decision the best WEIGHTS.planBeam
+// candidates are also judged by the best own turn they set up next (a
+// two-turn plan).
 //
 // For each candidate it applies the candidate's actions to a *determinized*
 // copy of the player's redacted view (hidden cards dealt at random from the
@@ -46,10 +48,15 @@ import { determinize, redact, visibleSeed } from './view';
 //              caves and Adventurers in the caves explored most pay off
 //   income     each remaining round end's income, at the coin value it will have
 
-/** Tunable weights (exported so the benchmark can sweep them). */
+/**
+ * Tunable weights (exported so the benchmark can sweep them). Tuned with
+ * training/wyrmspan/tune.ts on paired deals: the two-turn plan (planBeam 6),
+ * coin / guild 2.5, walkIcon 1.5 and endGameUnits 2 together score +6.3 ± 0.8
+ * over the hand-set weights in 2p (+6.5 solo, +5.5 3p).
+ */
 export const WEIGHTS = {
-  /** Early-game worth of each item (strong-player exchange rate). */
-  early: { coin: 3, guild: 2, resource: 1, card: 1, egg: 1 },
+  /** Early-game worth of each item (from a strong player's exchange rate: coin 3, guild 2, the rest 1). */
+  early: { coin: 2.5, guild: 2.5, resource: 1, card: 1, egg: 1 },
   /** End-game worth. */
   late: { coin: 1, guild: 0, resource: 0.25, card: 0.25, egg: 1 },
   /** Rounds-left value below which items are priced at their end-game worth. */
@@ -67,19 +74,62 @@ export const WEIGHTS = {
   /** Worth of a free egg slot early on (eggs are points, but need gaining). */
   eggSlot: 0.35,
   /** Items a dragon's path icon adds per walk of its cave. */
-  walkIcon: 1,
+  walkIcon: 1.5,
   /** Share of a playable hand dragon's surplus counted while it's still in hand. */
   handShare: 0.3,
   /** Dragons / cave cards a player can expect to play per remaining round (caps the hand's worth). */
   playsPerRound: 3,
   /** Turn decisions: how many top candidates also get a follow-on own turn evaluated (0 = off). */
-  planBeam: 0,
+  planBeam: 6,
   /** How much of the follow-on turn's gain counts. */
   planWeight: 1,
   /** Share of the current round's projected objective points counted (later rounds: objectiveLater). */
   objectiveNow: 0.85,
   objectiveLater: 0.2,
+  /** Determinized worlds each candidate is evaluated in (values averaged; 1 = a single sampled world). */
+  worlds: 1,
+  /**
+   * Share of their item value that the resources / cards an ability spends cost it
+   * (cache from your supply, tuck from hand…) when judging a dragon's or a cave's
+   * abilities. 1 = full price; lower credits converter engines.
+   */
+  abilityPay: 1,
+  /** Worth of resources beyond what the hand's playable dragons need, as a share of the resource value. */
+  spareResource: 1,
+  /** Units an end-game ability's counter is expected to reach (dragons still in hand). */
+  endGameUnits: 2,
 };
+
+export type Weights = typeof WEIGHTS;
+const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+/** The weights as shipped (for resetting after a sweep). */
+export const DEFAULT_WEIGHTS: Weights = clone(WEIGHTS);
+
+/** A deep copy of the current weights. */
+export function getWeights(): Weights {
+  return clone(WEIGHTS);
+}
+
+/**
+ * Replace the weights in place (WEIGHTS is read at call time, so a benchmark can
+ * swap them per seat). `patch` is deep-merged over `base` (default: the shipped weights).
+ */
+export function setWeights(patch: DeepPartial<Weights> = {}, base: Weights = DEFAULT_WEIGHTS): void {
+  const next = merge(clone(base), patch);
+  for (const k of Object.keys(next) as (keyof Weights)[]) (WEIGHTS as Record<string, unknown>)[k] = next[k];
+}
+
+type DeepPartial<T> = { [K in keyof T]?: T[K] extends readonly unknown[] ? T[K] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
+
+function merge<T>(into: T, patch: DeepPartial<T>): T {
+  for (const [k, v] of Object.entries(patch as Record<string, unknown>)) {
+    if (!(k in (into as object))) throw new Error(`unknown weight ${k}`);
+    const cur = (into as Record<string, unknown>)[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && cur && typeof cur === 'object') merge(cur, v as DeepPartial<typeof cur>);
+    else (into as Record<string, unknown>)[k] = clone(v);
+  }
+  return into;
+}
 
 /** 1 at the start of the game → 0 once the player can no longer act. */
 function progressLeft(rem: number): number {
@@ -126,13 +176,13 @@ function itemsValue(items: readonly GainItem[], v: ItemValues): number {
   return out;
 }
 
-const abilityValue = (sum: Float32Array, v: ItemValues) => summaryValue(sum, v);
+const abilityValue = (sum: Float32Array, v: ItemValues) => summaryValue(sum, v, WEIGHTS.abilityPay);
 
-/** Rough end-game points from an EndGame ability (≈3 units of its counter). */
+/** Rough end-game points from an EndGame ability (WEIGHTS.endGameUnits units of its counter). */
 function endGameEstimate(c: DragonCard): number {
   const eg = parseAbility(c).endGame;
   if (!eg) return 3; // pay-items-for-points dragons
-  const pts = eg.cond ? eg.vpPer : eg.vpPer * (eg.counter ? 3 : 1);
+  const pts = eg.cond ? eg.vpPer : eg.vpPer * (eg.counter ? WEIGHTS.endGameUnits : 1);
   return eg.max !== undefined ? Math.min(pts, eg.max) : pts;
 }
 
@@ -165,7 +215,8 @@ export function dragonWorth(c: DragonCard, v: ItemValues, rem: number): number {
  * every other; and only as many dragons / cave cards count as there are spaces
  * and turns left to play them — the rest are leftovers (1/4 point).
  */
-function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number): number {
+function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number, out = { spare: 0 }): number {
+  out.spare = 0;
   if (rem === 0) return p.hand.length * 0.25;
   let total = 0;
   const unexcavated = p.caves.reduce((a, row) => a + row.spaces.filter((sp) => !sp.excavated).length, 0);
@@ -211,6 +262,7 @@ function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number):
     const afford = d.resCost ? 1 - 0.6 * (missing / d.resCost) : 1;
     total += Math.min(5, d.surplus * WEIGHTS.handShare * d.room * afford);
   }
+  out.spare = RESOURCES.reduce((a, r) => a + pool[r], 0);
 
   const caves = p.hand.filter((id) => !isDragonCard(id)).map((id) => Math.max(0, abilityValue(abilitySummary(caveCard(id)), v)));
   caves.sort((a, b) => b - a);
@@ -241,8 +293,16 @@ export function positionParts(s: GameState, me: PlayerId): Record<string, number
   parts.coins = Math.min(p.coins, 9) * (v.coin - 1);
 
   // Resources and cards (worth 1/4 point each at the end; earlier they buy dragons).
-  parts.resources = totalResources(p) * v.resource;
-  parts.hand = handValue(s, p, v, rem);
+  // Resources the hand's dragons won't need are worth WEIGHTS.spareResource of that.
+  parts.resources = 0;
+  const alloc = { spare: 0 };
+  parts.hand = handValue(s, p, v, rem, alloc);
+  const total = totalResources(p);
+  if (WEIGHTS.spareResource === 1) parts.resources = total * v.resource;
+  else {
+    const spare = Math.min(total, alloc.spare);
+    parts.resources = (total - spare) * v.resource + spare * Math.max(WEIGHTS.late.resource, v.resource * WEIGHTS.spareResource);
+  }
 
   // Cave walks: each cave's explore yield (net of the coin it costs) × the explores still expected there.
   const walks = [0, 1, 2].map((c) => Math.max(0, abilityValue(exploreYield(p, c).summary, v) - v.coin)).sort((a, b) => b - a);
@@ -390,9 +450,27 @@ function nextTurnValue(t: GameState, me: PlayerId): number {
  * can't run in the sampled world.
  */
 export function heuristicValues(view: GameState, me: PlayerId, cands: readonly Candidate[]): number[] {
+  if (cands.length <= 1) return cands.map(() => 0);
+  const worlds = Math.max(1, Math.round(WEIGHTS.worlds));
+  if (worlds === 1) return worldValues(view, me, cands, visibleSeed(view, me));
+  // Average each candidate over the worlds it can run in (common random numbers per world).
+  const sum = cands.map(() => 0);
+  const n = cands.map(() => 0);
+  for (let w = 0; w < worlds; w++) {
+    worldValues(view, me, cands, visibleSeed(view, me, w)).forEach((v, i) => {
+      if (v > -Infinity) {
+        sum[i] += v;
+        n[i]++;
+      }
+    });
+  }
+  return sum.map((s, i) => (n[i] ? s / n[i]! : -Infinity));
+}
+
+/** Candidate values in one determinized world. */
+function worldValues(view: GameState, me: PlayerId, cands: readonly Candidate[], seed: number): number[] {
   const values = cands.map(() => -Infinity);
-  if (cands.length <= 1) return values.fill(0);
-  const world = determinize(view, me, visibleSeed(view, me));
+  const world = determinize(view, me, seed);
   const scored: { i: number; v: number; t: GameState }[] = [];
   cands.forEach((c, i) => {
     const t0 = applyAll(world, c.actions);

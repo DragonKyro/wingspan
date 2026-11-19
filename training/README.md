@@ -44,30 +44,60 @@ npm run wyrm:bench                                   # baseline agents' scores (
 Each candidate is applied to a determinized copy of the player's redacted view
 (it never sees the real deck), the player's follow-up choices are resolved
 value-greedily, and the result is scored with `positionValue`: the points the
-game would award now, plus what isn't points yet. That is priced at a strong
-player's rule-of-thumb exchange rate early (coin 3, guild advance 2, resource /
-egg / card 1), decaying to end-game worth (coin 1, resource / card ¼). A
-dragon's worth counts its ability for every activation still expected.
-Weights are in `WEIGHTS` (the benchmark can sweep them). Its pick is also the
-imitation label.
+game would award now, plus what isn't points yet. That is priced with an
+exchange rate early (coin 2.5, guild advance 2.5, resource / egg / card 1 —
+tuned from a strong player's coin 3 / guild 2 / 1), decaying to end-game worth
+(coin 1, resource / card ¼). A dragon's worth counts its ability for every
+activation still expected. On a turn decision the best 6 candidates are also
+judged by the best own turn they set up next (`planBeam`). Its pick is also
+the imitation label.
+
+### Tuning it
+
+```sh
+npm run train:build
+node training/dist/wyrmspan-tune.mjs --configs training/wyrmspan/tune/round1.json --games 600 --jobs 12
+```
+
+Each config (partial `WEIGHTS`) takes one seat, rotating; the other seats play
+the reference (`--base`, default the shipped weights). Its pair is the
+reference in the same seat on the same deal, so the difference is paired
+(sd ≈ 10 per game: 600 games ≈ ±0.8). `--pair NAME` pairs against another
+config. Games are cached in `training/runs/wyrmspan/tune/games.jsonl`.
+The configs of each round are in `training/wyrmspan/tune/`.
+
+What the sweep found (from the hand-set weights, 2p, ±95%):
+
+| change | vs before |
+|---|---:|
+| two-turn plan on the best 6 turn candidates (`planBeam` 6; 3: −1.2, 10: +0.2 at 2× the time) | +3.2 ± 1.0 |
+| + early coin 2.5, guild 2.5, `walkIcon` 1.5 | +1.7 ± 1.1 |
+| + `endGameUnits` 2 (was 3; 5: −2.3, 7: −3.8) | +1.4 ± 0.7 |
+| **all of it, fresh deals** — solo / 2p / 3p | **+6.5 ± 1.3 / +6.3 ± 0.8 / +5.5 ± 1.2** |
+| no effect (±1): 3 determinized worlds, follow-up budget, explore / adventurer rates, egg slot, objectives, end bias, plays per round, card / resource value, `abilityPay`, `spareResource` | |
+| worse: hand share 0.15 / 0.5 (−2.9 / −1.9), walk icon 0.5 (−1.3) | |
+
+Converter engines (cache / tuck / end-game counters) are still where it is
+weakest: cheaper ability costs or spare resources didn't help — it can't plan
+an engine over several rounds, which is what the learned agent is for.
 
 Baseline scores (`npm run wyrm:bench`, 100 games per row, Academy on):
 
-| table | heuristic | greedy (in-app AI) | random |
-|---|---:|---:|---:|
-| solo vs Automa | 65.4 ± 2.3 | 37.5 ± 2.7 | 28.0 ± 1.4 |
-| 2p vs greedy | 70.2 ± 2.2 | 38.9 ± 2.3 | |
-| 2p self-play | 68.7 ± 1.6 | 40.9 ± 1.9 | |
-| 3p vs 2 greedy | 68.3 ± 2.6 | 39.4 ± 2.0 | |
-| 4p vs 3 greedy | 67.6 ± 2.3 | 40.4 ± 1.7 | |
+| table | heuristic | (before tuning) | greedy (in-app AI) | random |
+|---|---:|---:|---:|---:|
+| solo vs Automa | 71.8 ± 2.1 | 65.4 | 37.5 ± 2.7 | 28.0 ± 1.4 |
+| 2p vs greedy | 75.8 ± 1.8 | 70.2 | 38.6 ± 2.1 | |
+| 2p self-play | 72.9 ± 1.6 | 68.7 | 40.9 ± 1.9 | |
+| 3p vs 2 greedy | 75.7 ± 2.1 | 68.3 | 39.0 ± 1.9 | |
+| 4p vs 3 greedy | 74.4 ± 2.5 | 67.6 | 40.9 ± 1.6 | |
 
-(After the rules audit: display-or-deck card gains, payment choices,
-exchanges at any point, etc. Heuristic: ~1.9 s per game.)
+(Tuned weights. The heuristic takes ~55 ms a decision, ~4.6 s per seat per
+game single-threaded — ~4× the untuned one, mostly the two-turn plan.)
 
 For scale: a human beginner (< 10 games) scores ~80; good players
 consistently exceed 100. So the heuristic is a floor for the network to
-clear, not a strong player. It plays ~25 turns a game but only ~5 entices
-(~6 dragons on the mat), and explores shallow caves. Re-run after changing
+clear, not a strong player. Before tuning it played ~25 turns a game but only ~5 entices
+(~6 dragons on the mat), and explored shallow caves. Re-run after changing
 `WEIGHTS`; the heuristic is deterministic per deal, so differences of a few
 points on 100 games are mostly noise (sd ≈ 12).
 

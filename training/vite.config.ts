@@ -24,6 +24,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         'wyrmspan-env': here('./wyrmspan/env-server.ts'),
+        'wyrmspan-tune': here('./wyrmspan/tune.ts'),
       },
       output: {
         format: 'es',

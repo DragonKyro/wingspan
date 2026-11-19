@@ -1,0 +1,4 @@
+[
+  { "name": "worlds2", "weights": { "worlds": 2 } },
+  { "name": "eggSlot0.5", "weights": { "eggSlot": 0.5 } }
+]

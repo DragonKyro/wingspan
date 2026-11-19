@@ -233,15 +233,16 @@ export interface ItemValues {
 /** A fixed mid-game exchange rate, for priors and features (the heuristic uses its own, round-aware). */
 export const MIDGAME_VALUES: ItemValues = { resource: 0.7, card: 0.55, egg: 1, coin: 1.5, guild: 1 };
 
-export function summaryValue(sum: Float32Array, itemValue: ItemValues = MIDGAME_VALUES): number {
+/** `payScale` scales what the summary's resource / card payments cost (1 = at the item values). */
+export function summaryValue(sum: Float32Array, itemValue: ItemValues = MIDGAME_VALUES, payScale = 1): number {
   const iv = itemValue;
   let v = 0;
   for (const k of ['meat', 'gold', 'crystal', 'milk', 'anyRes'] as const) v += sum[G(k)]! * iv.resource * (k === 'anyRes' ? 1.1 : 1);
   v += (sum[G('dragonCard')]! + sum[G('caveCard')]!) * iv.card;
   v += sum[G('coin')]! * iv.coin + sum[G('egg')]! * iv.egg;
   v += sum[G('guild')]! * iv.guild + sum[G('vp')]! + sum[G('cache')]! + sum[G('tuck')]!;
-  v -= sum[P('resource')]! * iv.resource + (sum[P('dragonCard')]! + sum[P('caveCard')]!) * iv.card;
-  v -= sum[P('coin')]! * iv.coin + sum[P('egg')]! * iv.egg + sum[P('item')]! * (iv.resource + iv.card) / 2;
+  v -= payScale * (sum[P('resource')]! * iv.resource + (sum[P('dragonCard')]! + sum[P('caveCard')]!) * iv.card);
+  v -= sum[P('coin')]! * iv.coin + sum[P('egg')]! * iv.egg + payScale * sum[P('item')]! * (iv.resource + iv.card) / 2;
   // Free plays save the action's coin and (for dragons) a typical cost.
   v += sum[O('excavateFree')]! * (iv.coin + 0.5) + sum[O('playDragonFree')]! * (iv.coin + 2.5 * iv.resource);
   v += sum[O('activateAbility')]! * 1.5 + sum[O('trainFledgling')]! * iv.resource;

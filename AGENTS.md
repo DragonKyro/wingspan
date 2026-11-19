@@ -25,8 +25,9 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   (reads `../wingsearch/src/assets/data/{master,bonus,goals}.json` — see
   `scripts/convert-cards.mjs`)
 - `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
-- `npm run train:build` — bundle the Wyrmspan training env (`training/dist/wyrmspan-env.mjs`)
+- `npm run train:build` — bundle the Wyrmspan training env + tuner (`training/dist/wyrmspan-{env,tune}.mjs`)
 - `npm run wyrm:bench` — baseline Wyrmspan agents' scores (heuristic / greedy / random)
+- `node training/dist/wyrmspan-tune.mjs --configs FILE` — paired sweep of heuristic `WEIGHTS` (see training/README.md)
 - `python -m pytest training/wyrmspan -q` — training-side tests (conda env `train`; see training/README.md)
 
 ## Architecture
@@ -308,9 +309,11 @@ PPO trainer, evaluator and benchmark in `training/` (see training/README.md).
   nn.test.ts; bump the version when a layout changes (checkpoints refuse to load
   across versions).
 - **Benchmark heuristic** (heuristic.ts): one-ply lookahead over the same
-  candidates on a determinized view, value-greedy follow-ups, `positionValue`
-  = points now + exchange-rate-priced potential (`WEIGHTS`). Its pick is the
-  imitation label.
+  candidates on a determinized view, value-greedy follow-ups, the top 6 turn
+  candidates re-judged by the best next own turn (`planBeam`), `positionValue`
+  = points now + exchange-rate-priced potential (`WEIGHTS`, tuned with
+  training/wyrmspan/tune.ts — keep the defaults the sweep's winner). Its pick is
+  the imitation label; `heuristicValues` gives every candidate's value.
 - The action space offers every rules choice below (ACTION_SPACE_VERSION 2):
   payment mixes, display-or-deck, placements, tucks, declines, exchanges.
 

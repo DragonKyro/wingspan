@@ -1,0 +1,16 @@
+[
+  { "name": "pb6", "weights": { "planBeam": 6 } },
+  { "name": "pb3", "weights": { "planBeam": 3 } },
+  { "name": "pb10", "weights": { "planBeam": 10 } },
+  { "name": "pb6+coin2.5", "weights": { "planBeam": 6, "early": { "coin": 2.5 } } },
+  { "name": "pb6+guild2.5", "weights": { "planBeam": 6, "early": { "guild": 2.5 } } },
+  { "name": "pb6+walkIcon1.5", "weights": { "planBeam": 6, "walkIcon": 1.5 } },
+  { "name": "pb6+abilityPay0.5", "weights": { "planBeam": 6, "abilityPay": 0.5 } },
+  { "name": "pb6+abilityPay0.25", "weights": { "planBeam": 6, "abilityPay": 0.25 } },
+  { "name": "pb6+spare0.5", "weights": { "planBeam": 6, "spareResource": 0.5 } },
+  { "name": "pb6+spare0.25", "weights": { "planBeam": 6, "spareResource": 0.25 } },
+  { "name": "pb6+endGame5", "weights": { "planBeam": 6, "endGameUnits": 5 } },
+  { "name": "pb6+endGame7", "weights": { "planBeam": 6, "endGameUnits": 7 } },
+  { "name": "pb6+pay0.5+spare0.5", "weights": { "planBeam": 6, "abilityPay": 0.5, "spareResource": 0.5 } },
+  { "name": "pb6+coin+guild+walk", "weights": { "planBeam": 6, "early": { "coin": 2.5, "guild": 2.5 }, "walkIcon": 1.5 } }
+]
