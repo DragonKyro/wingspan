@@ -1,10 +1,9 @@
-// Match plumbing shared by the training env, the benchmark and the tests:
-// a game factory for 1–5 players (1 = solo vs Automa) and the baseline seat
-// agents a learner is measured against.
+// Match plumbing shared by the benchmark, the tuner and the tests: a game
+// factory for 1–5 players (1 = solo vs Automa) and the agents to seat.
 //
-//   heuristic  heuristic.ts — one-ply lookahead on a determinized view
-//   greedy     ai.ts — the engine's first-legal-choice AI (the in-app AI)
-//   random     a uniformly random candidate
+//   heuristic  heuristic.ts — lookahead on a determinized view (the app's AI)
+//   greedy     ../ai.ts — the engine's first-legal-choice AI (tests, fallbacks)
+//   random     a uniformly random legal move
 //
 // Automa's turns (solo) are always played by the engine's Automa rules.
 
@@ -13,9 +12,8 @@ import { chooseAction } from '../ai';
 import { createGame } from '../createGame';
 import { applyAction } from '../engine';
 import type { Action, AutomaDifficulty, Expansion, GameState, PlayerId } from '../types';
-import { legalCandidates } from './candidates';
-import { tokenRefs } from './encode';
 import { heuristicActions } from './heuristic';
+import { legalMoves } from './moves';
 import { redact } from './view';
 
 export type BaselineAgent = 'heuristic' | 'greedy' | 'random';
@@ -24,6 +22,8 @@ export const BASELINE_AGENTS: readonly BaselineAgent[] = ['heuristic', 'greedy',
 export interface MatchOptions {
   expansions?: Expansion[];
   automaDifficulty?: AutomaDifficulty;
+  /** Automa's Ravel Mode (solo). */
+  ravelMode?: boolean;
 }
 
 /** A fresh game with `players` seats (all flagged AI); 1 player = solo vs Automa (seat p2). */
@@ -36,7 +36,7 @@ export function newMatch(seed: number, players: number, opts: MatchOptions = {})
     playerNames: Array.from({ length: n }, (_, i) => (solo && i === 1 ? 'Automa' : `P${i + 1}`)),
     isAI: Array(n).fill(true),
     expansions: opts.expansions,
-    automa: solo ? { difficulty: opts.automaDifficulty ?? 1 } : undefined,
+    automa: solo ? { difficulty: opts.automaDifficulty ?? 1, ravelMode: opts.ravelMode ?? false } : undefined,
   });
 }
 
@@ -60,7 +60,7 @@ export function baselineActions(s: GameState, id: PlayerId, agent: BaselineAgent
   }
   if (agent === 'heuristic') return heuristicActions(s, id);
   const view = redact(s, id);
-  const cands = legalCandidates(view, id, tokenRefs(view, id));
+  const cands = legalMoves(view, id);
   if (!cands.length) return [];
   const [u, next] = nextRng(rng.state);
   rng.state = next;

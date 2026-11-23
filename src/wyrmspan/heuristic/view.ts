@@ -1,4 +1,4 @@
-// The information boundary for learned and heuristic Wyrmspan agents.
+// The information boundary for the Wyrmspan heuristic AI.
 //
 // `redact(state, me)` returns a GameState that holds only what player `me` may
 // know. Every hidden location — the order of both decks, opponents' hands,
@@ -9,7 +9,7 @@
 // location keeps its size and its dragon/cave split (card backs are public),
 // so two states that differ only in hidden information redact to the same view.
 //
-// The encoder, the action space and the heuristic AI only ever read a view.
+// The move generator and the heuristic only ever read a view.
 // When the heuristic needs to look ahead it samples the hidden information
 // with `determinize(view, me, seed)`, which deals the same pool in a random
 // order and reseeds the RNG — a plausible world, never the real one.
@@ -64,7 +64,7 @@ function syncSetupOffers(s: GameState, me: PlayerId): void {
 
 const automaOrder = (a: AutomaCardId, b: AutomaCardId) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** `state` as player `me` sees it. Safe to hand to any encoder or policy. */
+/** `state` as player `me` sees it. Safe to hand to any AI. */
 export function redact(state: GameState, me: PlayerId): GameState {
   const s = cloneState(state);
   refill(hiddenCardArrays(s, me), (pool) => pool.sort((a, b) => a - b));

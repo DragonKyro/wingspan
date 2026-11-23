@@ -59,7 +59,9 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
 - [x] **Dragon Academy** — fledgling dragons + training tracks, walk-over
       training, pass-income round tracker, Academy objectives, and replacement
       card deduplication
-- [x] Objectives (friendly ties), end-game scoring, tiebreakers, heuristic AI
+- [x] Objectives (friendly ties), end-game scoring, tiebreakers, and a lookahead
+      heuristic AI that scores ~74 in 2p (`src/wyrmspan/heuristic/`, tools in
+      `scripts/wyrmspan/`)
 - [x] **Automa Solo Mode** — 16 decision cards across Levels 1–3 & Ravel Mode
       Levels 1–3, Dragon Guild brown-space triggers, 4-round objective base
       values, and Dragon Academy Automa (`Automa's Cache`, start-player

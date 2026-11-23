@@ -1,0 +1,4 @@
+[
+  { "name": "planBeam3", "weights": { "planBeam": 3 } },
+  { "name": "coin3", "weights": { "early": { "coin": 3 } } }
+]

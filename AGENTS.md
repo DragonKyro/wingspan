@@ -25,10 +25,8 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
   (reads `../wingsearch/src/assets/data/{master,bonus,goals}.json` — see
   `scripts/convert-cards.mjs`)
 - `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
-- `npm run train:build` — bundle the Wyrmspan training env + tuner (`training/dist/wyrmspan-{env,tune}.mjs`)
-- `npm run wyrm:bench` — baseline Wyrmspan agents' scores (heuristic / greedy / random)
-- `node training/dist/wyrmspan-tune.mjs --configs FILE` — paired sweep of heuristic `WEIGHTS` (see training/README.md)
-- `python -m pytest training/wyrmspan -q` — training-side tests (conda env `train`; see training/README.md)
+- `npm run wyrm:bench` — Wyrmspan agents' scores (heuristic / greedy / random; see scripts/wyrmspan/README.md)
+- `npm run wyrm:tune -- --configs FILE` — paired sweep of the Wyrmspan heuristic's `WEIGHTS`
 
 ## Architecture
 
@@ -287,35 +285,43 @@ AI — and only Wingspan has a UI so far.
 - Americas birds can cost nectar even without the oceania set — supply
   nectar is still obtainable via the nectar hummingbird benefit.
 
-## Wyrmspan learned agent (`src/wyrmspan/nn/`, `training/wyrmspan/`)
+## Wyrmspan heuristic AI (`src/wyrmspan/heuristic/`)
 
-Objective is the agent's **own final score** (not wins). Engine-side pieces
-(pure, no Node APIs) in `src/wyrmspan/nn/`; the offline env server, Python
-PPO trainer, evaluator and benchmark in `training/` (see training/README.md).
+The app's Wyrmspan AI (`src/games/wyrmspanEngine.ts` → `heuristic/ai.ts`):
+~74 points in 2p (73 self-play, 76 vs the engine AI), ~72 solo vs Automa.
+The engine AI (`src/wyrmspan/ai.ts`, first legal choice, ~38) stays for
+Automa's turns, fallbacks and the self-play test. Objective: its own final
+score (not wins); it ignores opponents except through the objective race.
 
-- **Information boundary**: everything an agent reads goes through
-  `redact(state, me)` (view.ts) — deck order, opponents' hands, others' setup
-  offers / drawn cards, tucked-card identities, Automa's deck and the RNG are
-  replaced by a canonical (sorted) arrangement of the public pool. Lookahead
-  uses `determinize(view, me, seed)`. `nn.test.ts` checks that scrambling
-  hidden info changes no encoding, candidate or heuristic pick — keep it so.
-- **Encoder** (encode.ts): global vector + 41 card tokens; opponents are not
-  encoded beyond table size, who has passed and the objective race.
-- **Action space** (candidates.ts): pointer-style — each decision is a pick
-  among ≤ MAX_CANDS candidates (engine action sequences + features + the tokens
-  they use/target), one generator per PendingStep kind mirroring its
-  `resolveChoice` answer format. A new PendingStep kind needs a generator.
-- `ENCODER_VERSION` / `ACTION_SPACE_VERSION` + all dims are pinned in
-  nn.test.ts; bump the version when a layout changes (checkpoints refuse to load
-  across versions).
-- **Benchmark heuristic** (heuristic.ts): one-ply lookahead over the same
-  candidates on a determinized view, value-greedy follow-ups, the top 6 turn
-  candidates re-judged by the best next own turn (`planBeam`), `positionValue`
-  = points now + exchange-rate-priced potential (`WEIGHTS`, tuned with
-  training/wyrmspan/tune.ts — keep the defaults the sweep's winner). Its pick is
-  the imitation label; `heuristicValues` gives every candidate's value.
-- The action space offers every rules choice below (ACTION_SPACE_VERSION 2):
-  payment mixes, display-or-deck, placements, tucks, declines, exchanges.
+- **Information boundary** (view.ts): everything the AI reads goes through
+  `redact(state, me)` — deck order, opponents' hands, others' setup offers /
+  drawn cards, tucked-card identities, Automa's deck and the RNG are replaced by
+  a canonical (sorted) arrangement of the public pool. Lookahead uses
+  `determinize(view, me, seed)`. heuristic.test.ts checks that scrambling hidden
+  info changes no move list or pick — keep it so.
+- **Moves** (moves.ts): each decision is a pick among ≤ `MAX_MOVES` (64) legal
+  moves — engine action sequences, one generator per PendingStep kind mirroring
+  its `resolveChoice` answer format (a new PendingStep kind needs a generator).
+  They cover every rules choice below: payment mixes, display-or-deck,
+  placements, tucks, declines, exchanges (as `exchange` actions in front).
+- **Heuristic** (heuristic.ts): one-ply lookahead over the moves on a
+  determinized view, value-greedy follow-ups, the top `planBeam` (6) turn moves
+  re-judged by the best next own turn; `positionValue` = points now +
+  exchange-rate-priced potential (coins, resources, hand, cave walks, engines,
+  income; `WEIGHTS`). Weights were tuned with scripts/wyrmspan/tune.ts — keep
+  the defaults the sweep's winner (results in scripts/wyrmspan/README.md). Its
+  weak spot is converter engines (cache / tuck / end-game counters): it can't
+  plan them over several rounds. ~55 ms a decision on average, up to a few
+  hundred ms on a turn decision.
+- **App AI** (ai.ts): the driver applies one action per call, so a plan of
+  several actions (exchanges, then an entice) is replayed action by action
+  while the state is exactly the one the plan expects, and re-planned
+  otherwise; a move the engine rejects falls back to the engine AI's.
+- A learned (NN) agent was tried and paused (2026-11): offline imitation of the
+  heuristic plateaued 4 points below it, PPO from that reached parity but not
+  beyond. The code is in git history (commit 4300fa4 and before) plus a backup
+  of the later, uncommitted pipeline outside the repo
+  (`../wyrmspan-nn-backup-2026-11-23.zip`).
 
 ## Wyrmspan player decisions (rules audit)
 
@@ -399,9 +405,8 @@ older callers, the greedy AI and the UI keep working.
   all 215 Finspan/S&R abilities, and the official Automa / Nautoma solo card
   modes for all three games (+ Ravel Mode & expansion Automa rules) are
   implemented and verified against the 12 official rulebook PDFs in `docs/`.
-- RL policy training is future work: the Wyrmspan framework (encoder, action
-  space, heuristic benchmark, PPO trainer, evaluator) is built but no run has
-  been trained; Wingspan and Finspan have none yet. No TS runtime for a network.
+- No learned agents: Wyrmspan's was paused (see "Wyrmspan heuristic AI");
+  Wingspan and Finspan use their engine heuristics.
 - Wyrmspan UI: payments, free-play placement and draw-and-tuck choices are made
   by "Auto-Resolve" (the engine default) — the engine accepts them, but
   PendingBar has no pickers for them yet.

@@ -1,7 +1,9 @@
-// Paired tuning of the benchmark heuristic (WEIGHTS in src/wyrmspan/nn/heuristic.ts).
+// Paired tuning of the Wyrmspan heuristic (WEIGHTS in src/wyrmspan/heuristic/heuristic.ts).
 //
-//   npm run train:build
-//   node training/dist/wyrmspan-tune.mjs --configs training/wyrmspan/tune/round1.json --games 400 --jobs 12
+//   npm run wyrm:tune -- --configs scripts/wyrmspan/tune/example.json --games 600 --jobs 12
+//
+// (wyrm:tune bundles this file to scripts/wyrmspan/dist/ first: the worker
+// processes fork the bundle, plain Node with no TS loader.)
 //
 // --configs is a JSON list of { "name": …, "weights": { …partial WEIGHTS… } }
 // (deep-merged over --base). Each config plays one seat — rotating with the
@@ -22,8 +24,8 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { cpus } from 'node:os';
 import { basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_WEIGHTS, type Weights, setWeights } from '@/wyrmspan/nn/heuristic';
-import { actingPlayer, applyAll, baselineActions, isAutomaSeat, newMatch } from '@/wyrmspan/nn/play';
+import { DEFAULT_WEIGHTS, type Weights, setWeights } from '@/wyrmspan/heuristic/heuristic';
+import { actingPlayer, applyAll, baselineActions, isAutomaSeat, newMatch } from '@/wyrmspan/heuristic/play';
 import { scorePlayer } from '@/wyrmspan/scoring';
 import type { ScoreBreakdown } from '@/wyrmspan/types';
 
@@ -101,7 +103,7 @@ async function main(): Promise<void> {
   const seed0 = Number(arg('seed', '31000001'));
   const jobs = Number(arg('jobs', String(Math.max(1, cpus().length - 4))));
   const here = dirname(fileURLToPath(import.meta.url));
-  const cachePath = arg('cache', `${here}/../runs/wyrmspan/tune/games.jsonl`)!;
+  const cachePath = arg('cache', `${here}/../runs/tune/games.jsonl`)!;
   const outPath = arg('out', `${dirname(cachePath)}/${basename(configsPath).replace(/\.json$/, '')}.results.json`)!;
   mkdirSync(dirname(cachePath), { recursive: true });
 

@@ -1,16 +1,15 @@
-// Benchmark heuristic for Wyrmspan: a one-ply lookahead over the learned
-// agent's own candidate list (candidates.ts), so its pick is directly usable
-// as an imitation label. On a turn decision the best WEIGHTS.planBeam
-// candidates are also judged by the best own turn they set up next (a
-// two-turn plan).
+// The Wyrmspan heuristic AI (the app's AI; ~74 points in 2p, ~72 solo): a
+// one-ply lookahead over the move list (moves.ts). On a turn decision the best
+// WEIGHTS.planBeam moves are also judged by the best own turn they set up next
+// (a two-turn plan).
 //
-// For each candidate it applies the candidate's actions to a *determinized*
+// For each move it applies the move's actions to a *determinized*
 // copy of the player's redacted view (hidden cards dealt at random from the
 // public pool — never the real deck), resolves the player's own follow-up
 // choices value-greedily, and scores the result with `positionValue`: the
 // points the game would award now, plus what coins (future turns), resources,
 // hand, cave walks (explore yield × explores still expected), once-per-round
-// abilities and income are still worth. All candidates share one
+// abilities and income are still worth. All moves share one
 // determinization (common random numbers).
 //
 // Points-maximizing by design — it ignores opponents except through the
@@ -26,9 +25,8 @@ import { scoreObjective } from '../objectives';
 import { scorePlayer } from '../scoring';
 import type { Action, DragonCard, GainItem, GameState, PlayerId, PlayerState, Resource } from '../types';
 import { RESOURCES } from '../types';
-import { type ItemValues, abilitySummary, summaryValue } from './cardFeatures';
-import { type Candidate, legalCandidates } from './candidates';
-import { tokenRefs } from './encode';
+import { type Move, legalMoves } from './moves';
+import { type ItemValues, abilitySummary, summaryValue } from './summary';
 import { CAVE_INDEX, abilityActive, enticeOptions, exploreYield, freeEggCapacity, totalResources } from './rules';
 import { determinize, redact, visibleSeed } from './view';
 
@@ -50,7 +48,7 @@ import { determinize, redact, visibleSeed } from './view';
 
 /**
  * Tunable weights (exported so the benchmark can sweep them). Tuned with
- * training/wyrmspan/tune.ts on paired deals: the two-turn plan (planBeam 6),
+ * scripts/wyrmspan/tune.ts on paired deals: the two-turn plan (planBeam 6),
  * coin / guild 2.5, walkIcon 1.5 and endGameUnits 2 together score +6.3 ± 0.8
  * over the hand-set weights in 2p (+6.5 solo, +5.5 3p).
  */
@@ -86,16 +84,6 @@ export const WEIGHTS = {
   /** Share of the current round's projected objective points counted (later rounds: objectiveLater). */
   objectiveNow: 0.85,
   objectiveLater: 0.2,
-  /** Determinized worlds each candidate is evaluated in (values averaged; 1 = a single sampled world). */
-  worlds: 1,
-  /**
-   * Share of their item value that the resources / cards an ability spends cost it
-   * (cache from your supply, tuck from hand…) when judging a dragon's or a cave's
-   * abilities. 1 = full price; lower credits converter engines.
-   */
-  abilityPay: 1,
-  /** Worth of resources beyond what the hand's playable dragons need, as a share of the resource value. */
-  spareResource: 1,
   /** Units an end-game ability's counter is expected to reach (dragons still in hand). */
   endGameUnits: 2,
 };
@@ -104,11 +92,6 @@ export type Weights = typeof WEIGHTS;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 /** The weights as shipped (for resetting after a sweep). */
 export const DEFAULT_WEIGHTS: Weights = clone(WEIGHTS);
-
-/** A deep copy of the current weights. */
-export function getWeights(): Weights {
-  return clone(WEIGHTS);
-}
 
 /**
  * Replace the weights in place (WEIGHTS is read at call time, so a benchmark can
@@ -176,7 +159,7 @@ function itemsValue(items: readonly GainItem[], v: ItemValues): number {
   return out;
 }
 
-const abilityValue = (sum: Float32Array, v: ItemValues) => summaryValue(sum, v, WEIGHTS.abilityPay);
+const abilityValue = (sum: Float32Array, v: ItemValues) => summaryValue(sum, v);
 
 /** Rough end-game points from an EndGame ability (WEIGHTS.endGameUnits units of its counter). */
 function endGameEstimate(c: DragonCard): number {
@@ -215,8 +198,7 @@ export function dragonWorth(c: DragonCard, v: ItemValues, rem: number): number {
  * every other; and only as many dragons / cave cards count as there are spaces
  * and turns left to play them — the rest are leftovers (1/4 point).
  */
-function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number, out = { spare: 0 }): number {
-  out.spare = 0;
+function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number): number {
   if (rem === 0) return p.hand.length * 0.25;
   let total = 0;
   const unexcavated = p.caves.reduce((a, row) => a + row.spaces.filter((sp) => !sp.excavated).length, 0);
@@ -262,7 +244,6 @@ function handValue(view: GameState, p: PlayerState, v: ItemValues, rem: number, 
     const afford = d.resCost ? 1 - 0.6 * (missing / d.resCost) : 1;
     total += Math.min(5, d.surplus * WEIGHTS.handShare * d.room * afford);
   }
-  out.spare = RESOURCES.reduce((a, r) => a + pool[r], 0);
 
   const caves = p.hand.filter((id) => !isDragonCard(id)).map((id) => Math.max(0, abilityValue(abilitySummary(caveCard(id)), v)));
   caves.sort((a, b) => b - a);
@@ -293,16 +274,8 @@ export function positionParts(s: GameState, me: PlayerId): Record<string, number
   parts.coins = Math.min(p.coins, 9) * (v.coin - 1);
 
   // Resources and cards (worth 1/4 point each at the end; earlier they buy dragons).
-  // Resources the hand's dragons won't need are worth WEIGHTS.spareResource of that.
-  parts.resources = 0;
-  const alloc = { spare: 0 };
-  parts.hand = handValue(s, p, v, rem, alloc);
-  const total = totalResources(p);
-  if (WEIGHTS.spareResource === 1) parts.resources = total * v.resource;
-  else {
-    const spare = Math.min(total, alloc.spare);
-    parts.resources = (total - spare) * v.resource + spare * Math.max(WEIGHTS.late.resource, v.resource * WEIGHTS.spareResource);
-  }
+  parts.resources = totalResources(p) * v.resource;
+  parts.hand = handValue(s, p, v, rem);
 
   // Cave walks: each cave's explore yield (net of the coin it costs) × the explores still expected there.
   const walks = [0, 1, 2].map((c) => Math.max(0, abilityValue(exploreYield(p, c).summary, v) - v.coin)).sort((a, b) => b - a);
@@ -393,7 +366,7 @@ function finishOwnChoices(s: GameState, me: PlayerId, budget = WEIGHTS.followUpB
   for (let k = 0; k < MAX_FOLLOW_UPS && t.phase !== 'gameEnd'; k++) {
     const head = t.pending[0];
     if (!head || head.playerId !== me) break;
-    const cands = legalCandidates(t, me, tokenRefs(t, me));
+    const cands = legalMoves(t, me);
     let next: GameState | null = null;
     if (cands.length === 1) next = applyAll(t, cands[0]!.actions);
     else if (cands.length > 1 && budget >= cands.length) {
@@ -436,7 +409,7 @@ function nextTurnValue(t: GameState, me: PlayerId): number {
   if (t.phase !== 'main' || t.pending.length || player(t, me).passed) return -Infinity;
   const mine: GameState = { ...t, turn: me, turnIndex: t.playerOrder.indexOf(me), turnEnding: false };
   let best = -Infinity;
-  for (const c of legalCandidates(mine, me, tokenRefs(mine, me))) {
+  for (const c of legalMoves(mine, me)) {
     if (c.verb === 'pass') continue;
     const u = applyAll(mine, c.actions);
     if (u) best = Math.max(best, positionValue(finishOwnChoices(u, me, WEIGHTS.followUpBudget / 2), me));
@@ -449,28 +422,10 @@ function nextTurnValue(t: GameState, me: PlayerId): number {
  * view): the position it leads to, in points. −Infinity for a candidate that
  * can't run in the sampled world.
  */
-export function heuristicValues(view: GameState, me: PlayerId, cands: readonly Candidate[]): number[] {
-  if (cands.length <= 1) return cands.map(() => 0);
-  const worlds = Math.max(1, Math.round(WEIGHTS.worlds));
-  if (worlds === 1) return worldValues(view, me, cands, visibleSeed(view, me));
-  // Average each candidate over the worlds it can run in (common random numbers per world).
-  const sum = cands.map(() => 0);
-  const n = cands.map(() => 0);
-  for (let w = 0; w < worlds; w++) {
-    worldValues(view, me, cands, visibleSeed(view, me, w)).forEach((v, i) => {
-      if (v > -Infinity) {
-        sum[i] += v;
-        n[i]++;
-      }
-    });
-  }
-  return sum.map((s, i) => (n[i] ? s / n[i]! : -Infinity));
-}
-
-/** Candidate values in one determinized world. */
-function worldValues(view: GameState, me: PlayerId, cands: readonly Candidate[], seed: number): number[] {
+export function heuristicValues(view: GameState, me: PlayerId, cands: readonly Move[]): number[] {
   const values = cands.map(() => -Infinity);
-  const world = determinize(view, me, seed);
+  if (cands.length <= 1) return values.fill(0);
+  const world = determinize(view, me, visibleSeed(view, me));
   const scored: { i: number; v: number; t: GameState }[] = [];
   cands.forEach((c, i) => {
     const t0 = applyAll(world, c.actions);
@@ -501,7 +456,7 @@ export function bestIndex(values: readonly number[]): number {
 }
 
 /** Index of the heuristic's pick among `cands` (built from `view`, `me`'s redacted view). */
-export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Candidate[]): number {
+export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Move[]): number {
   if (cands.length <= 1) return 0;
   return bestIndex(heuristicValues(view, me, cands));
 }
@@ -509,7 +464,7 @@ export function heuristicIndex(view: GameState, me: PlayerId, cands: readonly Ca
 /** The heuristic's move for `me` in the real `state` (redacted first — it never peeks). */
 export function heuristicActions(state: GameState, me: PlayerId): Action[] {
   const view = redact(state, me);
-  const cands = legalCandidates(view, me, tokenRefs(view, me));
+  const cands = legalMoves(view, me);
   if (!cands.length) return [];
   return cands[heuristicIndex(view, me, cands)]!.actions;
 }

@@ -1,4 +1,4 @@
-// Derived rules for agents: what a turn action would cost, whether it is
+// Derived rules for the heuristic: what a turn action would cost, whether it is
 // affordable (including the free 2-for-1 resource exchange), and what an
 // explore walk yields. Pure reads of a (redacted) state — they mirror
 // actions.ts / effects.ts rather than re-implementing their effects.
@@ -10,7 +10,7 @@ import { parseAbility } from '../abilities';
 import { type Exchange, canPay, eggsOnMatCount, exchangePlan } from '../helpers';
 import type { Action, CaveId, GainItem, GameState, PlayedDragon, PlayerId, PlayerState } from '../types';
 import { CAVE_IDS, RESOURCES } from '../types';
-import { SUMMARY_DIM, summarizeSteps } from './cardFeatures';
+import { SUMMARY_DIM, summarizeSteps } from './summary';
 
 export const CAVE_INDEX: Record<string, number> = { 'Crimson Cavern': 0, 'Golden Grotto': 1, 'Amethyst Abyss': 2 };
 

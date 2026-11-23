@@ -1,4 +1,0 @@
-[
-  { "name": "finalA", "weights": { "planBeam": 6, "early": { "coin": 2.5, "guild": 2.5 }, "walkIcon": 1.5, "endGameUnits": 2 } },
-  { "name": "finalB", "weights": { "planBeam": 6, "early": { "coin": 2.25, "guild": 2.5 }, "walkIcon": 1.5, "endGameUnits": 2 } }
-]
