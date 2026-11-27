@@ -9,8 +9,10 @@
 // per agent: mean final score with a 95% interval, plus seconds per game.
 // Solo (players 1) is vs Automa (`--automa` level 1-3, `--ravel` for Ravel
 // Mode): Automa's score and the player's win rate (ties go to the player) too.
+// --weights '{…}' plays the heuristic with a partial WEIGHTS patch.
 
 import { scorePlayer } from '@/wyrmspan/scoring';
+import { DEFAULT_WEIGHTS, setWeights } from '@/wyrmspan/heuristic/heuristic';
 import { type BaselineAgent, BASELINE_AGENTS, isAutomaSeat, playBaselines } from '@/wyrmspan/heuristic/play';
 
 const args = process.argv.slice(2);
@@ -24,6 +26,8 @@ const seed0 = Number(opt('seed', '9000001'));
 const automaDifficulty = Number(opt('automa', '1')) as 1 | 2 | 3;
 const ravelMode = args.includes('--ravel');
 if (![1, 2, 3].includes(automaDifficulty)) throw new Error('--automa must be 1, 2 or 3');
+// The heuristic's weights: the shipped ones, or a partial patch (JSON) over them.
+setWeights(JSON.parse(opt('weights', '{}')), DEFAULT_WEIGHTS);
 
 function parseLineup(s: string): BaselineAgent[] {
   const out = s.split(',').map((x) => x.trim()) as BaselineAgent[];

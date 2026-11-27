@@ -1,5 +1,5 @@
 // Wyrmspan engine entry for the lazy registry (src/games/engines.ts). AI seats
-// play the heuristic (src/wyrmspan/heuristic: ~74 points in 2p); Automa keeps
+// play the heuristic (src/wyrmspan/heuristic: ~76 points in 2p); Automa keeps
 // the Automa rules.
 import { chooseAction } from '@/wyrmspan/heuristic/ai';
 import { createGame } from '@/wyrmspan/createGame';

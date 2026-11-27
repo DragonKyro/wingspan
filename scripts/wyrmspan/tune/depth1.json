@@ -1,0 +1,13 @@
+[
+  { "name": "d3-dd3-b0", "weights": { "planDepth": 3, "dedupeFrom": 3, "deepBudget": 0 } },
+  { "name": "d3-dd2-b0", "weights": { "planDepth": 3, "dedupeFrom": 2, "deepBudget": 0 } },
+  { "name": "d3-dd3-b24", "weights": { "planDepth": 3, "dedupeFrom": 3 } },
+  { "name": "d4-dd3-b0", "weights": { "planDepth": 4, "dedupeFrom": 3, "deepBudget": 0 } },
+  { "name": "d4-dd2-b0", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0 } },
+  { "name": "d4-dd2-b8", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 8 } },
+  { "name": "d4-dd2-b0-beam3", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0, "deepBeam": 3 } },
+  { "name": "d4-dd2-b0-w0.8", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0, "deepWeight": 0.8 } },
+  { "name": "d4-dd2-b0-root4", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0, "planBeam": 4 } },
+  { "name": "d4-dd2-b0-root8", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0, "planBeam": 8 } },
+  { "name": "d5-dd2-b0", "weights": { "planDepth": 5, "dedupeFrom": 2, "deepBudget": 0 } }
+]

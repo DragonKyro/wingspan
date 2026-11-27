@@ -60,7 +60,7 @@ npm run deploy:rules # merge + deploy Firebase RTDB rules
       training, pass-income round tracker, Academy objectives, and replacement
       card deduplication
 - [x] Objectives (friendly ties), end-game scoring, tiebreakers, and a lookahead
-      heuristic AI that scores ~74 in 2p (`src/wyrmspan/heuristic/`, tools in
+      heuristic AI that scores ~76 in 2p (`src/wyrmspan/heuristic/`, tools in
       `scripts/wyrmspan/`)
 - [x] **Automa Solo Mode** — 16 decision cards across Levels 1–3 & Ravel Mode
       Levels 1–3, Dragon Guild brown-space triggers, 4-round objective base

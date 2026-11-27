@@ -1,0 +1,55 @@
+[
+ {
+  "name": "d4-dd2-b8",
+  "weights": {
+   "planDepth": 4,
+   "dedupeFrom": 2,
+   "deepBudget": 8
+  }
+ },
+ {
+  "name": "d4-dd2-b8-root8",
+  "weights": {
+   "planDepth": 4,
+   "dedupeFrom": 2,
+   "deepBudget": 8,
+   "planBeam": 8
+  }
+ },
+ {
+  "name": "d4-dd2-b8-root8-beam3",
+  "weights": {
+   "planDepth": 4,
+   "dedupeFrom": 2,
+   "deepBudget": 8,
+   "planBeam": 8,
+   "deepBeam": 3
+  }
+ },
+ {
+  "name": "d4-dd2-b16",
+  "weights": {
+   "planDepth": 4,
+   "dedupeFrom": 2,
+   "deepBudget": 16
+  }
+ },
+ {
+  "name": "d3-dd2-b8",
+  "weights": {
+   "planDepth": 3,
+   "dedupeFrom": 2,
+   "deepBudget": 8
+  }
+ },
+ {
+  "name": "d3-dd2-b8-root8-beam3",
+  "weights": {
+   "planDepth": 3,
+   "dedupeFrom": 2,
+   "deepBudget": 8,
+   "planBeam": 8,
+   "deepBeam": 3
+  }
+ }
+]

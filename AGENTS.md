@@ -27,6 +27,7 @@ anonymous Auth (shared project `github-games-e7c7d`, data namespaced under
 - `npm run deploy:rules` — merge + deploy RTDB rules (needs firebase auth)
 - `npm run wyrm:bench` — Wyrmspan agents' scores (heuristic / greedy / random; see scripts/wyrmspan/README.md)
 - `npm run wyrm:tune -- --configs FILE` — paired sweep of the Wyrmspan heuristic's `WEIGHTS`
+- `npm run wyrm:time -- --configs FILE` — decision time of `WEIGHTS` configs on the same positions
 
 ## Architecture
 
@@ -288,7 +289,8 @@ AI — and only Wingspan has a UI so far.
 ## Wyrmspan heuristic AI (`src/wyrmspan/heuristic/`)
 
 The app's Wyrmspan AI (`src/games/wyrmspanEngine.ts` → `heuristic/ai.ts`):
-~74 points in 2p (73 self-play, 76 vs the engine AI), ~72 solo vs Automa.
+~76 points in 2p, ~75 solo vs Automa (wins 33% vs Level 1, 9% vs Level 2).
+Numbers and tuning history: scripts/wyrmspan/README.md.
 The engine AI (`src/wyrmspan/ai.ts`, first legal choice, ~38) stays for
 Automa's turns, fallbacks and the self-play test. Objective: its own final
 score (not wins); it ignores opponents except through the objective race.
@@ -305,21 +307,29 @@ score (not wins); it ignores opponents except through the objective race.
   They cover every rules choice below: payment mixes, display-or-deck,
   placements, tucks, declines, exchanges (as `exchange` actions in front).
 - **Heuristic** (heuristic.ts): one-ply lookahead over the moves on a
-  determinized view, value-greedy follow-ups, the top `planBeam` (6) turn moves
-  re-judged by the best next own turn; `positionValue` = points now +
-  exchange-rate-priced potential (coins, resources, hand, cave walks, engines,
-  income; `WEIGHTS`). Weights were tuned with scripts/wyrmspan/tune.ts — keep
-  the defaults the sweep's winner (results in scripts/wyrmspan/README.md). Its
-  weak spot is converter engines (cache / tuck / end-game counters): it can't
-  plan them over several rounds. ~55 ms a decision on average, up to a few
-  hundred ms on a turn decision.
+  determinized view, value-greedy follow-ups; on a turn decision the top
+  `planBeam` (8) moves are re-judged by a pruned plan search over major
+  decisions (own turns, opponents skipped): up to `planDepth` (3) turns, each
+  turn scoring every move but following only its best `deepBeam` (3), payment
+  variants collapsed from turn 2 (`dedupeFrom`), engine-greedy follow-ups deep
+  (`deepBudget` 0) — cost grows linearly with depth. Depth past 3–4 turns adds
+  nothing. `positionValue` = points now + exchange-rate-priced potential (coins,
+  resources, hand, cave walks, engines, income), each part scaled per round by
+  `partScale` — halfway to weights fitted on game outcomes (value-fit.ts; the
+  full fit plays worse). Weights were tuned with scripts/wyrmspan/tune.ts — keep
+  the defaults the sweep's winner. Weak spot: converter engines (cache / tuck /
+  end-game counters). ~47 ms a decision on average (~145 ms on a turn decision,
+  p95 ~0.45 s).
 - **App AI** (ai.ts): the driver applies one action per call, so a plan of
   several actions (exchanges, then an entice) is replayed action by action
   while the state is exactly the one the plan expects, and re-planned
   otherwise; a move the engine rejects falls back to the engine AI's.
 - A learned (NN) agent was tried and paused (2026-11): offline imitation of the
   heuristic plateaued 4 points below it, PPO from that reached parity but not
-  beyond. The code is in git history (commit 4300fa4 and before) plus a backup
+  beyond. A learned value for the search's leaves: an outcome-fitted linear
+  value predicts final scores better (R² 0.41 vs 0.28) but plays 5.7 points
+  worse used as is; a small MLP fits no better than linear — a value network
+  would need training in the loop with the search (AlphaZero-style). The code is in git history (commit 4300fa4 and before) plus a backup
   of the later, uncommitted pipeline outside the repo
   (`../wyrmspan-nn-backup-2026-11-23.zip`).
 

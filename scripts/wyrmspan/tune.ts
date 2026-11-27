@@ -68,7 +68,8 @@ function deepMerge(into: Record<string, unknown>, patch: Record<string, unknown>
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in into)) throw new Error(`unknown weight ${k}`);
     const cur = into[k];
-    if (v && typeof v === 'object' && !Array.isArray(v) && cur && typeof cur === 'object') deepMerge(cur as Record<string, unknown>, v as Record<string, unknown>);
+    // Objects with fixed keys (early, late) merge key by key; open maps (partScale, empty by default) are replaced.
+    if (v && typeof v === 'object' && !Array.isArray(v) && cur && typeof cur === 'object' && Object.keys(cur).length) deepMerge(cur as Record<string, unknown>, v as Record<string, unknown>);
     else into[k] = JSON.parse(JSON.stringify(v));
   }
   return into;

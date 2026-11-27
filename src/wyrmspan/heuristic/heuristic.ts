@@ -1,7 +1,8 @@
-// The Wyrmspan heuristic AI (the app's AI; ~74 points in 2p, ~72 solo): a
+// The Wyrmspan heuristic AI (the app's AI; ~76 points in 2p, ~75 solo): a
 // one-ply lookahead over the move list (moves.ts). On a turn decision the best
-// WEIGHTS.planBeam moves are also judged by the best own turn they set up next
-// (a two-turn plan).
+// WEIGHTS.planBeam moves are also judged by the best plan of up to
+// WEIGHTS.planDepth own turns they set up (a pruned search over major
+// decisions: excavate → explore for resources → entice; see planValue).
 //
 // For each move it applies the move's actions to a *determinized*
 // copy of the player's redacted view (hidden cards dealt at random from the
@@ -48,9 +49,12 @@ import { determinize, redact, visibleSeed } from './view';
 
 /**
  * Tunable weights (exported so the benchmark can sweep them). Tuned with
- * scripts/wyrmspan/tune.ts on paired deals: the two-turn plan (planBeam 6),
- * coin / guild 2.5, walkIcon 1.5 and endGameUnits 2 together score +6.3 ± 0.8
- * over the hand-set weights in 2p (+6.5 solo, +5.5 3p).
+ * scripts/wyrmspan/tune.ts on paired deals (results in scripts/wyrmspan/README.md):
+ * 2026-11-18 — the two-turn plan, coin / guild 2.5, walkIcon 1.5 and
+ * endGameUnits 2: +6.3 ± 0.8 over the hand-set weights in 2p;
+ * 2026-11-25 — a 3-turn plan with pruning (planDepth 3, planBeam 8, deepBeam 3,
+ * dedupeFrom 2, deepBudget 0) and partScale halfway to the weights fitted on
+ * game outcomes: +2.7 ± 0.8 more in 2p (+3.7 solo, +3.2 3p) at ~1.2× the time.
  */
 export const WEIGHTS = {
   /** Early-game worth of each item (from a strong player's exchange rate: coin 3, guild 2, the rest 1). */
@@ -77,15 +81,43 @@ export const WEIGHTS = {
   handShare: 0.3,
   /** Dragons / cave cards a player can expect to play per remaining round (caps the hand's worth). */
   playsPerRound: 3,
-  /** Turn decisions: how many top candidates also get a follow-on own turn evaluated (0 = off). */
-  planBeam: 6,
-  /** How much of the follow-on turn's gain counts. */
+  /** Turn decisions: how many top candidates also get follow-on own turns evaluated (0 = off). */
+  planBeam: 8,
+  /** How much of a follow-on turn's gain counts. */
   planWeight: 1,
+  /** Own turns the plan spans, this one included (2 = this turn + the next). Opponents are skipped. */
+  planDepth: 3,
+  /** From the plan's 2nd turn on: how many of a turn's best moves are followed one more turn. */
+  deepBeam: 3,
+  /** Follow-up budget (see followUpBudget) for moves in the plan's 3rd turn and later (the 2nd uses half of followUpBudget). */
+  deepBudget: 0,
+  /** From this plan turn on (2 = the 2nd), payment / exchange variants of one move are tried once (0 = never). */
+  dedupeFrom: 2,
+  /** Extra weight on the gains of the plan's 3rd turn and later (uncertain futures count less). */
+  deepWeight: 1,
   /** Share of the current round's projected objective points counted (later rounds: objectiveLater). */
   objectiveNow: 0.85,
   objectiveLater: 0.2,
   /** Units an end-game ability's counter is expected to reach (dragons still in hand). */
   endGameUnits: 2,
+  /**
+   * Per-round multipliers on positionValue's parts — `{ part: [round 1, 2, 3, 4] }`,
+   * missing = 1 (as hand-written). These are halfway between 1 and the weights
+   * a ridge fit of final scores on the parts gives (scripts/wyrmspan/value-fit.ts):
+   * the full fit plays 5.7 points worse — it learns that engine potential adds
+   * little *because* the heuristic acts on it — while halfway plays better.
+   */
+  partScale: {
+    score: [1.034, 1.047, 1.021, 1.018],
+    coins: [1.093, 1.469, 2.442, 2.5],
+    resources: [1.437, 1.276, 1.274, 1.189],
+    hand: [0.5, 0.556, 0.619, 0.68],
+    walks: [0.596, 0.671, 0.736, 0.778],
+    engine: [0.653, 0.738, 0.836, 0.875],
+    eggRoom: [1.415, 1.731, 2.5, 2.5],
+    guild: [2.236, 2.5, 2.308, 2.5],
+    objectives: [0.932, 0.971, 1.002, 0.974],
+  } as Record<string, number[]>,
 };
 
 export type Weights = typeof WEIGHTS;
@@ -108,7 +140,8 @@ function merge<T>(into: T, patch: DeepPartial<T>): T {
   for (const [k, v] of Object.entries(patch as Record<string, unknown>)) {
     if (!(k in (into as object))) throw new Error(`unknown weight ${k}`);
     const cur = (into as Record<string, unknown>)[k];
-    if (v && typeof v === 'object' && !Array.isArray(v) && cur && typeof cur === 'object') merge(cur, v as DeepPartial<typeof cur>);
+    // Objects with fixed keys (early, late) merge key by key; open maps (partScale, empty by default) are replaced.
+    if (v && typeof v === 'object' && !Array.isArray(v) && cur && typeof cur === 'object' && Object.keys(cur).length) merge(cur, v as DeepPartial<typeof cur>);
     else (into as Record<string, unknown>)[k] = clone(v);
   }
   return into;
@@ -335,7 +368,13 @@ export function positionParts(s: GameState, me: PlayerId): Record<string, number
 /** Points now + what the position is still worth. Reads only `s` as `me` sees it. */
 export function positionValue(s: GameState, me: PlayerId): number {
   let v = 0;
-  for (const x of Object.values(positionParts(s, me))) v += x;
+  const scale = WEIGHTS.partScale;
+  if (s.phase === 'gameEnd' || !Object.keys(scale).length) {
+    for (const x of Object.values(positionParts(s, me))) v += x;
+    return v;
+  }
+  const r = Math.min(4, Math.max(1, s.round)) - 1;
+  for (const [k, x] of Object.entries(positionParts(s, me))) v += x * (scale[k]?.[r] ?? 1);
   return v;
 }
 
@@ -400,19 +439,51 @@ function applyAll(s: GameState, actions: readonly Action[]): GameState | null {
   }
 }
 
+/** One move per intent (entice this dragon into this cave, excavate this cave with this card, explore this cave): the first, the engine's default payment. */
+function oneVariantEach(moves: readonly Move[]): Move[] {
+  const seen = new Set<string>();
+  return moves.filter((m) => {
+    const a = m.actions[m.actions.length - 1]!;
+    const key = a.type === 'entice' || a.type === 'excavate' ? `${a.type}:${a.cave}:${a.cardId}` : a.type === 'explore' ? `explore:${a.cave}` : JSON.stringify(m.actions);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /**
- * Best value of one more own turn from `t` (opponents skipped — they barely
- * interact), or −Infinity when there is none (passed, not a turn decision).
- * Lets a turn be judged by what it sets up: excavate → entice, explore → entice.
+ * Best value reachable from `t` (just after an own move and its follow-ups) by
+ * taking up to `turns` more own turns — opponents skipped, they barely interact
+ * — or −Infinity when there is no turn to take (passed, not a turn decision).
+ * `level` is the plan's turn number (2 = the next turn). Lets a turn be judged
+ * by what it sets up: excavate → explore for the resources → entice.
+ *
+ * Each turn scores every move (its follow-ups resolved value-greedily), then
+ * follows only the best WEIGHTS.deepBeam one turn further: the search grows
+ * linearly in depth, not exponentially. Stopping is always an option (the
+ * coin is kept), so a further turn only counts when it adds value.
  */
-function nextTurnValue(t: GameState, me: PlayerId): number {
+function planValue(t: GameState, me: PlayerId, turns: number, level: number): number {
   if (t.phase !== 'main' || t.pending.length || player(t, me).passed) return -Infinity;
   const mine: GameState = { ...t, turn: me, turnIndex: t.playerOrder.indexOf(me), turnEnding: false };
+  const budget = level === 2 ? WEIGHTS.followUpBudget / 2 : WEIGHTS.deepBudget;
+  let moves = legalMoves(mine, me).filter((c) => c.verb !== 'pass');
+  if (WEIGHTS.dedupeFrom > 0 && level >= WEIGHTS.dedupeFrom) moves = oneVariantEach(moves);
+  const kids: { v: number; t: GameState }[] = [];
   let best = -Infinity;
-  for (const c of legalMoves(mine, me)) {
-    if (c.verb === 'pass') continue;
+  for (const c of moves) {
     const u = applyAll(mine, c.actions);
-    if (u) best = Math.max(best, positionValue(finishOwnChoices(u, me, WEIGHTS.followUpBudget / 2), me));
+    if (!u) continue;
+    const f = finishOwnChoices(u, me, budget);
+    const v = positionValue(f, me);
+    best = Math.max(best, v);
+    kids.push({ v, t: f });
+  }
+  if (turns <= 1 || !kids.length) return best;
+  const weight = WEIGHTS.planWeight * WEIGHTS.deepWeight;
+  for (const k of kids.sort((x, y) => y.v - x.v).slice(0, WEIGHTS.deepBeam)) {
+    const next = planValue(k.t, me, turns - 1, level + 1);
+    if (next > k.v) best = Math.max(best, k.v + (next - k.v) * weight);
   }
   return best;
 }
@@ -433,12 +504,12 @@ export function heuristicValues(view: GameState, me: PlayerId, cands: readonly M
     const t = finishOwnChoices(t0, me);
     scored.push({ i, v: positionValue(t, me), t });
   });
-  // Turn decisions: the best few are also judged by the best turn they set up next.
-  const beam = !view.pending.length ? WEIGHTS.planBeam : 0;
+  // Turn decisions: the best few are also judged by the best turns they set up (planDepth − 1 more).
+  const beam = !view.pending.length && WEIGHTS.planDepth >= 2 ? WEIGHTS.planBeam : 0;
   if (beam > 0) {
     const top = [...scored].sort((x, y) => y.v - x.v).slice(0, beam);
     for (const x of top) {
-      const next = nextTurnValue(x.t, me);
+      const next = planValue(x.t, me, WEIGHTS.planDepth - 1, 2);
       if (next > x.v) x.v = x.v + (next - x.v) * WEIGHTS.planWeight;
     }
   }

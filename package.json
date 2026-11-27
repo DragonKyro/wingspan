@@ -14,6 +14,7 @@
     "cards": "node scripts/convert-cards.mjs",
     "wyrm:bench": "vite-node scripts/wyrmspan/bench.ts --",
     "wyrm:tune": "vite build --config scripts/wyrmspan/vite.config.ts && node scripts/wyrmspan/dist/wyrmspan-tune.mjs",
+    "wyrm:time": "vite-node scripts/wyrmspan/timing.ts --",
     "deploy:rules": "npx -y firebase-tools@latest deploy --only database"
   },
   "dependencies": {
