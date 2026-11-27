@@ -218,7 +218,7 @@ export interface ItemValues {
 }
 
 /** A fixed mid-game exchange rate, for pruning priors (the heuristic itself uses its own, round-aware). */
-export const MIDGAME_VALUES: ItemValues = { resource: 0.7, card: 0.55, egg: 1, coin: 1.5, guild: 1 };
+const MIDGAME_VALUES: ItemValues = { resource: 0.7, card: 0.55, egg: 1, coin: 1.5, guild: 1 };
 
 export function summaryValue(sum: Float32Array, itemValue: ItemValues = MIDGAME_VALUES): number {
   const iv = itemValue;

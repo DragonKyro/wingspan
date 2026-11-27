@@ -14,8 +14,6 @@ import { SUMMARY_DIM, summarizeSteps } from './summary';
 
 export const CAVE_INDEX: Record<string, number> = { 'Crimson Cavern': 0, 'Golden Grotto': 1, 'Amethyst Abyss': 2 };
 
-export type { Exchange };
-
 export function exchangeActions(playerId: PlayerId, plan: readonly Exchange[]): Action[] {
   return plan.map((x) => ({ type: 'exchange', playerId, give: x.give, get: x.get }));
 }
@@ -49,10 +47,6 @@ export function enticeOptions(view: GameState, p: PlayerState, cardId: number): 
 }
 
 /** Does `cardId` have an open excavated space in one of its caves right now? */
-export function hasEnticeSpace(p: PlayerState, cardId: number): boolean {
-  return dragonCard(cardId).caves.some((n) => nextEnticeSpace(p, CAVE_INDEX[n]!) >= 0);
-}
-
 export function excavateCost(p: PlayerState, cave: number): GainItem[] | null {
   const idx = nextEmptySpace(p, cave);
   if (idx < 0) return null;
@@ -70,10 +64,6 @@ export function excavatableCaves(p: PlayerState): number[] {
 
 export function canExplore(p: PlayerState, cave: number): boolean {
   return p.explores[CAVE_IDS[cave]!] < 3 && canPay(p, exploreCost(p, cave));
-}
-
-export function exploreEggCost(p: PlayerState, cave: number): number {
-  return exploreCost(p, cave).reduce((a, it) => a + (it.kind === 'egg' ? it.count : 0), 0);
 }
 
 /** A dragon's abilities are inactive while it is an untrained fledgling. */

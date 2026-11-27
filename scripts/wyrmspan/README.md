@@ -143,4 +143,7 @@ The shipped config on other tables: **+3.7 ± 1.2 solo** (400 games vs Automa
 L1), **+3.2 ± 1.2 in 3p** (450 games). The evaluation and the search help each
 other: the search alone was +0.7, the evaluation alone +1.7, both +2.7.
 
+The shipped config is the `WEIGHTS` defaults; the sweep configs and run
+outputs weren't kept (regenerate positions with `value-data.ts`).
+
 Converter engines (cache / tuck / end-game counters) remain the weak spot.

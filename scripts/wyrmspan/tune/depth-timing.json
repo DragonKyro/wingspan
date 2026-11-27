@@ -1,8 +1,0 @@
-[
-  { "name": "d3-b2", "weights": { "planDepth": 3 } },
-  { "name": "d3-b2-dedupe3", "weights": { "planDepth": 3, "dedupeFrom": 3 } },
-  { "name": "d3-b2-dedupe3-budget0", "weights": { "planDepth": 3, "dedupeFrom": 3, "deepBudget": 0 } },
-  { "name": "d4-b2-dedupe3-budget0", "weights": { "planDepth": 4, "dedupeFrom": 3, "deepBudget": 0 } },
-  { "name": "d4-b2-dedupe2-budget0", "weights": { "planDepth": 4, "dedupeFrom": 2, "deepBudget": 0 } },
-  { "name": "d3-b3-dedupe3-budget8", "weights": { "planDepth": 3, "deepBeam": 3, "dedupeFrom": 3, "deepBudget": 8 } }
-]

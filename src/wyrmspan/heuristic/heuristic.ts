@@ -38,9 +38,9 @@ import { determinize, redact, visibleSeed } from './view';
 // with a strong player's rule-of-thumb exchange rate early on — coin 3 (a coin
 // is a turn), guild advance 2, resource / egg / dragon card / cave card 1 —
 // and decay to what they are actually worth at the end (coin 1, egg 1,
-// resource / card 1/4 via leftovers, guild 0) as the player's turns run out
-// (coins in hand + income still to come — see roundsLeft). A dragon is worth enticing when its points, ability
-// and egg room beat its cost at that rate. On top of that:
+// resource / card 1/4 via leftovers, guild 0) as the rounds the player can
+// still act in run out (see roundsLeft). A dragon is worth enticing when its
+// points, ability and egg room beat its cost at that rate. On top of that:
 //   cave walk  each cave's explore yield (path icons up to the first empty
 //              space + Adventurer abilities walked past), net of the coin an
 //              explore costs, × the explores still expected there — so filling
@@ -63,10 +63,6 @@ export const WEIGHTS = {
   late: { coin: 1, guild: 0, resource: 0.25, card: 0.25, egg: 1 },
   /** Rounds-left value below which items are priced at their end-game worth. */
   endBias: 0.5,
-  /** Coins (= turns) a round's income is worth, for the game clock. */
-  turnsPerRound: 5.5,
-  /** 'turns': coins in hand + income to come; 'rounds': rounds the player can still act in. */
-  clock: 'rounds' as 'turns' | 'rounds',
   /** Evaluations per candidate for resolving follow-up choices value-greedily (0 = engine greedy answers). */
   followUpBudget: 48,
   /** Explores per round expected in the player's best / 2nd / 3rd cave. */
@@ -83,8 +79,6 @@ export const WEIGHTS = {
   playsPerRound: 3,
   /** Turn decisions: how many top candidates also get follow-on own turns evaluated (0 = off). */
   planBeam: 8,
-  /** How much of a follow-on turn's gain counts. */
-  planWeight: 1,
   /** Own turns the plan spans, this one included (2 = this turn + the next). Opponents are skipped. */
   planDepth: 3,
   /** From the plan's 2nd turn on: how many of a turn's best moves are followed one more turn. */
@@ -93,8 +87,6 @@ export const WEIGHTS = {
   deepBudget: 0,
   /** From this plan turn on (2 = the 2nd), payment / exchange variants of one move are tried once (0 = never). */
   dedupeFrom: 2,
-  /** Extra weight on the gains of the plan's 3rd turn and later (uncertain futures count less). */
-  deepWeight: 1,
   /** Share of the current round's projected objective points counted (later rounds: objectiveLater). */
   objectiveNow: 0.85,
   objectiveLater: 0.2,
@@ -165,18 +157,9 @@ function valuesFor(rem: number): ItemValues {
   };
 }
 
-/**
- * The game clock, in rounds' worth of turns: (coins in hand + the income still
- * to come) / TURNS_PER_ROUND. Every action costs a coin, so coins are turns;
- * this decays smoothly as they are spent, and passing costs nothing by itself
- * (coins carry over) — only the round-4 pass ends the clock.
- */
+/** The game clock: rounds the player can still act in (this one counts until they pass). */
 function roundsLeft(s: GameState, p: PlayerState): number {
-  if (WEIGHTS.clock === 'rounds') return 4 - s.round + (p.passed ? 0 : 1);
-  const coins = p.passed && s.round >= 4 ? 0 : Math.min(p.coins, 9);
-  const collected = s.phase === 'roundEnd' && !s.incomeQueue.includes(p.id) && p.objectiveVps.length >= s.round;
-  const incomes = Math.max(0, 4 - s.round - (collected ? 1 : 0));
-  return (coins + WEIGHTS.turnsPerRound * incomes) / WEIGHTS.turnsPerRound;
+  return 4 - s.round + (p.passed ? 0 : 1);
 }
 
 function itemsValue(items: readonly GainItem[], v: ItemValues): number {
@@ -209,7 +192,7 @@ function endGameEstimate(c: DragonCard): number {
  * Adventurers, per round end for once-per-round), its egg room, and the path
  * icon its space adds to every later walk of its cave.
  */
-export function dragonWorth(c: DragonCard, v: ItemValues, rem: number): number {
+function dragonWorth(c: DragonCard, v: ItemValues, rem: number): number {
   const types = cardAbilityTypes(c);
   const fledgling = c.size === 'Fledgling';
   const av = Math.max(0, abilityValue(abilitySummary(c), v)) * (fledgling ? 0.6 : 1);
@@ -480,11 +463,7 @@ function planValue(t: GameState, me: PlayerId, turns: number, level: number): nu
     kids.push({ v, t: f });
   }
   if (turns <= 1 || !kids.length) return best;
-  const weight = WEIGHTS.planWeight * WEIGHTS.deepWeight;
-  for (const k of kids.sort((x, y) => y.v - x.v).slice(0, WEIGHTS.deepBeam)) {
-    const next = planValue(k.t, me, turns - 1, level + 1);
-    if (next > k.v) best = Math.max(best, k.v + (next - k.v) * weight);
-  }
+  for (const k of kids.sort((x, y) => y.v - x.v).slice(0, WEIGHTS.deepBeam)) best = Math.max(best, planValue(k.t, me, turns - 1, level + 1));
   return best;
 }
 
@@ -493,7 +472,7 @@ function planValue(t: GameState, me: PlayerId, turns: number, level: number): nu
  * view): the position it leads to, in points. −Infinity for a candidate that
  * can't run in the sampled world.
  */
-export function heuristicValues(view: GameState, me: PlayerId, cands: readonly Move[]): number[] {
+function heuristicValues(view: GameState, me: PlayerId, cands: readonly Move[]): number[] {
   const values = cands.map(() => -Infinity);
   if (cands.length <= 1) return values.fill(0);
   const world = determinize(view, me, visibleSeed(view, me));
@@ -509,8 +488,7 @@ export function heuristicValues(view: GameState, me: PlayerId, cands: readonly M
   if (beam > 0) {
     const top = [...scored].sort((x, y) => y.v - x.v).slice(0, beam);
     for (const x of top) {
-      const next = planValue(x.t, me, WEIGHTS.planDepth - 1, 2);
-      if (next > x.v) x.v = x.v + (next - x.v) * WEIGHTS.planWeight;
+      x.v = Math.max(x.v, planValue(x.t, me, WEIGHTS.planDepth - 1, 2));
     }
   }
   for (const x of scored) values[x.i] = x.v;
@@ -518,7 +496,7 @@ export function heuristicValues(view: GameState, me: PlayerId, cands: readonly M
 }
 
 /** Index of the best of `values` (the first of equals); 0 if none is finite. */
-export function bestIndex(values: readonly number[]): number {
+function bestIndex(values: readonly number[]): number {
   let best = -1;
   values.forEach((v, i) => {
     if (v > -Infinity && (best < 0 || v > values[best]! + 1e-9)) best = i;
